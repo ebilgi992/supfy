@@ -98,6 +98,22 @@ jobs:
             Commit: ${{ github.sha }}
             Kurulum: APK'ya dokunun, istenirse "bilinmeyen uygulama yükleme" iznini verin.
 
+      # Geliştirme dalı derlemeleri telefondan indirilebilsin diye "test-" etiketiyle eklenir.
+      # Uygulama içi güncelleme denetimi yalnızca "build-" etiketlerine baktığı için bunlar önerilmez.
+      - name: Test sürümü olarak yayımla (geliştirme dalı)
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/heads/gelistirme/')
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: test-${{ env.SUPFY_VERSION_CODE }}
+          target_commitish: ${{ github.sha }}
+          name: Supfy ${{ env.VERSION }} test (${{ env.SUPFY_VERSION_CODE }})
+          prerelease: true
+          files: Supfy-*.apk
+          body: |
+            Geliştirme dalı test derlemesi · ${{ env.APK_KIND }} · ${{ github.ref_name }}
+            Commit: ${{ github.sha }}
+            Bu sürüm uygulama içinde güncelleme olarak önerilmez.
+
       - name: Raporları yükle
         if: always()
         uses: actions/upload-artifact@v4
