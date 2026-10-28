@@ -1,4 +1,4 @@
-package com.sametozdemir.supfy.web
+package com.supfy.app.web
 
 import android.webkit.PermissionRequest
 import android.webkit.WebChromeClient
@@ -24,6 +24,14 @@ class SupfyChromeClient(private val state: WebUiState) : WebChromeClient() {
         } else {
             emptyArray()
         }
-        if (granted.isNotEmpty()) request.grant(granted) else request.deny()
+        if (granted.isNotEmpty()) {
+            request.grant(granted)
+            state.stats = state.stats.withDrmGranted()
+        } else {
+            request.deny()
+        }
+        if (granted.size < request.resources.size) {
+            state.stats = state.stats.withDeniedPermission()
+        }
     }
 }

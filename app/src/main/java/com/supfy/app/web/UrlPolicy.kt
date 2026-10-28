@@ -1,4 +1,4 @@
-package com.sametozdemir.supfy.web
+package com.supfy.app.web
 
 import java.net.URI
 

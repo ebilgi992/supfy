@@ -13,6 +13,52 @@
     <string name="action_back">Geri</string>
     <string name="cd_logo">Supfy logosu</string>
 
+    <string name="action_protection">Koruma ve durum</string>
+
+    <!-- Koruma ve durum -->
+    <string name="protection_title">Koruma ve durum</string>
+    <string name="protection_summary">%1$d / %2$d koruma etkin</string>
+    <string name="protection_summary_desc">Bu korumalar Supfy\'nin kendi güvenlik ayarlarıdır ve Spotify sayfasının çalışmasını değiştirmez.</string>
+    <string name="protection_section_active">Etkin korumalar</string>
+    <string name="protection_section_stats">Bu oturumda</string>
+    <string name="protection_section_trouble">Sorun mu yaşıyorsun?</string>
+    <string name="protection_section_unsupported">Sunulmayan özellikler</string>
+    <string name="status_active">Etkin</string>
+    <string name="status_unsupported">Desteklenmiyor</string>
+    <string name="status_not_offered">Sunulmuyor</string>
+
+    <string name="prot_https_title">Yalnızca HTTPS</string>
+    <string name="prot_https_desc">Şifresiz bağlantılar ve karışık içerik engellenir; sertifika hataları atlanmaz.</string>
+    <string name="prot_allowlist_title">Alan adı izin listesi</string>
+    <string name="prot_allowlist_desc">Uygulama içinde yalnızca Spotify alan adları açılır; diğer bağlantılar dokunursan tarayıcıda açılır.</string>
+    <string name="prot_safebrowsing_title">Safe Browsing</string>
+    <string name="prot_safebrowsing_desc">Google\'ın zararlı site listesiyle kontrol. Cihazdaki WebView desteklemiyorsa çalışmaz.</string>
+    <string name="prot_drm_title">DRM izin kapısı</string>
+    <string name="prot_drm_desc">Korumalı içerik izni yalnızca open.spotify.com\'a verilir; mikrofon, kamera ve konum reddedilir.</string>
+    <string name="prot_cookies_title">Üçüncü taraf çerezleri kapalı</string>
+    <string name="prot_cookies_desc">Başka sitelerin seni Spotify sayfası üzerinden izlemesini zorlaştırır.</string>
+    <string name="prot_bridge_title">JavaScript köprüsü yok</string>
+    <string name="prot_bridge_desc">Web sayfası telefonundaki uygulama koduna erişemez.</string>
+    <string name="prot_files_title">Dosya erişimi kapalı</string>
+    <string name="prot_files_desc">Sayfa telefonundaki dosyaları okuyamaz.</string>
+    <string name="prot_sw_title">Service Worker kısıtlaması</string>
+    <string name="prot_sw_desc">Arka plan betikleri için de dosya ve içerik erişimi kapalıdır.</string>
+
+    <string name="stat_blocked">Engellenen güvensiz veya uygulama dışı bağlantı</string>
+    <string name="stat_ssl">Reddedilen geçersiz sertifika</string>
+    <string name="stat_denied">Reddedilen izin isteği</string>
+    <string name="stat_drm">Verilen korumalı içerik izni</string>
+    <string name="stat_external">Tarayıcıda açılan bağlantı</string>
+    <string name="stat_note">Yalnızca gerçekten gerçekleşen olaylar sayılır. Uygulama kapanınca sıfırlanır.</string>
+
+    <string name="trouble_desc">Supfy Spotify sayfasına kod eklemez. Oynatma takılırsa sayfayı sıfırla; oturumun kapanmaz.</string>
+    <string name="action_reset_page">Sayfayı sıfırla</string>
+    <string name="action_desktop_off">Masaüstü modunu kapat</string>
+    <string name="page_reset_done">Sayfa sıfırlandı.</string>
+
+    <string name="unsupported_ads_title">Reklam engelleme</string>
+    <string name="unsupported_ads_desc">Spotify Kullanıcı Yönergeleri reklamları engellemeyi veya atlatmayı yasaklar; hesabın askıya alınmasına veya kapatılmasına yol açabilir.</string>
+
     <!-- Bağlantı ve hatalar -->
     <string name="offline_banner">İnternet bağlantısı yok. Bağlantı gelince sayfa yeniden yüklenecek.</string>
     <string name="error_title">Sayfa açılamadı</string>
@@ -63,7 +109,6 @@
 
     <string name="section_about">Hakkında</string>
     <string name="about_version">Sürüm: %1$s</string>
-    <string name="about_developer">Geliştirici: Samet Özdemir</string>
     <string name="about_disclaimer">Supfy bağımsız bir uygulamadır. Spotify ile bağlantılı değildir ve Spotify tarafından onaylanmamıştır. Spotify, Spotify AB\'nin tescilli markasıdır. Supfy reklam engellemez, reklamları atlamaz veya susturmaz.</string>
     <string name="about_licenses">Açık kaynak bileşenler: AndroidX, Jetpack Compose, AndroidX WebKit ve Kotlin (Apache 2.0). Supfy, MIT lisansıyla yayımlanır.</string>
 </resources>

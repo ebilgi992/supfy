@@ -1,4 +1,4 @@
-package com.sametozdemir.supfy
+package com.supfy.app
 
 import android.content.ActivityNotFoundException
 import android.content.Intent
@@ -31,18 +31,21 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.webkit.WebViewCompat
-import com.sametozdemir.supfy.data.AppSettings
-import com.sametozdemir.supfy.data.ConnectivityObserver
-import com.sametozdemir.supfy.data.ThemeMode
-import com.sametozdemir.supfy.ui.SupfyScreen
-import com.sametozdemir.supfy.ui.SettingsScreen
-import com.sametozdemir.supfy.ui.theme.SupfyTheme
-import com.sametozdemir.supfy.web.SupfyChromeClient
-import com.sametozdemir.supfy.web.SupfyWebViewClient
-import com.sametozdemir.supfy.web.PageErrorKind
-import com.sametozdemir.supfy.web.UrlPolicy
-import com.sametozdemir.supfy.web.WebUiState
-import com.sametozdemir.supfy.web.WebViewFactory
+import androidx.webkit.WebViewFeature
+import com.supfy.app.data.AppSettings
+import com.supfy.app.data.ConnectivityObserver
+import com.supfy.app.data.ThemeMode
+import com.supfy.app.ui.SupfyScreen
+import com.supfy.app.ui.ProtectionScreen
+import com.supfy.app.ui.SettingsScreen
+import com.supfy.app.ui.theme.SupfyTheme
+import com.supfy.app.web.SupfyChromeClient
+import com.supfy.app.web.SupfyWebViewClient
+import com.supfy.app.web.DeviceSupport
+import com.supfy.app.web.PageErrorKind
+import com.supfy.app.web.UrlPolicy
+import com.supfy.app.web.WebUiState
+import com.supfy.app.web.WebViewFactory
 
 class MainActivity : ComponentActivity() {
 
@@ -66,6 +69,12 @@ class MainActivity : ComponentActivity() {
         if (!restored) wv.loadUrl(UrlPolicy.HOME_URL)
 
         val webViewVersion = WebViewCompat.getCurrentWebViewPackage(this)?.versionName
+        val support = DeviceSupport(
+            safeBrowsing = WebViewFeature.isFeatureSupported(WebViewFeature.START_SAFE_BROWSING),
+            serviceWorkerHardening = WebViewFeature.isFeatureSupported(WebViewFeature.SERVICE_WORKER_BASIC_USAGE) &&
+                WebViewFeature.isFeatureSupported(WebViewFeature.SERVICE_WORKER_FILE_ACCESS) &&
+                WebViewFeature.isFeatureSupported(WebViewFeature.SERVICE_WORKER_CONTENT_ACCESS),
+        )
 
         setContent {
             val themeMode by appSettings.themeMode.collectAsStateWithLifecycle()
@@ -91,6 +100,7 @@ class MainActivity : ComponentActivity() {
                 val background by appSettings.backgroundPlayback.collectAsStateWithLifecycle()
                 val desktop by appSettings.desktopMode.collectAsStateWithLifecycle()
                 var showSettings by rememberSaveable { mutableStateOf(false) }
+                var showProtection by rememberSaveable { mutableStateOf(false) }
 
                 // Bağlantı geri gelince ağ hatası ekranındaysak otomatik yeniden dene.
                 LaunchedEffect(online) {
@@ -110,6 +120,7 @@ class MainActivity : ComponentActivity() {
                         onOpenBrowser = { openExternally(Uri.parse(uiState.currentUrl ?: UrlPolicy.HOME_URL)) },
                         onRetry = ::retry,
                         onOpenSettings = { showSettings = true },
+                        onOpenProtection = { showProtection = true },
                     )
 
                     AnimatedVisibility(
@@ -130,11 +141,27 @@ class MainActivity : ComponentActivity() {
                             onClose = { showSettings = false },
                         )
                     }
+
+                    AnimatedVisibility(
+                        visible = showProtection,
+                        enter = slideInHorizontally { it } + fadeIn(),
+                        exit = slideOutHorizontally { it } + fadeOut(),
+                    ) {
+                        ProtectionScreen(
+                            support = support,
+                            stats = uiState.stats,
+                            desktopMode = desktop,
+                            onResetPage = ::resetPage,
+                            onDisableDesktopMode = { setDesktopMode(false) },
+                            onClose = { showProtection = false },
+                        )
+                    }
                 }
 
                 // Sonra tanımlanan BackHandler önceliklidir: önce ayarlar kapanır, sonra sayfa geri gider.
-                BackHandler(enabled = !showSettings && uiState.canGoBack) { webView?.goBack() }
+                BackHandler(enabled = !showSettings && !showProtection && uiState.canGoBack) { webView?.goBack() }
                 BackHandler(enabled = showSettings) { showSettings = false }
+                BackHandler(enabled = showProtection) { showProtection = false }
             }
         }
     }
@@ -171,6 +198,7 @@ class MainActivity : ComponentActivity() {
         val intent = Intent(Intent.ACTION_VIEW, uri).addCategory(Intent.CATEGORY_BROWSABLE)
         try {
             startActivity(intent)
+            uiState.stats = uiState.stats.withExternalOpen()
         } catch (_: ActivityNotFoundException) {
             Toast.makeText(this, R.string.no_browser, Toast.LENGTH_SHORT).show()
         }
@@ -188,6 +216,16 @@ class MainActivity : ComponentActivity() {
         uiState.canGoBack = false
         uiState.progress = 0
         webView = buildWebView().also { it.loadUrl(url) }
+    }
+
+    /** WebView'i yeniden kurar; çerezler ve oturum korunur. */
+    private fun resetPage() {
+        val url = uiState.currentUrl
+            ?.takeIf { UrlPolicy.decide(it) == UrlPolicy.Decision.LOAD_IN_APP }
+            ?: UrlPolicy.HOME_URL
+        CookieManager.getInstance().flush()
+        replaceWebView(url)
+        Toast.makeText(this, R.string.page_reset_done, Toast.LENGTH_SHORT).show()
     }
 
     /** Yalnızca önbelleği siler; oturum ve çerezler korunur. */

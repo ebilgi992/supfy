@@ -1,4 +1,4 @@
-package com.sametozdemir.supfy.web
+package com.supfy.app.web
 
 import android.annotation.SuppressLint
 import android.content.Context
@@ -8,7 +8,7 @@ import android.webkit.WebView
 import androidx.core.content.ContextCompat
 import androidx.webkit.ServiceWorkerControllerCompat
 import androidx.webkit.WebViewFeature
-import com.sametozdemir.supfy.R
+import com.supfy.app.R
 
 object WebViewFactory {
 

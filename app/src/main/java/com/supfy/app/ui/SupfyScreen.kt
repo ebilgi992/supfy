@@ -1,4 +1,4 @@
-package com.sametozdemir.supfy.ui
+package com.supfy.app.ui
 
 import android.view.ViewGroup
 import android.webkit.WebView
@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
@@ -60,10 +61,10 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
-import com.sametozdemir.supfy.R
-import com.sametozdemir.supfy.web.PageError
-import com.sametozdemir.supfy.web.PageErrorKind
-import com.sametozdemir.supfy.web.WebUiState
+import com.supfy.app.R
+import com.supfy.app.web.PageError
+import com.supfy.app.web.PageErrorKind
+import com.supfy.app.web.WebUiState
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -76,6 +77,7 @@ fun SupfyScreen(
     onOpenBrowser: () -> Unit,
     onRetry: () -> Unit,
     onOpenSettings: () -> Unit,
+    onOpenProtection: () -> Unit,
 ) {
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -87,6 +89,7 @@ fun SupfyScreen(
                 onHome = onHome,
                 onOpenBrowser = onOpenBrowser,
                 onOpenSettings = onOpenSettings,
+                onOpenProtection = onOpenProtection,
             )
         },
     ) { padding ->
@@ -148,6 +151,7 @@ private fun SupfyTopBar(
     onHome: () -> Unit,
     onOpenBrowser: () -> Unit,
     onOpenSettings: () -> Unit,
+    onOpenProtection: () -> Unit,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
     Column {
@@ -183,6 +187,11 @@ private fun SupfyTopBar(
                             text = { Text(stringResource(R.string.action_open_browser)) },
                             leadingIcon = { Icon(Icons.Filled.Share, contentDescription = null) },
                             onClick = { menuOpen = false; onOpenBrowser() },
+                        )
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.action_protection)) },
+                            leadingIcon = { Icon(Icons.Filled.Lock, contentDescription = null) },
+                            onClick = { menuOpen = false; onOpenProtection() },
                         )
                         DropdownMenuItem(
                             text = { Text(stringResource(R.string.action_settings)) },

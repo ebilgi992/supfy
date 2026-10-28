@@ -1,9 +1,17 @@
 # Değişiklik Günlüğü
 
+## [0.3.0-prototip] - 2026-10-28
+
+### Değişti
+- Geliştirici adı uygulamadan, belgelerden ve paket adından kaldırıldı; yeni paket adı `com.supfy.app` (önceki sürüm ayrı uygulama olarak kalır, kaldırılmalıdır).
+
+### Eklendi
+- "Koruma ve durum" ekranı: etkin güvenlik korumaları, cihaz desteği göstergesi, bu oturumda gerçekten gerçekleşen işlemlerin sayaçları, sayfayı sıfırlama.
+
 ## [0.2.0-prototip] - 2026-10-28
 
 ### Değişti
-- Uygulama adı **Supfy**; paket adı `com.sametozdemir.supfy` (önceki Tını sürümü ayrı uygulama olarak kalır, kaldırılmalıdır).
+- Uygulama adı **Supfy**; paket adı değişti (önceki Tını sürümü ayrı uygulama olarak kalır, kaldırılmalıdır).
 - Yeni logo: uçları nota başıyla biten "S"; adaptive, monokrom, açılış ekranı, açık/koyu logo.
 
 ### Eklendi

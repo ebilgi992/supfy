@@ -1,4 +1,4 @@
-package com.sametozdemir.supfy.ui
+package com.supfy.app.ui
 
 import android.os.Build
 import androidx.compose.foundation.layout.Arrangement
@@ -43,9 +43,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
-import com.sametozdemir.supfy.BuildConfig
-import com.sametozdemir.supfy.R
-import com.sametozdemir.supfy.data.ThemeMode
+import com.supfy.app.BuildConfig
+import com.supfy.app.R
+import com.supfy.app.data.ThemeMode
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -145,7 +145,6 @@ fun SettingsScreen(
             SectionCard(stringResource(R.string.section_about)) {
                 Text(stringResource(R.string.app_name), style = MaterialTheme.typography.titleLarge)
                 BodyText(stringResource(R.string.about_version, BuildConfig.VERSION_NAME))
-                BodyText(stringResource(R.string.about_developer))
                 Spacer(Modifier.height(8.dp))
                 BodyText(stringResource(R.string.about_disclaimer))
                 Spacer(Modifier.height(8.dp))

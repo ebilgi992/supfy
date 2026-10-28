@@ -1,4 +1,4 @@
-package com.sametozdemir.supfy.web
+package com.supfy.app.web
 
 import android.graphics.Bitmap
 import android.net.Uri
@@ -23,16 +23,25 @@ class SupfyWebViewClient(
     override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
         val url = request.url?.toString()
         if (!request.isForMainFrame) {
-            return !UrlPolicy.allowSubframe(url)
+            val allowed = UrlPolicy.allowSubframe(url)
+            if (!allowed) state.stats = state.stats.withBlockedNavigation()
+            return !allowed
         }
         return when (UrlPolicy.decide(url)) {
             UrlPolicy.Decision.LOAD_IN_APP -> false
             UrlPolicy.Decision.OPEN_EXTERNALLY -> {
                 // Yalnızca kullanıcı dokunuşuyla başlayan dış bağlantılar tarayıcıda açılır.
-                if (request.hasGesture()) request.url?.let(openExternally)
+                if (request.hasGesture()) {
+                    request.url?.let(openExternally)
+                } else {
+                    state.stats = state.stats.withBlockedNavigation()
+                }
                 true
             }
-            UrlPolicy.Decision.BLOCK -> true
+            UrlPolicy.Decision.BLOCK -> {
+                state.stats = state.stats.withBlockedNavigation()
+                true
+            }
         }
     }
 
@@ -70,6 +79,7 @@ class SupfyWebViewClient(
     override fun onReceivedSslError(view: WebView, handler: SslErrorHandler, error: SslError) {
         // Sertifika hataları asla atlanmaz.
         handler.cancel()
+        state.stats = state.stats.withSslRejected()
         if (view.url == null || view.url == error.url) {
             state.error = PageError(PageErrorKind.SSL, error.url)
         }

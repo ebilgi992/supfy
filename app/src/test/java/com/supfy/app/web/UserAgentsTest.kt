@@ -1,4 +1,4 @@
-package com.sametozdemir.supfy.web
+package com.supfy.app.web
 
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue

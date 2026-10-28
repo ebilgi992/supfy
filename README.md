@@ -81,4 +81,4 @@ Araştırma aşamasında [spotify-ad-blocker](https://github.com/YASMANTH-VEMALA
 
 Supfy bağımsız bir projedir; Spotify ile bağlantılı değildir ve Spotify tarafından onaylanmamıştır. Spotify, Spotify AB'nin tescilli markasıdır.
 
-Lisans: [MIT](LICENSE) · Geliştirici: Samet Özdemir
+Lisans: [MIT](LICENSE)

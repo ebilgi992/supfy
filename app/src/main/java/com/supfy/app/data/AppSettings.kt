@@ -1,4 +1,4 @@
-package com.sametozdemir.supfy.data
+package com.supfy.app.data
 
 import android.content.Context
 import kotlinx.coroutines.flow.MutableStateFlow

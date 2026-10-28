@@ -1,4 +1,4 @@
-package com.sametozdemir.supfy
+package com.supfy.app
 
 import android.app.Application
 import androidx.webkit.WebViewCompat

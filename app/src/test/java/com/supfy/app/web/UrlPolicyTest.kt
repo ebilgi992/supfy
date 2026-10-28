@@ -1,6 +1,6 @@
-package com.sametozdemir.supfy.web
+package com.supfy.app.web
 
-import com.sametozdemir.supfy.web.UrlPolicy.Decision
+import com.supfy.app.web.UrlPolicy.Decision
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue

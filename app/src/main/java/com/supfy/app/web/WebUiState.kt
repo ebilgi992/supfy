@@ -1,4 +1,4 @@
-package com.sametozdemir.supfy.web
+package com.supfy.app.web
 
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -15,4 +15,5 @@ class WebUiState {
     var error by mutableStateOf<PageError?>(null)
     var canGoBack by mutableStateOf(false)
     var currentUrl by mutableStateOf<String?>(null)
+    var stats by mutableStateOf(SessionStats())
 }
