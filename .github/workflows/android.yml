@@ -1,0 +1,56 @@
+name: Android CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Test, Lint ve Debug APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Gradle wrapper doğrulama
+        uses: gradle/actions/wrapper-validation@v4
+
+      - name: JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Gradle kurulumu
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Birim testleri
+        run: ./gradlew --no-daemon testDebugUnitTest
+
+      - name: Android Lint
+        run: ./gradlew --no-daemon lintDebug
+
+      - name: Debug APK derle
+        run: ./gradlew --no-daemon assembleDebug
+
+      - name: APK'yı yükle
+        uses: actions/upload-artifact@v4
+        with:
+          name: izlek-debug-apk
+          path: app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+
+      - name: Raporları yükle
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: izlek-raporlar
+          path: |
+            app/build/reports/lint-results-debug.html
+            app/build/reports/tests/
+          if-no-files-found: ignore

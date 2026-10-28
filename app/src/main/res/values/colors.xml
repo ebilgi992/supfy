@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="izlek_bg">#FF0F1115</color>
+    <color name="izlek_surface">#FF171A21</color>
+    <color name="izlek_coral">#FFFF7A59</color>
+    <color name="izlek_violet">#FF8B7CF6</color>
+</resources>

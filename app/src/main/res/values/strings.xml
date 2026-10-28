@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools" tools:locale="tr">
+    <string name="app_name">İzlek</string>
+
+    <!-- Üst çubuk -->
+    <string name="status_online">Bağlı</string>
+    <string name="status_offline">Çevrimdışı</string>
+    <string name="action_refresh">Yenile</string>
+    <string name="action_more">Diğer seçenekler</string>
+    <string name="action_open_browser">Tarayıcıda aç</string>
+    <string name="action_settings">Ayarlar</string>
+    <string name="action_home">Ana sayfa</string>
+    <string name="action_back">Geri</string>
+    <string name="cd_logo">İzlek logosu</string>
+
+    <!-- Bağlantı ve hatalar -->
+    <string name="offline_banner">İnternet bağlantısı yok. Bağlantı gelince sayfa yeniden yüklenecek.</string>
+    <string name="error_title">Sayfa açılamadı</string>
+    <string name="error_no_connection">Sunucuya ulaşılamadı. İnternet bağlantını kontrol edip tekrar dene.</string>
+    <string name="error_timeout">Bağlantı zaman aşımına uğradı. Ağ yavaş olabilir; biraz sonra tekrar dene.</string>
+    <string name="error_ssl">Güvenli bağlantı doğrulanamadı. Güvenliğin için sayfa açılmadı.</string>
+    <string name="error_generic">Beklenmeyen bir yükleme hatası oluştu.</string>
+    <string name="error_renderer">Sayfa motoru yeniden başlatıldı.</string>
+    <string name="action_retry">Tekrar dene</string>
+    <string name="no_browser">Bağlantıyı açacak bir tarayıcı bulunamadı.</string>
+
+    <!-- Ayarlar -->
+    <string name="settings_title">Ayarlar</string>
+    <string name="section_playback">Oynatma</string>
+    <string name="pref_background_title">Arka planda çalmaya devam et</string>
+    <string name="pref_background_desc">Uygulamadan çıkınca veya ekran kilitlenince sayfa çalışmaya devam eder. Kapalıyken sayfa duraklatılır ve pil tasarrufu sağlanır.</string>
+    <string name="pref_desktop_title">Masaüstü sitesini iste</string>
+    <string name="pref_desktop_desc">Mobil sayfa oynatıcıyı açmazsa dene. Tarayıcılardaki “Masaüstü sitesi” seçeneğiyle aynıdır.</string>
+
+    <string name="section_privacy">Gizlilik ve veriler</string>
+    <string name="privacy_body">Giriş yalnızca Spotify\'ın kendi sayfasında yapılır. İzlek sayfaya kod eklemez; şifreni okumaz, kaydetmez ve hiçbir sunucuya göndermez. Oturum çerezleri yalnızca bu cihazda, uygulamanın kendi alanında tutulur. İzlek kendi sunucusuna veri göndermez ve analiz aracı içermez.</string>
+    <string name="action_clear_data">Oturumu ve site verilerini sil</string>
+    <string name="clear_confirm_title">Veriler silinsin mi?</string>
+    <string name="clear_confirm_body">Çerezler, önbellek ve site depolaması silinir. Spotify oturumun kapanır.</string>
+    <string name="action_delete">Sil</string>
+    <string name="action_cancel">Vazgeç</string>
+    <string name="clear_done">Veriler silindi.</string>
+
+    <string name="section_permissions">İzinler</string>
+    <string name="permissions_body">İnternet erişimi: sayfayı yüklemek için.\nAğ durumu: bağlantı göstergesi için.\nKorumalı içerik (DRM): yalnızca open.spotify.com istediğinde, şifreli müziği çalabilmek için verilir. Mikrofon, kamera ve konum izinleri her zaman reddedilir.</string>
+
+    <string name="section_device">Cihaz bilgisi</string>
+    <string name="device_model">Cihaz: %1$s %2$s</string>
+    <string name="device_android">Android sürümü: %1$s (API %2$d)</string>
+    <string name="device_webview">WebView: %1$s</string>
+    <string name="unknown">Bilinmiyor</string>
+
+    <string name="section_about">Hakkında</string>
+    <string name="about_version">Sürüm: %1$s</string>
+    <string name="about_developer">Geliştirici: Samet Özdemir</string>
+    <string name="about_disclaimer">İzlek bağımsız bir uygulamadır. Spotify ile bağlantılı değildir ve Spotify tarafından onaylanmamıştır. Spotify, Spotify AB\'nin tescilli markasıdır. İzlek reklam engellemez, reklamları atlamaz veya susturmaz.</string>
+    <string name="about_licenses">Açık kaynak bileşenler: AndroidX, Jetpack Compose, AndroidX WebKit ve Kotlin (Apache 2.0). İzlek, MIT lisansıyla yayımlanır.</string>
+</resources>
