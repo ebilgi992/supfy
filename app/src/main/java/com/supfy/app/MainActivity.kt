@@ -4,6 +4,7 @@ import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.os.Parcel
 import android.view.ViewGroup
 import android.webkit.CookieManager
 import android.webkit.WebStorage
@@ -22,6 +23,9 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -29,6 +33,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import androidx.lifecycle.lifecycleScope
+import com.supfy.app.update.AvailableUpdate
+import com.supfy.app.update.ReleaseSelector
+import com.supfy.app.update.UpdateRepository
+import kotlinx.coroutines.launch
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.webkit.WebViewCompat
 import androidx.webkit.WebViewFeature
@@ -42,6 +52,7 @@ import com.supfy.app.ui.theme.SupfyTheme
 import com.supfy.app.web.SupfyChromeClient
 import com.supfy.app.web.SupfyWebViewClient
 import com.supfy.app.web.DeviceSupport
+import com.supfy.app.web.PageError
 import com.supfy.app.web.PageErrorKind
 import com.supfy.app.web.UrlPolicy
 import com.supfy.app.web.WebUiState
@@ -53,6 +64,9 @@ class MainActivity : ComponentActivity() {
     private lateinit var connectivity: ConnectivityObserver
     private val uiState = WebUiState()
     private var webView: WebView? by mutableStateOf<WebView?>(null)
+    private val updates = UpdateRepository(BuildConfig.UPDATE_REPO)
+    private var pendingUpdate: AvailableUpdate? by mutableStateOf<AvailableUpdate?>(null)
+    private var updateCheckRunning = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
@@ -102,6 +116,11 @@ class MainActivity : ComponentActivity() {
                 var showSettings by rememberSaveable { mutableStateOf(false) }
                 var showProtection by rememberSaveable { mutableStateOf(false) }
 
+                // Açılışta (en fazla 12 saatte bir) güncelleme denetimi; bağlantı yoksa beklenir.
+                LaunchedEffect(online) {
+                    if (online) checkForUpdates(manual = false)
+                }
+
                 // Bağlantı geri gelince ağ hatası ekranındaysak otomatik yeniden dene.
                 LaunchedEffect(online) {
                     val kind = uiState.error?.kind
@@ -137,6 +156,7 @@ class MainActivity : ComponentActivity() {
                             onDesktopModeChange = ::setDesktopMode,
                             onThemeModeChange = appSettings::setThemeMode,
                             onClearCache = ::clearCache,
+                            onCheckUpdates = { checkForUpdates(manual = true) },
                             onClearData = ::clearSiteData,
                             onClose = { showSettings = false },
                         )
@@ -156,6 +176,33 @@ class MainActivity : ComponentActivity() {
                             onClose = { showProtection = false },
                         )
                     }
+                }
+
+                pendingUpdate?.let { update ->
+                    AlertDialog(
+                        onDismissRequest = { snooze(update) },
+                        title = { Text(stringResource(R.string.update_title)) },
+                        text = {
+                            Text(
+                                stringResource(
+                                    R.string.update_body,
+                                    BuildConfig.VERSION_NAME,
+                                    BuildConfig.VERSION_CODE,
+                                    update.versionName,
+                                    update.versionCode,
+                                ),
+                            )
+                        },
+                        confirmButton = {
+                            TextButton(onClick = {
+                                pendingUpdate = null
+                                openExternally(Uri.parse(update.pageUrl))
+                            }) { Text(stringResource(R.string.update_now)) }
+                        },
+                        dismissButton = {
+                            TextButton(onClick = { snooze(update) }) { Text(stringResource(R.string.update_later)) }
+                        },
+                    )
                 }
 
                 // Sonra tanımlanan BackHandler önceliklidir: önce ayarlar kapanır, sonra sayfa geri gider.
@@ -204,9 +251,23 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private var lastRendererCrashMs = 0L
+
     private fun onRendererGone() {
-        replaceWebView(UrlPolicy.HOME_URL)
-        Toast.makeText(this, R.string.error_renderer, Toast.LENGTH_SHORT).show()
+        val now = System.currentTimeMillis()
+        val repeated = now - lastRendererCrashMs < RENDERER_CRASH_WINDOW_MS
+        lastRendererCrashMs = now
+        if (repeated) {
+            // Kısa sürede ikinci çökme: döngüye girmemek için sayfayı otomatik yüklemeyiz;
+            // kullanıcı hata ekranından "Tekrar dene" ile kendisi başlatır.
+            webView?.let { destroyWebView(it) }
+            webView = buildWebView()
+            uiState.canGoBack = false
+            uiState.error = PageError(PageErrorKind.GENERIC, UrlPolicy.HOME_URL)
+        } else {
+            replaceWebView(UrlPolicy.HOME_URL)
+            Toast.makeText(this, R.string.error_renderer, Toast.LENGTH_SHORT).show()
+        }
     }
 
     private fun replaceWebView(url: String) {
@@ -216,6 +277,41 @@ class MainActivity : ComponentActivity() {
         uiState.canGoBack = false
         uiState.progress = 0
         webView = buildWebView().also { it.loadUrl(url) }
+    }
+
+    /**
+     * GitHub Releases'tan yeni sürüm denetler. Otomatik denetim 12 saatte bir yapılır;
+     * hata olursa sessizce geçilir. Elle denetimde sonuç kullanıcıya bildirilir.
+     */
+    private fun checkForUpdates(manual: Boolean) {
+        if (updateCheckRunning) return
+        val now = System.currentTimeMillis()
+        if (!manual && !ReleaseSelector.shouldAutoCheck(now, appSettings.lastUpdateCheckMs)) return
+        updateCheckRunning = true
+        lifecycleScope.launch {
+            val result = updates.check(BuildConfig.VERSION_CODE)
+            updateCheckRunning = false
+            when (result) {
+                is UpdateRepository.Result.Available -> {
+                    appSettings.markUpdateChecked(now)
+                    val offer = manual || ReleaseSelector.shouldOffer(
+                        result.update, appSettings.snoozedVersionCode, appSettings.snoozedUntilMs, now,
+                    )
+                    if (offer) pendingUpdate = result.update
+                }
+                is UpdateRepository.Result.UpToDate -> {
+                    appSettings.markUpdateChecked(now)
+                    if (manual) Toast.makeText(this@MainActivity, R.string.update_none, Toast.LENGTH_SHORT).show()
+                }
+                is UpdateRepository.Result.Failed ->
+                    if (manual) Toast.makeText(this@MainActivity, R.string.update_failed, Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    private fun snooze(update: AvailableUpdate) {
+        pendingUpdate = null
+        appSettings.snoozeUpdate(update.versionCode, System.currentTimeMillis() + ReleaseSelector.SNOOZE_MS)
     }
 
     /** WebView'i yeniden kurar; çerezler ve oturum korunur. */
@@ -236,11 +332,17 @@ class MainActivity : ComponentActivity() {
 
     private fun clearSiteData() {
         val cookies = CookieManager.getInstance()
-        cookies.removeAllCookies { cookies.flush() }
         WebStorage.getInstance().deleteAllData()
         webView?.clearCache(true)
-        replaceWebView(UrlPolicy.HOME_URL)
-        Toast.makeText(this, R.string.clear_done, Toast.LENGTH_SHORT).show()
+        // removeAllCookies asenkron çalışır; sayfa silme bittikten sonra yüklenmeli,
+        // yoksa eski oturum çerezleriyle yeniden açılabilir.
+        cookies.removeAllCookies {
+            cookies.flush()
+            if (!isDestroyed) {
+                replaceWebView(UrlPolicy.HOME_URL)
+                Toast.makeText(this, R.string.clear_done, Toast.LENGTH_SHORT).show()
+            }
+        }
     }
 
     private fun destroyWebView(wv: WebView) {
@@ -272,7 +374,27 @@ class MainActivity : ComponentActivity() {
 
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
-        webView?.saveState(outState)
+        // Geçmiş çok büyükse sistemin kayıt sınırını (≈1 MB) aşıp çökmeye yol açabilir;
+        // sınırı aşarsa geçmiş kaydedilmez, açılışta ana sayfa yüklenir (oturum çerezlerde durur).
+        val wv = webView ?: return
+        val state = Bundle()
+        wv.saveState(state)
+        if (bundleSize(state) <= MAX_SAVED_STATE_BYTES) outState.putAll(state)
+    }
+
+    private fun bundleSize(bundle: Bundle): Int {
+        val parcel = Parcel.obtain()
+        return try {
+            parcel.writeBundle(bundle)
+            parcel.dataSize()
+        } finally {
+            parcel.recycle()
+        }
+    }
+
+    private companion object {
+        const val RENDERER_CRASH_WINDOW_MS = 30_000L
+        const val MAX_SAVED_STATE_BYTES = 200 * 1024
     }
 
     override fun onDestroy() {

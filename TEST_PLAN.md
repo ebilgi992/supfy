@@ -42,6 +42,19 @@ Durum: ✅ geçti · ⏳ test bekliyor · ➖ uygulanmaz
 | 15 | Tema: sistem / açık / koyu geçişi | ⏳ |
 | 16 | "Önbelleği temizle" sonrası oturumun kalması | ⏳ |
 
+## A3. Güncelleme testleri (0.4.0)
+
+| # | Test | Nasıl | Durum |
+|---|---|---|---|
+| U1 | İlk kurulum | Eski Supfy'yi kaldır, ilk imzalı APK'yı kur, giriş yap | ⏳ |
+| U2 | Üzerine güncelleme | Sonraki imzalı APK'yı kaldırmadan kur → "Güncelle" demeli, ikinci simge oluşmamalı | ⏳ |
+| U3 | Veriler korunuyor mu | U2 sonrası: oturum açık mı, tema/ayarlar aynı mı | ⏳ |
+| U4 | Güncelleme penceresi | Daha yeni Release varken uygulamayı aç | ⏳ |
+| U5 | "Daha Sonra" | Pencere 24 saat tekrar çıkmamalı; Ayarlar'dan elle denetim yine göstermeli | ⏳ |
+| U6 | Güncel sürüm | Ayarlar → Güncellemeleri denetle → "Supfy güncel." | ⏳ |
+| U7 | Bağlantı yok | Uçak modunda aç → açılış normal, pencere yok | ⏳ |
+| U8 | Sürüm kodu / imza | Ayarlar'daki sürüm kodu Release adıyla aynı mı | ⏳ |
+
 ## B. Kararlılık
 
 | Test | Beklenen |

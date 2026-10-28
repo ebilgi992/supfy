@@ -52,7 +52,9 @@ Kotlin 2.1 · Jetpack Compose (Material 3) · AndroidX WebKit · Gradle Kotlin D
 # APK: app/build/outputs/apk/debug/app-debug.apk
 ```
 
-**GitHub Actions:** `main` dalına her gönderimde testler, Lint ve debug APK derlenir; APK "Artifacts" bölümünden indirilir.
+**GitHub Actions:** `main` dalına her gönderimde testler, Lint ve APK derlenir; APK Releases'a eklenir. Sürüm kodu `1000 + çalışma numarası`dır.
+
+**İmza anahtarı (bir kez):** Deponun **Settings → Secrets and variables → Actions** bölümüne şu dört gizli değeri ekleyin: `SUPFY_KEYSTORE_B64` (keystore dosyasının base64 hâli), `SUPFY_KEYSTORE_PASSWORD`, `SUPFY_KEY_ALIAS`, `SUPFY_KEY_PASSWORD`. Bunlar tanımlıysa CI imzalı sürüm APK'sı üretir; tanımlı değilse geçici debug anahtarı kullanılır ve güncelleme üzerine kurulamaz. Anahtar dosyasını güvenli bir yerde yedekleyin: kaybolursa mevcut kurulum bir daha güncellenemez.
 
 ## Kurulum (debug APK)
 
@@ -62,7 +64,7 @@ En kolay yol: deponun **Releases** bölümünden en son `Supfy-...-debug.apk` do
 2. Dosyayı açın; istenirse "Bilinmeyen uygulamaları yükle" iznini yalnızca o dosya yöneticisi için verin.
 3. Kurulumdan sonra Supfy'yi açın ve Spotify hesabınızla giriş yapın.
 
-**Güncelleme:** Şimdilik her CI derlemesi farklı bir debug anahtarıyla imzalanır; yeni sürümü kurmadan önce eskisini kaldırmanız gerekir (bkz. güvenlik denetimi).
+**Güncelleme:** 0.4.0'dan itibaren tüm sürümler aynı imza anahtarıyla imzalanır ve sürüm kodu her derlemede artar; yeni APK mevcut kurulumun üzerine yüklenir, oturum ve ayarlar korunur. Supfy açılışta yeni sürümü kendisi denetler ve "Güncelle" ile Release sayfasını açar. (0.3.0 ve öncesinden geçişte bir kez kaldırıp kurmak gerekir.)
 
 **Xiaomi / HyperOS:** Arka planda çalma kesiliyorsa Ayarlar → Uygulamalar → Supfy → Pil tasarrufu → "Kısıtlama yok" seçeneğini elle seçebilirsiniz. Uygulama bu ayarı kendisi değiştirmez.
 

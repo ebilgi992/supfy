@@ -59,6 +59,18 @@
     <string name="unsupported_ads_title">Reklam engelleme</string>
     <string name="unsupported_ads_desc">Spotify Kullanıcı Yönergeleri reklamları engellemeyi veya atlatmayı yasaklar; hesabın askıya alınmasına veya kapatılmasına yol açabilir.</string>
 
+    <!-- Güncelleme -->
+    <string name="update_title">Supfy Güncellemesi Mevcut</string>
+    <string name="update_body">Supfy\'nin yeni bir sürümü yayınlandı.\n\nYeni özelliklerden ve hata düzeltmelerinden yararlanmak için uygulamanı güncelleyebilirsin.\n\nMevcut sürüm: %1$s (%2$d)\nYeni sürüm: %3$s (%4$d)</string>
+    <string name="update_now">Güncelle</string>
+    <string name="update_later">Daha Sonra</string>
+    <string name="update_none">Supfy güncel.</string>
+    <string name="update_failed">Güncelleme denetlenemedi. İnternet bağlantını kontrol et.</string>
+    <string name="section_updates">Güncellemeler</string>
+    <string name="updates_current">Yüklü sürüm: %1$s (%2$d)</string>
+    <string name="updates_desc">Supfy açılışta en fazla 12 saatte bir GitHub Releases\'ı denetler. “Güncelle” seni doğrulanmış Release sayfasına götürür; kurulum yalnızca senin onayınla yapılır.</string>
+    <string name="action_check_updates">Güncellemeleri denetle</string>
+
     <!-- Bağlantı ve hatalar -->
     <string name="offline_banner">İnternet bağlantısı yok. Bağlantı gelince sayfa yeniden yüklenecek.</string>
     <string name="error_title">Sayfa açılamadı</string>

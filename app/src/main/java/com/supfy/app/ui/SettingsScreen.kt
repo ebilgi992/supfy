@@ -58,6 +58,7 @@ fun SettingsScreen(
     onDesktopModeChange: (Boolean) -> Unit,
     onThemeModeChange: (ThemeMode) -> Unit,
     onClearCache: () -> Unit,
+    onCheckUpdates: () -> Unit,
     onClearData: () -> Unit,
     onClose: () -> Unit,
 ) {
@@ -140,6 +141,16 @@ fun SettingsScreen(
                 BodyText(stringResource(R.string.device_model, Build.MANUFACTURER, Build.MODEL))
                 BodyText(stringResource(R.string.device_android, Build.VERSION.RELEASE, Build.VERSION.SDK_INT))
                 BodyText(stringResource(R.string.device_webview, webViewVersion ?: stringResource(R.string.unknown)))
+            }
+
+            SectionCard(stringResource(R.string.section_updates)) {
+                BodyText(stringResource(R.string.updates_current, BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE))
+                Spacer(Modifier.height(4.dp))
+                BodyText(stringResource(R.string.updates_desc))
+                Spacer(Modifier.height(12.dp))
+                OutlinedButton(onClick = onCheckUpdates) {
+                    Text(stringResource(R.string.action_check_updates))
+                }
             }
 
             SectionCard(stringResource(R.string.section_about)) {

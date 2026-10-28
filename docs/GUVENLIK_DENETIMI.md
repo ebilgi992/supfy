@@ -1,13 +1,13 @@
 # Güvenlik ve Performans Denetimi
 
-Sürüm: 0.2.0-prototip · Tarih: 28 Ekim 2026
+Sürüm: 0.4.0 · Tarih: 28 Ekim 2026
 Yöntem: kaynak kod incelemesi, Android 35 API'sine karşı tip kontrolü, birim testleri, GitHub Actions üzerinde Android Lint. Dinamik test (cihaz üzerinde trafik/bellek ölçümü) yapılmadı.
 
 ## Bulgular (önem sırasıyla)
 
-### Orta: CI'daki debug anahtarı her derlemede değişiyor
+### Giderildi (0.4.0): CI'daki debug anahtarı her derlemede değişiyordu
 GitHub Actions her çalışmada yeni bir debug imza anahtarı üretir. Bu yüzden yeni APK eski kurulumun üzerine yüklenemez ("paket çakışıyor" hatası); her güncellemede kaldırıp yeniden kurmak ve yeniden giriş yapmak gerekir.
-**Öneri:** Bir imza anahtarı oluşturup GitHub Secrets'a eklemek. Anahtar asla depoya konmaz.
+**Çözüm:** İmza artık GitHub Secrets'taki kalıcı anahtardan geliyor; anahtar ve şifreler depoda yok, CI çalışma sonunda anahtar dosyasını siliyor. Release yalnızca imzalı derlemelerde yayımlanıyor.
 
 ### Orta: Arka planda çalma açıkken WebView çalışmaya devam eder
 "Arka planda çalmaya devam et" varsayılan olarak açık. Müzik çalmadığında bile Spotify sayfası arka planda bağlantısını sürdürebilir ve pil tüketir.
@@ -23,6 +23,9 @@ Dependabot güncelleme PR'ları açtı.
 
 ### Düşük: Gömülü WebView'de üçüncü taraf girişleri
 Google, Facebook ve Apple girişleri dış tarayıcıya yönlendirilir ve oturum uygulamaya dönmez. Bu bir güvenlik açığı değil; kullanılabilirlik sınırlaması.
+
+### Düşük: Güncelleme denetimi GitHub'a bağlanır
+En fazla 12 saatte bir `api.github.com`'a kimliksiz bir GET isteği gider. Yanıt 512 KB ile sınırlı, 10 sn zaman aşımlı, yönlendirme izlenmiyor. Yalnızca `https://github.com/ebilgi992/supfy/releases/...` adreslerine güvenilir (birim testli). APK uygulama tarafından indirilmez veya kurulmaz.
 
 ### Bilgi: Doğrulanan korumalar
 - İzinler: yalnızca `INTERNET` ve `ACCESS_NETWORK_STATE`.

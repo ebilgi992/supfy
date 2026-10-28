@@ -6,12 +6,16 @@ Supfy, Spotify Web Player'ı bir Android WebView içinde gösterir.
 
 ## Toplanan veriler
 
-Supfy'in kendi sunucusu yoktur; geliştiriciye hiçbir veri gönderilmez. Uygulamada analiz, reklam veya çökme raporlama SDK'sı bulunmaz. WebView kullanım istatistikleri (`MetricsOptOut`) kapalıdır.
+; geliştiriciye hiçbir veri gönderilmez. Uygulamada analiz, reklam veya çökme raporlama SDK'sı bulunmaz. WebView kullanım istatistikleri (`MetricsOptOut`) kapalıdır.
+
+## Güncelleme denetimi
+
+Supfy en fazla 12 saatte bir, ayrıca Ayarlar'dan elle istendiğinde, GitHub'ın herkese açık sürüm listesini (`api.github.com/repos/ebilgi992/supfy/releases`) sorgular. Bu istekte hesap, çerez veya kişisel bilgi gönderilmez; GitHub yalnızca standart bağlantı bilgilerini (IP adresi, "Supfy-Android" tanımı) görür. Uygulama APK'yı kendiliğinden indirmez veya kurmaz.
 
 ## Cihazda saklananlar
 
 - **Spotify oturum çerezleri ve site verileri:** WebView tarafından, uygulamanın kendi korumalı alanında tutulur. Yalnızca Spotify'ın sayfası okuyabilir.
-- **İki tercih:** "Arka planda çalma" ve "Masaüstü sitesi". Kişisel bilgi içermez.
+- **Tercihler:** arka planda çalma, masaüstü sitesi, tema ve son güncelleme denetimi zamanı. Kişisel bilgi içermez.
 
 Uygulama verileri Android yedeğine alınmaz.
 

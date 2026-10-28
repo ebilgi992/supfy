@@ -1,6 +1,6 @@
 # Özellik Matrisi
 
-Supfy sürümü: 0.3.0-prototip · Tarih: 28 Ekim 2026
+Supfy sürümü: 0.4.0 · Tarih: 28 Ekim 2026
 
 **Durum anahtarı:** Tamamlandı · Kısmen çalışıyor · Desteklenmiyor · Test bekliyor
 
@@ -23,3 +23,5 @@ Supfy sürümü: 0.3.0-prototip · Tarih: 28 Ekim 2026
 | Masaüstü sitesi modu | Kısmen çalışıyor | Yalnızca mobil sayfa oynatıcıyı açmazsa gerekir. |
 | Koruma ve durum ekranı | Test bekliyor | Etkin güvenlik korumaları ve cihaz desteği; sayaçlar yalnızca gerçek WebView olaylarından oluşur. |
 | Sayfayı sıfırlama | Test bekliyor | WebView yeniden kurulur, oturum korunur. |
+| Mevcut kurulumun üzerine güncelleme | Test bekliyor | Sabit applicationId + kalıcı imza + artan sürüm kodu. İlk imzalı sürümden sonraki güncellemede doğrulanabilir. |
+| Uygulama içi güncelleme denetimi | Test bekliyor | Seçim mantığı 8 birim testiyle doğrulandı; ağ akışı cihazda denenmedi. |
