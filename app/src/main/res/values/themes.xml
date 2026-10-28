@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.Tini" parent="android:Theme.Material.NoActionBar">
-        <item name="android:windowBackground">@color/tini_bg</item>
-        <item name="android:colorBackground">@color/tini_bg</item>
+    <style name="Theme.Supfy" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/supfy_bg</item>
+        <item name="android:colorBackground">@color/supfy_bg</item>
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
         <item name="android:windowLightStatusBar">false</item>

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp" android:height="24dp"
+    android:viewportWidth="52" android:viewportHeight="52">
+    <group android:translateX="-28" android:translateY="-27">
+        <!-- Supfy işareti: uçları nota başıyla biten S -->
+        <path android:strokeColor="#FF1DB954" android:strokeWidth="8" android:strokeLineCap="round" android:fillColor="#00000000" android:pathData="M65,38 C64,30 45,29 45,40 C45,51 65,47 65,61 C65,73 46,74 43,67" />
+        <group android:rotation="-22" android:pivotX="66" android:pivotY="37">
+            <path android:fillColor="#FF1DB954" android:pathData="M59,37a7,5.4 0 1,0 14,0a7,5.4 0 1,0 -14,0" />
+        </group>
+        <group android:rotation="-22" android:pivotX="42" android:pivotY="69">
+            <path android:fillColor="#FF1DB954" android:pathData="M35,69a7,5.4 0 1,0 14,0a7,5.4 0 1,0 -14,0" />
+        </group>
+    </group>
+</vector>

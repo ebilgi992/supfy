@@ -14,5 +14,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "Tini"
+rootProject.name = "Supfy"
 include(":app")

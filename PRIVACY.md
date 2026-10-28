@@ -2,11 +2,11 @@
 
 **Son güncelleme:** 28 Ekim 2026
 
-Tını, Spotify Web Player'ı bir Android WebView içinde gösterir.
+Supfy, Spotify Web Player'ı bir Android WebView içinde gösterir.
 
 ## Toplanan veriler
 
-Tını'in kendi sunucusu yoktur; geliştiriciye hiçbir veri gönderilmez. Uygulamada analiz, reklam veya çökme raporlama SDK'sı bulunmaz. WebView kullanım istatistikleri (`MetricsOptOut`) kapalıdır.
+Supfy'in kendi sunucusu yoktur; geliştiriciye hiçbir veri gönderilmez. Uygulamada analiz, reklam veya çökme raporlama SDK'sı bulunmaz. WebView kullanım istatistikleri (`MetricsOptOut`) kapalıdır.
 
 ## Cihazda saklananlar
 
@@ -17,7 +17,7 @@ Uygulama verileri Android yedeğine alınmaz.
 
 ## Şifreler
 
-Giriş Spotify'ın kendi sayfasında yapılır. Tını sayfaya kod eklemez; giriş alanlarını okumaz, şifre kaydetmez.
+Giriş Spotify'ın kendi sayfasında yapılır. Supfy sayfaya kod eklemez; giriş alanlarını okumaz, şifre kaydetmez.
 
 ## Spotify'a giden veriler
 

@@ -1,4 +1,4 @@
-package com.sametozdemir.tini.ui
+package com.sametozdemir.supfy.ui
 
 import android.os.Build
 import androidx.compose.foundation.layout.Arrangement
@@ -11,6 +11,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -24,6 +26,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -38,18 +41,23 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
-import com.sametozdemir.tini.BuildConfig
-import com.sametozdemir.tini.R
+import com.sametozdemir.supfy.BuildConfig
+import com.sametozdemir.supfy.R
+import com.sametozdemir.supfy.data.ThemeMode
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     backgroundPlayback: Boolean,
     desktopMode: Boolean,
+    themeMode: ThemeMode,
     webViewVersion: String?,
     onBackgroundPlaybackChange: (Boolean) -> Unit,
     onDesktopModeChange: (Boolean) -> Unit,
+    onThemeModeChange: (ThemeMode) -> Unit,
+    onClearCache: () -> Unit,
     onClearData: () -> Unit,
     onClose: () -> Unit,
 ) {
@@ -96,6 +104,24 @@ fun SettingsScreen(
                     checked = desktopMode,
                     onCheckedChange = onDesktopModeChange,
                 )
+            }
+
+            SectionCard(stringResource(R.string.section_appearance)) {
+                Column(Modifier.selectableGroup()) {
+                    ThemeOption(ThemeMode.SYSTEM, R.string.theme_system, themeMode, onThemeModeChange)
+                    ThemeOption(ThemeMode.LIGHT, R.string.theme_light, themeMode, onThemeModeChange)
+                    ThemeOption(ThemeMode.DARK, R.string.theme_dark, themeMode, onThemeModeChange)
+                }
+                Spacer(Modifier.height(4.dp))
+                BodyText(stringResource(R.string.theme_note))
+            }
+
+            SectionCard(stringResource(R.string.section_storage)) {
+                BodyText(stringResource(R.string.cache_desc))
+                Spacer(Modifier.height(12.dp))
+                OutlinedButton(onClick = onClearCache) {
+                    Text(stringResource(R.string.action_clear_cache))
+                }
             }
 
             SectionCard(stringResource(R.string.section_privacy)) {
@@ -159,6 +185,30 @@ private fun SectionCard(title: String, content: @Composable ColumnScope.() -> Un
             Spacer(Modifier.height(10.dp))
             content()
         }
+    }
+}
+
+@Composable
+private fun ThemeOption(
+    mode: ThemeMode,
+    label: Int,
+    selected: ThemeMode,
+    onSelect: (ThemeMode) -> Unit,
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .selectable(
+                selected = mode == selected,
+                onClick = { onSelect(mode) },
+                role = Role.RadioButton,
+            )
+            .padding(vertical = 4.dp),
+    ) {
+        RadioButton(selected = mode == selected, onClick = null)
+        Spacer(Modifier.width(12.dp))
+        Text(stringResource(label), style = MaterialTheme.typography.bodyLarge)
     }
 }
 

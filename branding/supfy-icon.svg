@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 108 108">
   <defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#242424"/><stop offset="1" stop-color="#0A0A0A"/></linearGradient></defs>
   <rect width="108" height="108" rx="24" fill="url(#bg)"/>
-  <g fill="#1DB954"><path d="M45.5,38 L77.5,32 L77.5,42 L45.5,48 Z"/><rect x="45.5" y="44" width="5" height="27"/><rect x="72.5" y="38" width="5" height="27"/><ellipse cx="42" cy="71" rx="8.5" ry="6.5" transform="rotate(-22 42 71)"/><ellipse cx="69" cy="65" rx="8.5" ry="6.5" transform="rotate(-22 69 65)"/></g>
+  <path d="M65,38 C64,30 45,29 45,40 C45,51 65,47 65,61 C65,73 46,74 43,67" fill="none" stroke="#1DB954" stroke-width="8" stroke-linecap="round"/><g fill="#1DB954"><ellipse cx="66" cy="37" rx="7" ry="5.4" transform="rotate(-22 66 37)"/><ellipse cx="42" cy="69" rx="7" ry="5.4" transform="rotate(-22 42 69)"/></g>
 </svg>

@@ -1,8 +1,12 @@
-# Tını
+<p align="center"><img src="branding/supfy-logo-dark.png" alt="Supfy" width="320"></p>
+
+# Supfy
 
 Spotify Web Player'ı Android'de kendi sade penceresinde açan, tamamen Türkçe, açık kaynak bir WebView uygulaması.
 
-> **Durum:** 0.1.1 prototip. Giriş ve oynatmanın WebView içinde çalışıp çalışmadığı henüz gerçek cihazda doğrulanmadı. Bkz. [TEST_PLAN.md](TEST_PLAN.md).
+> **Durum:** 0.2.0 prototip. Giriş, oturum ve oynatma Xiaomi 14T Pro'da kullanıcı tarafından doğrulandı; diğer testler için bkz. [TEST_PLAN.md](TEST_PLAN.md).
+>
+> Raporlar: [Özellik matrisi](docs/OZELLIK_MATRISI.md) · [Güvenlik denetimi](docs/GUVENLIK_DENETIMI.md) · [Marka](branding/README.md)
 
 ## Ne yapar, ne yapmaz
 
@@ -52,11 +56,15 @@ Kotlin 2.1 · Jetpack Compose (Material 3) · AndroidX WebKit · Gradle Kotlin D
 
 ## Kurulum (debug APK)
 
-1. `app-debug.apk` dosyasını telefona aktarın.
-2. Dosyayı açın; istenirse "Bilinmeyen uygulamaları yükle" iznini yalnızca o dosya yöneticisi için verin.
-3. Kurulumdan sonra Tını'i açın ve Spotify hesabınızla giriş yapın.
+En kolay yol: deponun **Releases** bölümünden en son `Supfy-...-debug.apk` dosyasını telefondan indirin.
 
-**Xiaomi / HyperOS:** Arka planda çalma kesiliyorsa Ayarlar → Uygulamalar → Tını → Pil tasarrufu → "Kısıtlama yok" seçeneğini elle seçebilirsiniz. Uygulama bu ayarı kendisi değiştirmez.
+1. APK dosyasını açın.
+2. Dosyayı açın; istenirse "Bilinmeyen uygulamaları yükle" iznini yalnızca o dosya yöneticisi için verin.
+3. Kurulumdan sonra Supfy'yi açın ve Spotify hesabınızla giriş yapın.
+
+**Güncelleme:** Şimdilik her CI derlemesi farklı bir debug anahtarıyla imzalanır; yeni sürümü kurmadan önce eskisini kaldırmanız gerekir (bkz. güvenlik denetimi).
+
+**Xiaomi / HyperOS:** Arka planda çalma kesiliyorsa Ayarlar → Uygulamalar → Supfy → Pil tasarrufu → "Kısıtlama yok" seçeneğini elle seçebilirsiniz. Uygulama bu ayarı kendisi değiştirmez.
 
 ## Bilinen sınırlamalar
 
@@ -71,6 +79,6 @@ Araştırma aşamasında [spotify-ad-blocker](https://github.com/YASMANTH-VEMALA
 
 ## Yasal
 
-Tını bağımsız bir projedir; Spotify ile bağlantılı değildir ve Spotify tarafından onaylanmamıştır. Spotify, Spotify AB'nin tescilli markasıdır.
+Supfy bağımsız bir projedir; Spotify ile bağlantılı değildir ve Spotify tarafından onaylanmamıştır. Spotify, Spotify AB'nin tescilli markasıdır.
 
 Lisans: [MIT](LICENSE) · Geliştirici: Samet Özdemir

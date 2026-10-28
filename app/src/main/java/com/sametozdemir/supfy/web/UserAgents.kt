@@ -1,4 +1,4 @@
-package com.sametozdemir.tini.web
+package com.sametozdemir.supfy.web
 
 object UserAgents {
 

@@ -1,10 +1,10 @@
-package com.sametozdemir.tini.web
+package com.sametozdemir.supfy.web
 
 import android.webkit.PermissionRequest
 import android.webkit.WebChromeClient
 import android.webkit.WebView
 
-class TiniChromeClient(private val state: WebUiState) : WebChromeClient() {
+class SupfyChromeClient(private val state: WebUiState) : WebChromeClient() {
 
     override fun onProgressChanged(view: WebView, newProgress: Int) {
         state.progress = newProgress

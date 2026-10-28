@@ -1,4 +1,4 @@
-package com.sametozdemir.tini.web
+package com.sametozdemir.supfy.web
 
 import android.annotation.SuppressLint
 import android.content.Context
@@ -6,7 +6,9 @@ import android.webkit.CookieManager
 import android.webkit.WebSettings
 import android.webkit.WebView
 import androidx.core.content.ContextCompat
-import com.sametozdemir.tini.R
+import androidx.webkit.ServiceWorkerControllerCompat
+import androidx.webkit.WebViewFeature
+import com.sametozdemir.supfy.R
 
 object WebViewFactory {
 
@@ -14,8 +16,8 @@ object WebViewFactory {
     fun create(
         context: Context,
         desktopMode: Boolean,
-        webViewClient: TiniWebViewClient,
-        chromeClient: TiniChromeClient,
+        webViewClient: SupfyWebViewClient,
+        chromeClient: SupfyChromeClient,
     ): WebView = WebView(context).apply {
         settings.apply {
             // Gerekli olanlar
@@ -41,10 +43,25 @@ object WebViewFactory {
             cookies.setAcceptThirdPartyCookies(this, false)
         }
 
-        setBackgroundColor(ContextCompat.getColor(context, R.color.tini_bg))
+        setBackgroundColor(ContextCompat.getColor(context, R.color.supfy_bg))
         this.webViewClient = webViewClient
         this.webChromeClient = chromeClient
         // Not: addJavascriptInterface kullanılmaz; sayfa ile uygulama arasında köprü yoktur.
+    }
+
+    /**
+     * Spotify'ın Service Worker'ları sayfa dışında çalışır; onlar için de dosya ve
+     * içerik erişimini kapatır. İstekleri değiştirmez veya engellemez.
+     */
+    fun hardenServiceWorkers() {
+        if (!WebViewFeature.isFeatureSupported(WebViewFeature.SERVICE_WORKER_BASIC_USAGE)) return
+        val settings = ServiceWorkerControllerCompat.getInstance().serviceWorkerWebSettings
+        if (WebViewFeature.isFeatureSupported(WebViewFeature.SERVICE_WORKER_FILE_ACCESS)) {
+            settings.setAllowFileAccess(false)
+        }
+        if (WebViewFeature.isFeatureSupported(WebViewFeature.SERVICE_WORKER_CONTENT_ACCESS)) {
+            settings.setAllowContentAccess(false)
+        }
     }
 
     fun applyDesktopMode(webView: WebView, enabled: Boolean) {

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:tools="http://schemas.android.com/tools" tools:locale="tr">
-    <string name="app_name">Tını</string>
+    <string name="app_name">Supfy</string>
 
     <!-- Üst çubuk -->
     <string name="status_online">Bağlı</string>
@@ -11,7 +11,7 @@
     <string name="action_settings">Ayarlar</string>
     <string name="action_home">Ana sayfa</string>
     <string name="action_back">Geri</string>
-    <string name="cd_logo">Tını logosu</string>
+    <string name="cd_logo">Supfy logosu</string>
 
     <!-- Bağlantı ve hatalar -->
     <string name="offline_banner">İnternet bağlantısı yok. Bağlantı gelince sayfa yeniden yüklenecek.</string>
@@ -32,8 +32,19 @@
     <string name="pref_desktop_title">Masaüstü sitesini iste</string>
     <string name="pref_desktop_desc">Mobil sayfa oynatıcıyı açmazsa dene. Tarayıcılardaki “Masaüstü sitesi” seçeneğiyle aynıdır.</string>
 
+    <string name="section_appearance">Görünüm</string>
+    <string name="theme_system">Sistem varsayılanı</string>
+    <string name="theme_light">Açık</string>
+    <string name="theme_dark">Koyu</string>
+    <string name="theme_note">Tema Supfy\'nin kendi ekranlarını değiştirir; Spotify sayfasının görünümü aynı kalır.</string>
+
+    <string name="section_storage">Depolama</string>
+    <string name="cache_desc">Önbellek, sayfaların daha hızlı açılması için saklanan geçici dosyalardır. Temizlemek oturumunu kapatmaz.</string>
+    <string name="action_clear_cache">Önbelleği temizle</string>
+    <string name="cache_cleared">Önbellek temizlendi.</string>
+
     <string name="section_privacy">Gizlilik ve veriler</string>
-    <string name="privacy_body">Giriş yalnızca Spotify\'ın kendi sayfasında yapılır. Tını sayfaya kod eklemez; şifreni okumaz, kaydetmez ve hiçbir sunucuya göndermez. Oturum çerezleri yalnızca bu cihazda, uygulamanın kendi alanında tutulur. Tını kendi sunucusuna veri göndermez ve analiz aracı içermez.</string>
+    <string name="privacy_body">Giriş yalnızca Spotify\'ın kendi sayfasında yapılır. Supfy sayfaya kod eklemez; şifreni okumaz, kaydetmez ve hiçbir sunucuya göndermez. Oturum çerezleri yalnızca bu cihazda, uygulamanın kendi alanında tutulur. Supfy kendi sunucusuna veri göndermez ve analiz aracı içermez.</string>
     <string name="action_clear_data">Oturumu ve site verilerini sil</string>
     <string name="clear_confirm_title">Veriler silinsin mi?</string>
     <string name="clear_confirm_body">Çerezler, önbellek ve site depolaması silinir. Spotify oturumun kapanır.</string>
@@ -53,6 +64,6 @@
     <string name="section_about">Hakkında</string>
     <string name="about_version">Sürüm: %1$s</string>
     <string name="about_developer">Geliştirici: Samet Özdemir</string>
-    <string name="about_disclaimer">Tını bağımsız bir uygulamadır. Spotify ile bağlantılı değildir ve Spotify tarafından onaylanmamıştır. Spotify, Spotify AB\'nin tescilli markasıdır. Tını reklam engellemez, reklamları atlamaz veya susturmaz.</string>
-    <string name="about_licenses">Açık kaynak bileşenler: AndroidX, Jetpack Compose, AndroidX WebKit ve Kotlin (Apache 2.0). Tını, MIT lisansıyla yayımlanır.</string>
+    <string name="about_disclaimer">Supfy bağımsız bir uygulamadır. Spotify ile bağlantılı değildir ve Spotify tarafından onaylanmamıştır. Spotify, Spotify AB\'nin tescilli markasıdır. Supfy reklam engellemez, reklamları atlamaz veya susturmaz.</string>
+    <string name="about_licenses">Açık kaynak bileşenler: AndroidX, Jetpack Compose, AndroidX WebKit ve Kotlin (Apache 2.0). Supfy, MIT lisansıyla yayımlanır.</string>
 </resources>

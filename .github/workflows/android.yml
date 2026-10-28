@@ -41,7 +41,7 @@ jobs:
       - name: APK'yı yükle
         uses: actions/upload-artifact@v4
         with:
-          name: tini-debug-apk
+          name: supfy-debug-apk
           path: app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
 
@@ -50,16 +50,16 @@ jobs:
         run: |
           VERSION=$(grep -oP 'versionName = "\K[^"]+' app/build.gradle.kts)
           echo "VERSION=$VERSION" >> "$GITHUB_ENV"
-          cp app/build/outputs/apk/debug/app-debug.apk "Tini-$VERSION-debug.apk"
+          cp app/build/outputs/apk/debug/app-debug.apk "Supfy-$VERSION-debug.apk"
 
       - name: Release olarak yayımla (debug)
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: build-${{ github.run_number }}
-          name: Tını ${{ env.VERSION }} (debug, derleme ${{ github.run_number }})
+          name: Supfy ${{ env.VERSION }} (debug, derleme ${{ github.run_number }})
           prerelease: true
-          files: Tini-${{ env.VERSION }}-debug.apk
+          files: Supfy-${{ env.VERSION }}-debug.apk
           body: |
             Otomatik debug derlemesi. Commit: ${{ github.sha }}
             Kurulum: APK'ya dokunun, istenirse "bilinmeyen uygulama yükleme" iznini verin.
@@ -69,7 +69,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: tini-raporlar
+          name: supfy-raporlar
           path: |
             app/build/reports/lint-results-debug.html
             app/build/reports/tests/

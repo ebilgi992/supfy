@@ -1,4 +1,4 @@
-package com.sametozdemir.tini
+package com.sametozdemir.supfy
 
 import android.content.ActivityNotFoundException
 import android.content.Intent
@@ -10,6 +10,7 @@ import android.webkit.WebStorage
 import android.webkit.WebView
 import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -18,8 +19,10 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -28,17 +31,18 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.webkit.WebViewCompat
-import com.sametozdemir.tini.data.AppSettings
-import com.sametozdemir.tini.data.ConnectivityObserver
-import com.sametozdemir.tini.ui.TiniScreen
-import com.sametozdemir.tini.ui.SettingsScreen
-import com.sametozdemir.tini.ui.theme.TiniTheme
-import com.sametozdemir.tini.web.TiniChromeClient
-import com.sametozdemir.tini.web.TiniWebViewClient
-import com.sametozdemir.tini.web.PageErrorKind
-import com.sametozdemir.tini.web.UrlPolicy
-import com.sametozdemir.tini.web.WebUiState
-import com.sametozdemir.tini.web.WebViewFactory
+import com.sametozdemir.supfy.data.AppSettings
+import com.sametozdemir.supfy.data.ConnectivityObserver
+import com.sametozdemir.supfy.data.ThemeMode
+import com.sametozdemir.supfy.ui.SupfyScreen
+import com.sametozdemir.supfy.ui.SettingsScreen
+import com.sametozdemir.supfy.ui.theme.SupfyTheme
+import com.sametozdemir.supfy.web.SupfyChromeClient
+import com.sametozdemir.supfy.web.SupfyWebViewClient
+import com.sametozdemir.supfy.web.PageErrorKind
+import com.sametozdemir.supfy.web.UrlPolicy
+import com.sametozdemir.supfy.web.WebUiState
+import com.sametozdemir.supfy.web.WebViewFactory
 
 class MainActivity : ComponentActivity() {
 
@@ -54,6 +58,7 @@ class MainActivity : ComponentActivity() {
         appSettings = AppSettings(applicationContext)
         connectivity = ConnectivityObserver(applicationContext)
 
+        WebViewFactory.hardenServiceWorkers()
         val wv = buildWebView()
         webView = wv
         // Süreç sistem tarafından kapatıldıysa kaldığı sayfaya döner.
@@ -63,7 +68,25 @@ class MainActivity : ComponentActivity() {
         val webViewVersion = WebViewCompat.getCurrentWebViewPackage(this)?.versionName
 
         setContent {
-            TiniTheme {
+            val themeMode by appSettings.themeMode.collectAsStateWithLifecycle()
+            val darkTheme = when (themeMode) {
+                ThemeMode.SYSTEM -> isSystemInDarkTheme()
+                ThemeMode.LIGHT -> false
+                ThemeMode.DARK -> true
+            }
+            // Durum ve gezinme çubuğu simgeleri seçilen temaya uysun.
+            DisposableEffect(darkTheme) {
+                val transparent = android.graphics.Color.TRANSPARENT
+                val style = if (darkTheme) {
+                    SystemBarStyle.dark(transparent)
+                } else {
+                    SystemBarStyle.light(transparent, transparent)
+                }
+                enableEdgeToEdge(statusBarStyle = style, navigationBarStyle = style)
+                onDispose { }
+            }
+
+            SupfyTheme(darkTheme = darkTheme) {
                 val online by connectivity.online.collectAsStateWithLifecycle()
                 val background by appSettings.backgroundPlayback.collectAsStateWithLifecycle()
                 val desktop by appSettings.desktopMode.collectAsStateWithLifecycle()
@@ -78,7 +101,7 @@ class MainActivity : ComponentActivity() {
                 }
 
                 Box(Modifier.fillMaxSize()) {
-                    TiniScreen(
+                    SupfyScreen(
                         webView = webView,
                         state = uiState,
                         online = online,
@@ -97,9 +120,12 @@ class MainActivity : ComponentActivity() {
                         SettingsScreen(
                             backgroundPlayback = background,
                             desktopMode = desktop,
+                            themeMode = themeMode,
                             webViewVersion = webViewVersion,
                             onBackgroundPlaybackChange = appSettings::setBackgroundPlayback,
                             onDesktopModeChange = ::setDesktopMode,
+                            onThemeModeChange = appSettings::setThemeMode,
+                            onClearCache = ::clearCache,
                             onClearData = ::clearSiteData,
                             onClose = { showSettings = false },
                         )
@@ -116,8 +142,8 @@ class MainActivity : ComponentActivity() {
     private fun buildWebView(): WebView = WebViewFactory.create(
         context = this,
         desktopMode = appSettings.desktopMode.value,
-        webViewClient = TiniWebViewClient(uiState, ::openExternally, ::onRendererGone),
-        chromeClient = TiniChromeClient(uiState),
+        webViewClient = SupfyWebViewClient(uiState, ::openExternally, ::onRendererGone),
+        chromeClient = SupfyChromeClient(uiState),
     )
 
     private fun retry() {
@@ -162,6 +188,12 @@ class MainActivity : ComponentActivity() {
         uiState.canGoBack = false
         uiState.progress = 0
         webView = buildWebView().also { it.loadUrl(url) }
+    }
+
+    /** Yalnızca önbelleği siler; oturum ve çerezler korunur. */
+    private fun clearCache() {
+        webView?.clearCache(true)
+        Toast.makeText(this, R.string.cache_cleared, Toast.LENGTH_SHORT).show()
     }
 
     private fun clearSiteData() {

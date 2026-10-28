@@ -1,4 +1,4 @@
-package com.sametozdemir.tini.ui
+package com.sametozdemir.supfy.ui
 
 import android.view.ViewGroup
 import android.webkit.WebView
@@ -60,14 +60,14 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
-import com.sametozdemir.tini.R
-import com.sametozdemir.tini.web.PageError
-import com.sametozdemir.tini.web.PageErrorKind
-import com.sametozdemir.tini.web.WebUiState
+import com.sametozdemir.supfy.R
+import com.sametozdemir.supfy.web.PageError
+import com.sametozdemir.supfy.web.PageErrorKind
+import com.sametozdemir.supfy.web.WebUiState
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun TiniScreen(
+fun SupfyScreen(
     webView: WebView?,
     state: WebUiState,
     online: Boolean,
@@ -80,7 +80,7 @@ fun TiniScreen(
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
-            TiniTopBar(
+            SupfyTopBar(
                 online = online,
                 progress = state.progress,
                 onRefresh = onRefresh,
@@ -141,7 +141,7 @@ fun TiniScreen(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun TiniTopBar(
+private fun SupfyTopBar(
     online: Boolean,
     progress: Int,
     onRefresh: () -> Unit,
@@ -155,7 +155,7 @@ private fun TiniTopBar(
             title = {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Image(
-                        painter = painterResource(R.drawable.ic_tini_mark),
+                        painter = painterResource(R.drawable.ic_supfy_mark),
                         contentDescription = stringResource(R.string.cd_logo),
                         modifier = Modifier.size(30.dp),
                     )

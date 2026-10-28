@@ -19,6 +19,29 @@ Ayarlar → Cihaz bilgisi bölümündeki WebView sürümünü de kaydedin.
 | 8 | Kulaklık / Bluetooth | Kablolu ve BT kulaklıkla çal; bağlantıyı kopar | | |
 | 9 | HyperOS arka plan kısıtlaması | Çalarken ana ekrana dön, 15 dk bekle | | |
 
+## A2. Regresyon testleri (0.2.0)
+
+Durum: ✅ geçti · ⏳ test bekliyor · ➖ uygulanmaz
+
+| # | Test | Durum |
+|---|---|---|
+| 1 | Spotify giriş işlemi | ✅ Kullanıcı bildirdi (0.1.x) |
+| 2 | Oturumun korunması | ✅ Kullanıcı bildirdi (0.1.x) |
+| 3 | Şarkı oynatma | ✅ Kullanıcı bildirdi (0.1.x) |
+| 4 | Şarkılar arası geçiş | ⏳ |
+| 5 | Oynatmayı durdurma | ⏳ |
+| 6 | Sayfa yenileme | ⏳ |
+| 7 | Uygulamadan çıkıp dönme | ⏳ |
+| 8 | Ekran kilitleme | ⏳ |
+| 9 | İnternet kesilmesi | ⏳ |
+| 10 | Wi-Fi ↔ mobil veri | ⏳ |
+| 11 | Koruma kontrollerinin kapatılması | ➖ Reklam özelliği yok |
+| 12 | Bellek ve pil tüketimi | ⏳ (bkz. D) |
+| 13 | Reklam tespitinin doğruluğu | ➖ Reklam tespiti yok |
+| 14 | Yanlış pozitiflerin oynatmaya etkisi | ➖ Reklam tespiti yok |
+| 15 | Tema: sistem / açık / koyu geçişi | ⏳ |
+| 16 | "Önbelleği temizle" sonrası oturumun kalması | ⏳ |
+
 ## B. Kararlılık
 
 | Test | Beklenen |
@@ -43,7 +66,7 @@ Küçük ekran (≤ 6"), büyük ekran / tablet, yatay mod, sistem yazı boyutu 
 1. Şarjı %100'e getirin, diğer uygulamaları kapatın.
 2. 60 dk ekran kapalı müzik çalın → pil yüzdesi düşüşünü not edin.
 3. Aynı testi resmi Spotify uygulamasıyla yapın ve karşılaştırın.
-4. "Arka planda çalma" kapalıyken uygulamayı 60 dk arka planda bırakın → Ayarlar → Pil → Tını tüketimini not edin (≈0 beklenir).
+4. "Arka planda çalma" kapalıyken uygulamayı 60 dk arka planda bırakın → Ayarlar → Pil → Supfy tüketimini not edin (≈0 beklenir).
 
 ## E. Diğer üreticiler
 

@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="240" viewBox="0 0 180 60">
+  <rect width="180" height="60" rx="12" fill="#FFFFFF"/>
+  <g transform="translate(-22,-23)"><path d="M65,38 C64,30 45,29 45,40 C45,51 65,47 65,61 C65,73 46,74 43,67" fill="none" stroke="#1DB954" stroke-width="8" stroke-linecap="round"/><g fill="#1DB954"><ellipse cx="66" cy="37" rx="7" ry="5.4" transform="rotate(-22 66 37)"/><ellipse cx="42" cy="69" rx="7" ry="5.4" transform="rotate(-22 42 69)"/></g></g>
+  <text x="62" y="41" font-family="Inter, Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="30" font-weight="700" letter-spacing="-0.5" fill="#121212">Supfy</text>
+</svg>

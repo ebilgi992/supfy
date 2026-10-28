@@ -1,4 +1,4 @@
-package com.sametozdemir.tini.data
+package com.sametozdemir.supfy.data
 
 import android.content.Context
 import android.net.ConnectivityManager
