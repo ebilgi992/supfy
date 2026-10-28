@@ -39,7 +39,7 @@ jobs:
         run: ./gradlew --no-daemon assembleDebug
 
       - name: APK'yı yükle
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: supfy-debug-apk
           path: app/build/outputs/apk/debug/*.apk
@@ -67,7 +67,7 @@ jobs:
 
       - name: Raporları yükle
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: supfy-raporlar
           path: |
