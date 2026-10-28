@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write # yalnızca main'e gönderimde Release oluşturmak için
 
 jobs:
   build:
@@ -44,6 +44,26 @@ jobs:
           name: tini-debug-apk
           path: app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
+
+      - name: APK'yı adlandır
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          VERSION=$(grep -oP 'versionName = "\K[^"]+' app/build.gradle.kts)
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          cp app/build/outputs/apk/debug/app-debug.apk "Tini-$VERSION-debug.apk"
+
+      - name: Release olarak yayımla (debug)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: build-${{ github.run_number }}
+          name: Tını ${{ env.VERSION }} (debug, derleme ${{ github.run_number }})
+          prerelease: true
+          files: Tini-${{ env.VERSION }}-debug.apk
+          body: |
+            Otomatik debug derlemesi. Commit: ${{ github.sha }}
+            Kurulum: APK'ya dokunun, istenirse "bilinmeyen uygulama yükleme" iznini verin.
+            Bu sürüm imzasız (debug anahtarıyla imzalı) bir test sürümüdür.
 
       - name: Raporları yükle
         if: always()
