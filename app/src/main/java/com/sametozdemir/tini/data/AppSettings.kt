@@ -1,4 +1,4 @@
-package com.sametozdemir.izlek.data
+package com.sametozdemir.tini.data
 
 import android.content.Context
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -27,7 +27,7 @@ class AppSettings(context: Context) {
     }
 
     private companion object {
-        const val FILE = "izlek_ayarlar"
+        const val FILE = "tini_ayarlar"
         const val KEY_BACKGROUND = "arka_plan_oynatma"
         const val KEY_DESKTOP = "masaustu_modu"
     }

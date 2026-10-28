@@ -1,4 +1,4 @@
-package com.sametozdemir.izlek.data
+package com.sametozdemir.tini.data
 
 import android.content.Context
 import android.net.ConnectivityManager

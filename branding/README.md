@@ -1,22 +1,22 @@
-# İzlek Marka Kimliği
+# Tını Marka Kimliği
 
-**İsim:** İzlek. "İz" kökünden; dinlediğin müziğin izini süren, sade bir yol. Kısa (5 harf), Türkçe, kolay telaffuz edilir ve Spotify adını çağrıştırmaz.
+**İsim:** Tını, sesin rengi ve karakteri anlamına gelir. Kısa (4 harf), Türkçe, müzikle doğrudan ilişkili ve Spotify adını çağrıştırmaz.
 
-**İşaret:** Yuvarlatılmış bir oynat üçgeni ve arkasında giderek küçülen iki nokta. Müziğin bıraktığı iz. Küçük boyutta yalnızca üçgen okunur; bu bilinçli bir tercih.
+Değerlendirilen diğer adaylar: Nağme, Ezgi, Ritim, Melodi. "Ezgi" ve "Melodi" çok yaygın; "Ritim" müzikten çok tempoyu anlatıyor; "Nağme" eski bir tını taşıyor. Tını en kısa ve en özgün seçenek oldu.
+
+**İşaret:** Siyah zemin üzerinde yeşil bir çift sekizlik nota (♫). Küçük boyutta da net okunur. Spotify'ın daire ve yay biçimli logosundan bilinçli olarak farklıdır; yalnızca renk paleti benzerdir.
 
 ## Renkler
 
 | Ad | Hex | Kullanım |
 |---|---|---|
-| Mercan | `#FF7A59` | Ana renk, işaret |
-| Menekşe | `#8B7CF6` | İkincil renk, iz noktaları |
-| Turkuaz | `#5EEAD4` | "Bağlı" göstergesi |
-| Zemin | `#0F1115` | Arka plan |
-| Yüzey | `#171A21` | Kartlar |
-| Yüzey (yüksek) | `#222633` | Çipler, ikon gradyanı |
-| Hata | `#FF5C6C` | Hata ve çevrimdışı |
-
-Spotify'ın yeşil/siyah kimliği bilinçli olarak kullanılmamıştır.
+| Yeşil | `#1DB954` | Ana renk, işaret, düğmeler |
+| Parlak yeşil | `#1ED760` | Vurgu, "Bağlı" göstergesi |
+| Zemin | `#121212` | Arka plan |
+| Yüzey | `#181818` | Kartlar |
+| Yüzey (yüksek) | `#282828` | Çipler |
+| Soluk metin | `#B3B3B3` | Açıklamalar |
+| Hata | `#F15E6C` | Hata ve çevrimdışı |
 
 ## Tipografi
 
@@ -24,8 +24,8 @@ Sistem yazı tipi (Roboto / üreticinin varsayılanı), Material 3 ölçeği. Ba
 
 ## Dosyalar
 
-- `izlek-icon.svg`: tam uygulama ikonu (mağaza/README)
-- `izlek-icon-512.png`: 512 px dışa aktarım
-- `izlek-mark.svg`: arka plansız işaret
-- `izlek-monochrome.svg`: tek renk (Android 13+ temalı ikonlar)
+- `tini-icon.svg`: tam uygulama ikonu (mağaza/README)
+- `tini-icon-512.png`: 512 px dışa aktarım
+- `tini-mark.svg`: arka plansız işaret
+- `tini-monochrome.svg`: tek renk (Android 13+ temalı ikonlar)
 - Android kaynakları: `app/src/main/res/drawable/ic_launcher_*.xml`, `mipmap-anydpi-v26/`

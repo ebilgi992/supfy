@@ -1,4 +1,4 @@
-package com.sametozdemir.izlek.ui
+package com.sametozdemir.tini.ui
 
 import android.view.ViewGroup
 import android.webkit.WebView
@@ -60,14 +60,14 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
-import com.sametozdemir.izlek.R
-import com.sametozdemir.izlek.web.PageError
-import com.sametozdemir.izlek.web.PageErrorKind
-import com.sametozdemir.izlek.web.WebUiState
+import com.sametozdemir.tini.R
+import com.sametozdemir.tini.web.PageError
+import com.sametozdemir.tini.web.PageErrorKind
+import com.sametozdemir.tini.web.WebUiState
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun IzlekScreen(
+fun TiniScreen(
     webView: WebView?,
     state: WebUiState,
     online: Boolean,
@@ -80,7 +80,7 @@ fun IzlekScreen(
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
-            IzlekTopBar(
+            TiniTopBar(
                 online = online,
                 progress = state.progress,
                 onRefresh = onRefresh,
@@ -141,7 +141,7 @@ fun IzlekScreen(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun IzlekTopBar(
+private fun TiniTopBar(
     online: Boolean,
     progress: Int,
     onRefresh: () -> Unit,
@@ -155,7 +155,7 @@ private fun IzlekTopBar(
             title = {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Image(
-                        painter = painterResource(R.drawable.ic_izlek_mark),
+                        painter = painterResource(R.drawable.ic_tini_mark),
                         contentDescription = stringResource(R.string.cd_logo),
                         modifier = Modifier.size(30.dp),
                     )

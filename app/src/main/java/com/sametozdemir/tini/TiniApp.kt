@@ -1,10 +1,10 @@
-package com.sametozdemir.izlek
+package com.sametozdemir.tini
 
 import android.app.Application
 import androidx.webkit.WebViewCompat
 import androidx.webkit.WebViewFeature
 
-class IzlekApp : Application() {
+class TiniApp : Application() {
     override fun onCreate() {
         super.onCreate()
         // Safe Browsing listelerini erkenden hazırla (destekleniyorsa).

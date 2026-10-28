@@ -1,4 +1,4 @@
-package com.sametozdemir.izlek.web
+package com.sametozdemir.tini.web
 
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue

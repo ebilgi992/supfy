@@ -1,4 +1,4 @@
-package com.sametozdemir.izlek.ui
+package com.sametozdemir.tini.ui
 
 import android.os.Build
 import androidx.compose.foundation.layout.Arrangement
@@ -39,8 +39,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import com.sametozdemir.izlek.BuildConfig
-import com.sametozdemir.izlek.R
+import com.sametozdemir.tini.BuildConfig
+import com.sametozdemir.tini.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

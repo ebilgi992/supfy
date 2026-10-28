@@ -1,6 +1,6 @@
-package com.sametozdemir.izlek.web
+package com.sametozdemir.tini.web
 
-import com.sametozdemir.izlek.web.UrlPolicy.Decision
+import com.sametozdemir.tini.web.UrlPolicy.Decision
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue

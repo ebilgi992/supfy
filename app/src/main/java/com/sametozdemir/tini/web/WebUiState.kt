@@ -1,4 +1,4 @@
-package com.sametozdemir.izlek.web
+package com.sametozdemir.tini.web
 
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf

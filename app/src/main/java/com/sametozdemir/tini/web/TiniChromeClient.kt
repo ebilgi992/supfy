@@ -1,10 +1,10 @@
-package com.sametozdemir.izlek.web
+package com.sametozdemir.tini.web
 
 import android.webkit.PermissionRequest
 import android.webkit.WebChromeClient
 import android.webkit.WebView
 
-class IzlekChromeClient(private val state: WebUiState) : WebChromeClient() {
+class TiniChromeClient(private val state: WebUiState) : WebChromeClient() {
 
     override fun onProgressChanged(view: WebView, newProgress: Int) {
         state.progress = newProgress

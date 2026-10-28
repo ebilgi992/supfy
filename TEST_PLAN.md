@@ -43,7 +43,7 @@ Küçük ekran (≤ 6"), büyük ekran / tablet, yatay mod, sistem yazı boyutu 
 1. Şarjı %100'e getirin, diğer uygulamaları kapatın.
 2. 60 dk ekran kapalı müzik çalın → pil yüzdesi düşüşünü not edin.
 3. Aynı testi resmi Spotify uygulamasıyla yapın ve karşılaştırın.
-4. "Arka planda çalma" kapalıyken uygulamayı 60 dk arka planda bırakın → Ayarlar → Pil → İzlek tüketimini not edin (≈0 beklenir).
+4. "Arka planda çalma" kapalıyken uygulamayı 60 dk arka planda bırakın → Ayarlar → Pil → Tını tüketimini not edin (≈0 beklenir).
 
 ## E. Diğer üreticiler
 

@@ -1,4 +1,4 @@
-package com.sametozdemir.izlek.web
+package com.sametozdemir.tini.web
 
 import android.annotation.SuppressLint
 import android.content.Context
@@ -6,7 +6,7 @@ import android.webkit.CookieManager
 import android.webkit.WebSettings
 import android.webkit.WebView
 import androidx.core.content.ContextCompat
-import com.sametozdemir.izlek.R
+import com.sametozdemir.tini.R
 
 object WebViewFactory {
 
@@ -14,8 +14,8 @@ object WebViewFactory {
     fun create(
         context: Context,
         desktopMode: Boolean,
-        webViewClient: IzlekWebViewClient,
-        chromeClient: IzlekChromeClient,
+        webViewClient: TiniWebViewClient,
+        chromeClient: TiniChromeClient,
     ): WebView = WebView(context).apply {
         settings.apply {
             // Gerekli olanlar
@@ -41,7 +41,7 @@ object WebViewFactory {
             cookies.setAcceptThirdPartyCookies(this, false)
         }
 
-        setBackgroundColor(ContextCompat.getColor(context, R.color.izlek_bg))
+        setBackgroundColor(ContextCompat.getColor(context, R.color.tini_bg))
         this.webViewClient = webViewClient
         this.webChromeClient = chromeClient
         // Not: addJavascriptInterface kullanılmaz; sayfa ile uygulama arasında köprü yoktur.

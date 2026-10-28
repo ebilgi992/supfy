@@ -4,13 +4,14 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- İzlek işareti: yuvarlatılmış oynat üçgeni ve arkasında bıraktığı iz -->
-    <path
-        android:fillColor="#FFFF7A59"
-        android:strokeColor="#FFFF7A59"
-        android:strokeWidth="8"
-        android:strokeLineJoin="round"
-        android:pathData="M43,37 L43,71 L72,54 Z" />
-    <path android:fillColor="#FF8B7CF6" android:pathData="M31.8,56m-4.2,0a4.2,4.2 0,1 1,8.4 0a4.2,4.2 0,1 1,-8.4 0" />
-    <path android:fillColor="#FF8B7CF6" android:fillAlpha="0.55" android:pathData="M23,58.8m-2.8,0a2.8,2.8 0,1 1,5.6 0a2.8,2.8 0,1 1,-5.6 0" />
+    <!-- Tını işareti: çift sekizlik nota (♫) -->
+    <path android:fillColor="#FF1DB954" android:pathData="M45.5,38 L77.5,32 L77.5,42 L45.5,48 Z" />
+    <path android:fillColor="#FF1DB954" android:pathData="M45.5,44 h5 v27 h-5 Z" />
+    <path android:fillColor="#FF1DB954" android:pathData="M72.5,38 h5 v27 h-5 Z" />
+    <group android:rotation="-22" android:pivotX="42" android:pivotY="71">
+        <path android:fillColor="#FF1DB954" android:pathData="M33.5,71a8.5,6.5 0 1,0 17,0a8.5,6.5 0 1,0 -17,0" />
+    </group>
+    <group android:rotation="-22" android:pivotX="69" android:pivotY="65">
+        <path android:fillColor="#FF1DB954" android:pathData="M60.5,65a8.5,6.5 0 1,0 17,0a8.5,6.5 0 1,0 -17,0" />
+    </group>
 </vector>

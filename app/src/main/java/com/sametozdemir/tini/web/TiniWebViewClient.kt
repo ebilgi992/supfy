@@ -1,4 +1,4 @@
-package com.sametozdemir.izlek.web
+package com.sametozdemir.tini.web
 
 import android.graphics.Bitmap
 import android.net.Uri
@@ -14,7 +14,7 @@ import android.webkit.WebViewClient
  * Gezinme kuralları ve hata yönetimi. Sayfaya hiçbir JavaScript veya CSS enjekte edilmez,
  * ağ istekleri değiştirilmez veya engellenmez (reklam engelleme yoktur).
  */
-class IzlekWebViewClient(
+class TiniWebViewClient(
     private val state: WebUiState,
     private val openExternally: (Uri) -> Unit,
     private val onRendererGone: () -> Unit,

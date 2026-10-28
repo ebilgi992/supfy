@@ -1,8 +1,8 @@
-# İzlek
+# Tını
 
 Spotify Web Player'ı Android'de kendi sade penceresinde açan, tamamen Türkçe, açık kaynak bir WebView uygulaması.
 
-> **Durum:** 0.1.0 prototip. Giriş ve oynatmanın WebView içinde çalışıp çalışmadığı henüz gerçek cihazda doğrulanmadı. Bkz. [TEST_PLAN.md](TEST_PLAN.md).
+> **Durum:** 0.1.1 prototip. Giriş ve oynatmanın WebView içinde çalışıp çalışmadığı henüz gerçek cihazda doğrulanmadı. Bkz. [TEST_PLAN.md](TEST_PLAN.md).
 
 ## Ne yapar, ne yapmaz
 
@@ -54,9 +54,9 @@ Kotlin 2.1 · Jetpack Compose (Material 3) · AndroidX WebKit · Gradle Kotlin D
 
 1. `app-debug.apk` dosyasını telefona aktarın.
 2. Dosyayı açın; istenirse "Bilinmeyen uygulamaları yükle" iznini yalnızca o dosya yöneticisi için verin.
-3. Kurulumdan sonra İzlek'i açın ve Spotify hesabınızla giriş yapın.
+3. Kurulumdan sonra Tını'i açın ve Spotify hesabınızla giriş yapın.
 
-**Xiaomi / HyperOS:** Arka planda çalma kesiliyorsa Ayarlar → Uygulamalar → İzlek → Pil tasarrufu → "Kısıtlama yok" seçeneğini elle seçebilirsiniz. Uygulama bu ayarı kendisi değiştirmez.
+**Xiaomi / HyperOS:** Arka planda çalma kesiliyorsa Ayarlar → Uygulamalar → Tını → Pil tasarrufu → "Kısıtlama yok" seçeneğini elle seçebilirsiniz. Uygulama bu ayarı kendisi değiştirmez.
 
 ## Bilinen sınırlamalar
 
@@ -71,6 +71,6 @@ Araştırma aşamasında [spotify-ad-blocker](https://github.com/YASMANTH-VEMALA
 
 ## Yasal
 
-İzlek bağımsız bir projedir; Spotify ile bağlantılı değildir ve Spotify tarafından onaylanmamıştır. Spotify, Spotify AB'nin tescilli markasıdır.
+Tını bağımsız bir projedir; Spotify ile bağlantılı değildir ve Spotify tarafından onaylanmamıştır. Spotify, Spotify AB'nin tescilli markasıdır.
 
 Lisans: [MIT](LICENSE) · Geliştirici: Samet Özdemir

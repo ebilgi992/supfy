@@ -1,4 +1,4 @@
-package com.sametozdemir.izlek
+package com.sametozdemir.tini
 
 import android.content.ActivityNotFoundException
 import android.content.Intent
@@ -28,17 +28,17 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.webkit.WebViewCompat
-import com.sametozdemir.izlek.data.AppSettings
-import com.sametozdemir.izlek.data.ConnectivityObserver
-import com.sametozdemir.izlek.ui.IzlekScreen
-import com.sametozdemir.izlek.ui.SettingsScreen
-import com.sametozdemir.izlek.ui.theme.IzlekTheme
-import com.sametozdemir.izlek.web.IzlekChromeClient
-import com.sametozdemir.izlek.web.IzlekWebViewClient
-import com.sametozdemir.izlek.web.PageErrorKind
-import com.sametozdemir.izlek.web.UrlPolicy
-import com.sametozdemir.izlek.web.WebUiState
-import com.sametozdemir.izlek.web.WebViewFactory
+import com.sametozdemir.tini.data.AppSettings
+import com.sametozdemir.tini.data.ConnectivityObserver
+import com.sametozdemir.tini.ui.TiniScreen
+import com.sametozdemir.tini.ui.SettingsScreen
+import com.sametozdemir.tini.ui.theme.TiniTheme
+import com.sametozdemir.tini.web.TiniChromeClient
+import com.sametozdemir.tini.web.TiniWebViewClient
+import com.sametozdemir.tini.web.PageErrorKind
+import com.sametozdemir.tini.web.UrlPolicy
+import com.sametozdemir.tini.web.WebUiState
+import com.sametozdemir.tini.web.WebViewFactory
 
 class MainActivity : ComponentActivity() {
 
@@ -63,7 +63,7 @@ class MainActivity : ComponentActivity() {
         val webViewVersion = WebViewCompat.getCurrentWebViewPackage(this)?.versionName
 
         setContent {
-            IzlekTheme {
+            TiniTheme {
                 val online by connectivity.online.collectAsStateWithLifecycle()
                 val background by appSettings.backgroundPlayback.collectAsStateWithLifecycle()
                 val desktop by appSettings.desktopMode.collectAsStateWithLifecycle()
@@ -78,7 +78,7 @@ class MainActivity : ComponentActivity() {
                 }
 
                 Box(Modifier.fillMaxSize()) {
-                    IzlekScreen(
+                    TiniScreen(
                         webView = webView,
                         state = uiState,
                         online = online,
@@ -116,8 +116,8 @@ class MainActivity : ComponentActivity() {
     private fun buildWebView(): WebView = WebViewFactory.create(
         context = this,
         desktopMode = appSettings.desktopMode.value,
-        webViewClient = IzlekWebViewClient(uiState, ::openExternally, ::onRendererGone),
-        chromeClient = IzlekChromeClient(uiState),
+        webViewClient = TiniWebViewClient(uiState, ::openExternally, ::onRendererGone),
+        chromeClient = TiniChromeClient(uiState),
     )
 
     private fun retry() {
