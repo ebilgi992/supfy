@@ -1,5 +1,8 @@
 # Test Planı
 
+V10 otomatik ve emülatör sonuçları: [docs/TEST_RAPORU_V10.md](docs/TEST_RAPORU_V10.md).
+Bu dosya gerçek cihazda yürütülecek kontrol listesidir; boş satırlar başarılı test sayılmaz.
+
 Her satır için sonucu **Geçti / Kaldı / Kısmen** olarak işaretleyin ve not düşün.
 Ayarlar → Cihaz bilgisi bölümündeki WebView sürümünü de kaydedin.
 

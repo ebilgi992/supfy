@@ -30,7 +30,8 @@ object WebViewFactory {
             allowContentAccess = false
             setGeolocationEnabled(false)
             javaScriptCanOpenWindowsAutomatically = false
-            setSupportMultipleWindows(false)
+            // User initiated windows are resolved by SupfyChromeClient using the same session.
+            setSupportMultipleWindows(true)
             mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
             builtInZoomControls = false
             displayZoomControls = false

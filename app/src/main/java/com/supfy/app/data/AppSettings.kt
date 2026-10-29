@@ -4,6 +4,7 @@ import android.content.Context
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import com.supfy.app.protection.ProtectionOptions
 
 /** Uygulama arayüzünün teması (Spotify sayfasının kendi teması değişmez). */
 enum class ThemeMode { SYSTEM, LIGHT, DARK }
@@ -12,6 +13,21 @@ enum class ThemeMode { SYSTEM, LIGHT, DARK }
 class AppSettings(context: Context) {
 
     private val prefs = context.getSharedPreferences(FILE, Context.MODE_PRIVATE)
+
+    val protectionOptions: ProtectionOptions
+        get() = ProtectionOptions(
+            enabled = prefs.getBoolean("koruma_acik", false),
+            muteAds = prefs.getBoolean("reklam_sessiz", true),
+            hideBanners = prefs.getBoolean("banner_gizle", true),
+            hidePromos = prefs.getBoolean("tanitim_gizle", true),
+            filterNetwork = prefs.getBoolean("ag_filtrele", true),
+        )
+
+    fun setProtectionOptions(options: ProtectionOptions) {
+        prefs.edit().putBoolean("koruma_acik", options.enabled)
+            .putBoolean("reklam_sessiz", options.muteAds).putBoolean("banner_gizle", options.hideBanners)
+            .putBoolean("tanitim_gizle", options.hidePromos).putBoolean("ag_filtrele", options.filterNetwork).apply()
+    }
 
     private val _backgroundPlayback = MutableStateFlow(prefs.getBoolean(KEY_BACKGROUND, true))
     val backgroundPlayback: StateFlow<Boolean> = _backgroundPlayback.asStateFlow()

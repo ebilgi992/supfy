@@ -21,7 +21,7 @@ jobs:
 
       # Her derleme bir öncekinden büyük sürüm kodu alır (güncelleme olarak kurulabilsin diye).
       - name: Sürüm kodunu hesapla
-        run: echo "SUPFY_VERSION_CODE=$((1000 + GITHUB_RUN_NUMBER))" >> "$GITHUB_ENV"
+        run: echo "SUPFY_VERSION_CODE=$((2000 + GITHUB_RUN_NUMBER))" >> "$GITHUB_ENV"
 
       - name: Gradle wrapper doğrulama
         uses: gradle/actions/wrapper-validation@v4
@@ -52,6 +52,14 @@ jobs:
 
       - name: Android Lint
         run: ./gradlew --no-daemon -PsupfyVersionCode=$SUPFY_VERSION_CODE lintDebug
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: DOM simülasyonları (gerçek Spotify testi değildir)
+        working-directory: tools
+        run: npm ci --ignore-scripts --no-audit --no-fund && npm test
 
       - name: APK derle
         env:

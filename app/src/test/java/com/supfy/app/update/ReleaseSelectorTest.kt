@@ -8,6 +8,13 @@ import org.junit.Test
 
 class ReleaseSelectorTest {
 
+    @Test
+    fun testBuildTagsAndEncodedTraversalAreHandledSafely() {
+        assertNull(ReleaseSelector.versionCodeOf("test-1020"))
+        assertFalse(ReleaseSelector.isTrustedReleaseUrl("https://github.com/ebilgi992/supfy/releases/%2e%2e/evil", "ebilgi992/supfy"))
+        assertFalse(ReleaseSelector.isTrustedReleaseUrl("https://user@github.com/ebilgi992/supfy/releases/tag/x", "ebilgi992/supfy"))
+    }
+
     private val repo = "ebilgi992/supfy"
     private fun rel(tag: String, name: String? = "Supfy 0.4.0 (1020)", url: String? = null, draft: Boolean = false) =
         ReleaseCandidate(tag, name, url ?: "https://github.com/$repo/releases/tag/$tag", draft)

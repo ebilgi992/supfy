@@ -7,18 +7,24 @@ import android.webkit.RenderProcessGoneDetail
 import android.webkit.SslErrorHandler
 import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
+import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.webkit.CookieManager
+import com.supfy.app.protection.ProtectionWebController
 
 /**
- * Gezinme kuralları ve hata yönetimi. Sayfaya hiçbir JavaScript veya CSS enjekte edilmez,
- * ağ istekleri değiştirilmez veya engellenmez (reklam engelleme yoktur).
+ * Güvenli gezinme ve hata yönetimi; isteğe bağlı koruma adaptörüne olay iletir.
  */
 class SupfyWebViewClient(
     private val state: WebUiState,
     private val openExternally: (Uri) -> Unit,
     private val onRendererGone: () -> Unit,
+    private val protection: ProtectionWebController,
 ) : WebViewClient() {
+
+    override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? =
+        protection.intercept(request)
 
     override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
         val url = request.url?.toString()
@@ -46,6 +52,7 @@ class SupfyWebViewClient(
     }
 
     override fun onPageStarted(view: WebView, url: String?, favicon: Bitmap?) {
+        protection.pageStarted(url)
         state.error = null
         state.currentUrl = url
     }
@@ -53,6 +60,8 @@ class SupfyWebViewClient(
     override fun onPageFinished(view: WebView, url: String?) {
         state.currentUrl = url
         state.canGoBack = view.canGoBack()
+        CookieManager.getInstance().flush()
+        if (state.error == null) protection.pageFinished()
     }
 
     override fun doUpdateVisitedHistory(view: WebView, url: String?, isReload: Boolean) {

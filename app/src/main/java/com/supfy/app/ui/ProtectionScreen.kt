@@ -28,6 +28,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.Switch
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -37,16 +38,24 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
 import com.supfy.app.R
 import com.supfy.app.web.DeviceSupport
 import com.supfy.app.web.Protection
 import com.supfy.app.web.ProtectionStatus
 import com.supfy.app.web.Protections
 import com.supfy.app.web.SessionStats
+import com.supfy.app.protection.EngineState
+import com.supfy.app.protection.EngineStatus
+import com.supfy.app.protection.ProtectionOptions
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProtectionScreen(
+    engine: EngineState,
+    serviceWorkerFiltering: Boolean,
+    onOptionsChange: (ProtectionOptions) -> Unit,
     support: DeviceSupport,
     stats: SessionStats,
     desktopMode: Boolean,
@@ -76,6 +85,62 @@ fun ProtectionScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(16.dp),
         ) {
+            Section(stringResource(R.string.ad_engine_title)) {
+                EngineSwitch(stringResource(R.string.ad_engine_master), engine.options.enabled) {
+                    onOptionsChange(engine.options.copy(enabled = it))
+                }
+                Text(stringResource(when (engine.status) {
+                    EngineStatus.DISABLED -> R.string.engine_disabled
+                    EngineStatus.WAITING_FOR_PLAYER -> R.string.engine_waiting
+                    EngineStatus.STARTING -> R.string.engine_starting
+                    EngineStatus.ACTIVE -> R.string.engine_active
+                    EngineStatus.ERROR -> R.string.engine_error
+                }), color = if (engine.status == EngineStatus.ERROR) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary)
+                Spacer(Modifier.height(8.dp))
+                Muted(stringResource(R.string.ad_engine_limits))
+                Spacer(Modifier.height(8.dp))
+                Muted(stringResource(R.string.ad_engine_risk))
+            }
+
+            Section(stringResource(R.string.ad_engine_features)) {
+                val active = engine.status == EngineStatus.ACTIVE
+                EngineSwitch(stringResource(R.string.ad_mute), engine.options.muteAds, engine.options.enabled) {
+                    onOptionsChange(engine.options.copy(muteAds = it))
+                }
+                EngineSwitch(stringResource(R.string.ad_banners), engine.options.hideBanners, engine.options.enabled) {
+                    onOptionsChange(engine.options.copy(hideBanners = it))
+                }
+                EngineSwitch(stringResource(R.string.ad_promos), engine.options.hidePromos, engine.options.enabled) {
+                    onOptionsChange(engine.options.copy(hidePromos = it))
+                }
+                EngineSwitch(stringResource(R.string.ad_network), engine.options.filterNetwork, engine.options.enabled) {
+                    onOptionsChange(engine.options.copy(filterNetwork = it))
+                }
+                Muted(stringResource(if (active) R.string.engine_features_running else R.string.engine_features_idle))
+                Muted(stringResource(if (serviceWorkerFiltering) R.string.engine_sw_available else R.string.engine_sw_unavailable))
+                Muted(stringResource(when (engine.eme) {
+                    true -> R.string.engine_eme_available
+                    false -> R.string.engine_eme_unavailable
+                    null -> R.string.engine_eme_unknown
+                }))
+                Muted(stringResource(if (engine.playing) R.string.engine_playing else R.string.engine_paused))
+            }
+
+            Section(stringResource(R.string.ad_engine_stats)) {
+                EngineStat(R.string.ad_detected, engine.detectedAds)
+                EngineStat(R.string.ad_muted, engine.mutedMedia)
+                EngineStat(R.string.ad_banner_count, engine.hiddenBanners)
+                EngineStat(R.string.ad_promo_count, engine.hiddenPromos)
+                EngineStat(R.string.ad_requests, engine.blockedRequests)
+                EngineStat(R.string.ad_errors, engine.errors)
+                Muted(stringResource(R.string.stat_note))
+            }
+
+            Section(stringResource(R.string.ad_engine_logs)) {
+                if (engine.logs.isEmpty()) Muted(stringResource(R.string.engine_no_events))
+                engine.logs.asReversed().forEach { Muted(it) }
+            }
+
             // Özet
             Card(
                 shape = MaterialTheme.shapes.large,
@@ -136,15 +201,24 @@ fun ProtectionScreen(
                 }
             }
 
-            Section(stringResource(R.string.protection_section_unsupported)) {
-                StatusRow(
-                    title = stringResource(R.string.unsupported_ads_title),
-                    description = stringResource(R.string.unsupported_ads_desc),
-                    active = false,
-                    inactiveLabel = R.string.status_not_offered,
-                )
-            }
         }
+    }
+}
+
+@Composable
+private fun EngineSwitch(label: String, checked: Boolean, enabled: Boolean = true, change: (Boolean) -> Unit) {
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Text(label, modifier = Modifier.weight(1f))
+        Switch(checked = checked, enabled = enabled, onCheckedChange = change,
+            modifier = Modifier.semantics { contentDescription = label })
+    }
+}
+
+@Composable
+private fun EngineStat(@StringRes label: Int, value: Long) {
+    Row(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+        Text(stringResource(label), modifier = Modifier.weight(1f))
+        Text(value.toString(), color = MaterialTheme.colorScheme.primary)
     }
 }
 

@@ -46,6 +46,8 @@ object ReleaseSelector {
         return uri.scheme.equals("https", ignoreCase = true) &&
             uri.host.equals("github.com", ignoreCase = true) &&
             uri.port == -1 &&
+            uri.userInfo == null && uri.rawQuery == null && uri.rawFragment == null &&
+            !path.contains('%') &&
             path.startsWith("/$repo/releases/") &&
             !path.contains("..")
     }

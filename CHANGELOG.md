@@ -1,3 +1,14 @@
+# 0.5.0-v10 — 29 Ekim 2026
+
+- test-1018 sürümünden bağımsız koruma motoru, gerçek durum/sayaç/günlük ve kalıcı tercihler.
+- Oynatıcıya sınırlı DOM reklam tespiti, medya mute geri yükleme, banner ve tanıtım yönetimi.
+- Güvenli üçüncü taraf ağ filtresi; ses/DRM/oturum uçlarına müdahale yok.
+- Güvenli Spotify pencere yönlendirmesi; Tarayıcıda Aç düğmeleri kaldırıldı.
+- URL/Release denetimleri sertleştirildi; güncelleme sistemi ve kalıcı imza desteği korundu.
+- Kotlin, DOM ve Android fixture testleri; gerçek Spotify doğrulama sınırları belgelerde.
+- Yerel sürüm kodu 1019. Eski APK imzası bu ortamda yok; üzerine kurulum uyumluluğu
+  yalnızca aynı imzayla yeniden derlenirse sağlanır. Kullanıcı verisi silinmedi.
+
 # Değişiklik Günlüğü
 
 ## [0.4.0] - 2026-10-29

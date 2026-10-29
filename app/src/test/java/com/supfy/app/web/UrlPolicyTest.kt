@@ -9,6 +9,16 @@ import org.junit.Test
 class UrlPolicyTest {
 
     @Test
+    fun credentialsPortsAndMalformedOriginsAreRejected() {
+        assertFalse(UrlPolicy.isTrustedPlayerOrigin("https://open.spotify.com:8443"))
+        assertFalse(UrlPolicy.isTrustedPlayerOrigin("https://user:pass@open.spotify.com"))
+        assertEquals(Decision.BLOCK, UrlPolicy.decide("https://user@accounts.spotify.com/login"))
+        assertEquals(Decision.BLOCK, UrlPolicy.decide("https:///accounts.spotify.com"))
+        assertEquals(Decision.BLOCK, UrlPolicy.decide("https://accounts.spotify.com:8443/login"))
+        assertTrue(UrlPolicy.isTrustedPlayerOrigin("https://open.spotify.com:443"))
+    }
+
+    @Test
     fun spotifySayfalariUygulamaIcindeAcilir() {
         assertEquals(Decision.LOAD_IN_APP, UrlPolicy.decide("https://open.spotify.com/"))
         assertEquals(Decision.LOAD_IN_APP, UrlPolicy.decide("https://open.spotify.com/track/abc?si=1"))

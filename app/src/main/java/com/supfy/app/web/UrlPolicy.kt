@@ -27,6 +27,7 @@ object UrlPolicy {
     /** Ana çerçevedeki gezinme isteği için karar. */
     fun decide(url: String?): Decision {
         val uri = parse(url) ?: return Decision.BLOCK
+        if (uri.host.isNullOrBlank() || uri.userInfo != null || uri.port !in listOf(-1, 443)) return Decision.BLOCK
         return when (uri.scheme?.lowercase()) {
             "https" -> if (isTrustedHost(uri.host)) Decision.LOAD_IN_APP else Decision.OPEN_EXTERNALLY
             // http, intent, spotify, javascript, file, data ... hepsi engellenir.
@@ -42,6 +43,7 @@ object UrlPolicy {
     fun isTrustedPlayerOrigin(origin: String?): Boolean {
         val uri = parse(origin) ?: return false
         return uri.scheme?.lowercase() == "https" &&
+            uri.userInfo == null && uri.port in listOf(-1, 443) &&
             uri.host?.lowercase()?.trimEnd('.') == PLAYER_HOST
     }
 

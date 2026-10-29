@@ -1,36 +1,22 @@
-# Gizlilik Açıklaması
+# Supfy gizlilik bildirimi — V10
 
-**Son güncelleme:** 28 Ekim 2026
+Giriş Spotify HTTPS sayfalarında yapılır. Uygulama şifre, çerez veya oturum belirteci okumaz,
+kaydetmez ve dışarı aktarmaz. WebView kendi oturum çerezlerini cihazdaki özel alanında saklar;
+yedekleme kapalıdır. Kullanıcının açık verileri silme seçimi dışında oturum temizlenmez.
 
-Supfy, Spotify Web Player'ı bir Android WebView içinde gösterir.
+İsteğe bağlı özgün koruma betiği yalnızca open.spotify.com ana çerçevesinde reklam DOM
+işaretlerini, bilinen bannerları ve HTML medya öğelerinin durumunu değerlendirir. Giriş
+sayfasında çalışmaz; form girdisi veya hesap bilgisi toplamaz. Yerel uygulama betikten yalnızca
+sınırlı işlem sayıları, hata, EME varlığı ve oynatma durumu alır; JavaScript köprüsü yoktur.
 
-## Toplanan veriler
+Tercihler cihazda SharedPreferences ile tutulur. Son 40 koruma olayı ve sayaçlar yalnızca
+uygulama belleğindedir; URL, çerez, şarkı/kişi bilgisi içermez; analitik sunucuya gönderilmez.
 
-; geliştiriciye hiçbir veri gönderilmez. Uygulamada analiz, reklam veya çökme raporlama SDK'sı bulunmaz. WebView kullanım istatistikleri (`MetricsOptOut`) kapalıdır.
+Spotify içeriği ve cihazın Safe Browsing hizmeti kendi sağlayıcılarının gizlilik koşullarına
+bağlıdır. GitHub Releases sürüm sorguları IP/ağ bağlantısı, User-Agent ve herkese açık depo
+isteğini GitHub'a iletir; Spotify hesabıyla ilgili veri göndermez. Supfy'nin kendi analitik,
+izleyici veya sunucusu yoktur. Reklam koruması varsayılan kapalıdır.
 
-## Güncelleme denetimi
-
-Supfy en fazla 12 saatte bir, ayrıca Ayarlar'dan elle istendiğinde, GitHub'ın herkese açık sürüm listesini (`api.github.com/repos/ebilgi992/supfy/releases`) sorgular. Bu istekte hesap, çerez veya kişisel bilgi gönderilmez; GitHub yalnızca standart bağlantı bilgilerini (IP adresi, "Supfy-Android" tanımı) görür. Uygulama APK'yı kendiliğinden indirmez veya kurmaz.
-
-## Cihazda saklananlar
-
-- **Spotify oturum çerezleri ve site verileri:** WebView tarafından, uygulamanın kendi korumalı alanında tutulur. Yalnızca Spotify'ın sayfası okuyabilir.
-- **Tercihler:** arka planda çalma, masaüstü sitesi, tema ve son güncelleme denetimi zamanı. Kişisel bilgi içermez.
-
-Uygulama verileri Android yedeğine alınmaz.
-
-## Şifreler
-
-Giriş Spotify'ın kendi sayfasında yapılır. Supfy sayfaya kod eklemez; giriş alanlarını okumaz, şifre kaydetmez.
-
-## Spotify'a giden veriler
-
-Sayfayı kullandığınızda veriler doğrudan Spotify'a gider ve [Spotify Gizlilik Politikası](https://www.spotify.com/tr/legal/privacy-policy/) geçerlidir.
-
-## Silme
-
-Ayarlar → "Oturumu ve site verilerini sil" seçeneği çerezleri, önbelleği ve site depolamasını siler. Uygulamayı kaldırmak da tüm verileri siler.
-
-## İletişim
-
-Sorular için GitHub deposunda bir "Issue" açabilirsiniz.
+Oturumu ve site verilerini silme işlemi uygulamadaki açık onay penceresiyle çalışır.
+Yeni APK'yı kurmak için eski uygulamayı kaldırmak da cihazdaki uygulama verilerini siler;
+imza eşleşmesi olmadan veri koruyan güncelleme mümkün değildir.

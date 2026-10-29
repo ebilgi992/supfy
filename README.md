@@ -1,86 +1,76 @@
 <p align="center"><img src="branding/supfy-logo-dark.png" alt="Supfy" width="320"></p>
 
-# Supfy
+# Supfy 0.5.0-v10
 
-Spotify Web Player'ı Android'de kendi sade penceresinde açan, tamamen Türkçe, açık kaynak bir WebView uygulaması.
+Mevcut Supfy'nin `test-1018` kaynakları üzerinde Kotlin + Compose + Android WebView geliştirmesi.
+`com.supfy.app` kimliği korunur. Yerel sürüm kodu **1019**; minSdk 26, targetSdk 35.
+Bu sürüm **deneysel koruma** içerir; doğrulanmış reklamsız Spotify ürünü değildir.
 
-> **Durum:** 0.2.0 prototip. Giriş, oturum ve oynatma Xiaomi 14T Pro'da kullanıcı tarafından doğrulandı; diğer testler için bkz. [TEST_PLAN.md](TEST_PLAN.md).
->
-> Raporlar: [Özellik matrisi](docs/OZELLIK_MATRISI.md) · [Güvenlik denetimi](docs/GUVENLIK_DENETIMI.md) · [Marka](branding/README.md)
+- Ana anahtar, dört özellik tercihi, modül durumu, gerçek sayaçlar ve son 40 olay koruma ekranına bağlıdır.
+- Açık reklam DOM işaretlerinde yalnızca HTML medya öğesinin sesi susturulur; reklam sonunda geri yüklenir.
+- Bilinen reklam/tanıtım bannerları geri alınabilir biçimde gizlenir. Genel giriş/izin/ödeme pencereleri gizlenmez.
+- İsteğe bağlı ağ filtresi bilinen üçüncü taraf reklam alanlarının GET alt istekleriyle sınırlıdır.
+  Spotify oturum, ses, spclient ve Widevine lisans isteklerine müdahale edilmez.
+- Koruma varsayılan olarak kapalıdır. Ayarlar cihazda saklanır; hata durumunda müdahaleler durur.
+- Giriş için kullanıcı hareketiyle açılan Spotify pencereleri aynı WebView'e yönlendirilir; çerezler korunur.
+- “Tarayıcıda Aç” düğmesi kaldırıldı. Gereken güvenli dış bağlantı ve Release sayfası açma akışı korunur.
+- Mevcut GitHub Releases güncelleyicisi korunur; yalnızca `build-<versionCode>` sürümleri önerilir.
 
-## Ne yapar, ne yapmaz
+## Derleme ve test
 
-**Yapar**
-- `https://open.spotify.com` adresini uygulama içinde açar; giriş Spotify'ın kendi sayfasında yapılır.
-- Oturumu cihazda (WebView çerezleri) korur.
-- Ekran dönünce sayfayı yenilemez; geri tuşu sayfa geçmişinde geri gider.
-- Bağlantı durumunu gösterir, hataları Türkçe açıklar, bağlantı gelince otomatik yeniden dener.
-- Oynatma mümkün olmazsa sayfayı tarayıcıda açma seçeneği sunar.
+JDK 17, Android SDK platform 35 ve build tools gerekir:
 
-**Yapmaz**
-- Reklam engellemez, susturmaz, hızlandırmaz veya atlamaz. Spotify Kullanıcı Yönergeleri bunu yasaklar.
-- Sayfaya JavaScript/CSS enjekte etmez; ağ isteklerini değiştirmez.
-- DRM korumasını atlatmaz; yalnızca sayfa istediğinde standart "korumalı içerik" iznini verir.
-- Şifreni okumaz, kaydetmez veya bir sunucuya göndermez. Analiz/izleme aracı içermez.
-
-## Güvenlik ayarları (özet)
-
-| Ayar | Değer |
-|---|---|
-| JavaScript / DOM Storage | Açık (Spotify Web Player için zorunlu) |
-| Dosya ve içerik erişimi | Kapalı |
-| JavaScript köprüsü | Yok |
-| Şifresiz HTTP | Engelli (network security config + karışık içerik kapalı) |
-| Safe Browsing | Açık |
-| Üçüncü taraf çerezler | Kapalı |
-| DRM izni | Yalnızca `https://open.spotify.com` kaynağına |
-| Uygulama içinde açılan alan adları | `spotify.com`, `scdn.co`, `spotifycdn.com` ve alt alan adları |
-| Uygulama izinleri | `INTERNET`, `ACCESS_NETWORK_STATE` |
-| Yedekleme | Kapalı (oturum çerezleri yedeğe girmez) |
-
-## Teknoloji
-
-Kotlin 2.1 · Jetpack Compose (Material 3) · AndroidX WebKit · Gradle Kotlin DSL · minSdk 26 (Android 8.0) · targetSdk 35
-
-## Derleme
-
-**Android Studio:** Projeyi açın, Gradle senkronizasyonunu bekleyin, `app` yapılandırmasını çalıştırın.
-
-**Komut satırı:**
 ```bash
-./gradlew testDebugUnitTest lintDebug assembleDebug
-# APK: app/build/outputs/apk/debug/app-debug.apk
+./gradlew testDebugUnitTest lintDebug assembleDebug assembleDebugAndroidTest
+cd tools
+npm ci --ignore-scripts
+npm test
 ```
 
-**GitHub Actions:** `main` dalına her gönderimde testler, Lint ve APK derlenir; APK Releases'a eklenir. Sürüm kodu `1000 + çalışma numarası`dır.
+APK: `app/build/outputs/apk/debug/app-debug.apk`. Instrumentasyon APK:
+`app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk`.
+DOM ve Android fixture testleri gerçek Spotify reklamı/oturumu/DRM doğrulaması değildir.
+Güncel ölçümler: [test raporu](docs/TEST_RAPORU_V10.md).
 
-**İmza anahtarı (bir kez):** Deponun **Settings → Secrets and variables → Actions** bölümüne şu dört gizli değeri ekleyin: `SUPFY_KEYSTORE_B64` (keystore dosyasının base64 hâli), `SUPFY_KEYSTORE_PASSWORD`, `SUPFY_KEY_ALIAS`, `SUPFY_KEY_PASSWORD`. Bunlar tanımlıysa CI imzalı sürüm APK'sı üretir; tanımlı değilse geçici debug anahtarı kullanılır ve güncelleme üzerine kurulamaz. Anahtar dosyasını güvenli bir yerde yedekleyin: kaybolursa mevcut kurulum bir daha güncellenemez.
+## Kurulum ve imza
 
-## Kurulum (debug APK)
+Gönderilen eski APK'nın sertifikası ile bu ortamda üretilen debug sertifikası farklıdır.
+Bu APK mevcut 1018 kurulumunun üzerine **kurulamaz**. Eski uygulamayı kaldırmak oturum ve site
+verilerini siler; bu çalışma sırasında kaldırma yapılmadı. Güncelleme için aynı özel imzalama
+anahtarıyla yeniden derleme gerekir. Anahtar APK'dan geri çıkarılamaz.
 
-En kolay yol: deponun **Releases** bölümünden en son `Supfy-...-debug.apk` dosyasını telefondan indirin.
+Kalıcı imza desteği korunur: `SUPFY_KEYSTORE_PATH`, `SUPFY_KEYSTORE_PASSWORD`,
+`SUPFY_KEY_ALIAS`, `SUPFY_KEY_PASSWORD` güvenli derleme ortamından sağlanır. Anahtarlar depoya,
+rapora veya teslim paketine girmez. CI sürüm kodu `2000 + GITHUB_RUN_NUMBER` kullanır.
+Kalıcı imza tanımlı olmadan üretilen debug APK yalnızca test içindir.
 
-1. APK dosyasını açın.
-2. Dosyayı açın; istenirse "Bilinmeyen uygulamaları yükle" iznini yalnızca o dosya yöneticisi için verin.
-3. Kurulumdan sonra Supfy'yi açın ve Spotify hesabınızla giriş yapın.
+Boş bir test cihazında APK'yı açıp Android kurulum istemini izleyin. Mevcut Supfy kuruluysa
+[kurulum notlarını](docs/KURULUM_V10.md) önce okuyun. Güncelleme dosyasının son paket ve imza
+kontrolünü Android Package Installer yapar; Supfy kendi kendine APK kurmaz.
 
-**Güncelleme:** 0.4.0'dan itibaren tüm sürümler aynı imza anahtarıyla imzalanır ve sürüm kodu her derlemede artar; yeni APK mevcut kurulumun üzerine yüklenir, oturum ve ayarlar korunur. Supfy açılışta yeni sürümü kendisi denetler ve "Güncelle" ile Release sayfasını açar. (0.3.0 ve öncesinden geçişte bir kez kaldırıp kurmak gerekir.)
+## Güvenlik ve sınırlar
 
-**Xiaomi / HyperOS:** Arka planda çalma kesiliyorsa Ayarlar → Uygulamalar → Supfy → Pil tasarrufu → "Kısıtlama yok" seçeneğini elle seçebilirsiniz. Uygulama bu ayarı kendisi değiştirmez.
+HTTPS, sertifika hatasında iptal, Safe Browsing, dosya/içerik erişiminin kapatılması,
+üçüncü taraf çerezlerin kapalı olması ve yalnızca oynatıcıya verilen korumalı medya izni korunur.
+`addJavascriptInterface` yoktur; yerel kod yalnızca oynatıcıdan sınırlı sayısal durum alır.
+Şifre/çerez/belirteçler okunmaz veya dışarı aktarılmaz. Günlükte URL veya kişisel veri yoktur.
 
-## Bilinen sınırlamalar
+Tam şarkı oynatma Spotify hesabının haklarına, güncel WebView'e, EME/Widevine'e ve Spotify
+uyumluluğuna bağlıdır. DRM veya giriş korumaları aşılmaz. Google/Apple/Facebook gömülü girişi
+sağlayıcı tarafından reddedilebilir; e-posta/kod ile Spotify'ın kendi girişini kullanın.
+WebView dışında üretilen veya DOM'da görünmeyen medya susturulamayabilir. WebSocket,
+SW önbelleği ve genel ağ trafiği filtrelenmez. DRM uygunluğu EME varlığından çıkarılamaz.
+Kilit ekranı MediaSession kontrolleri ve kesintisiz HyperOS arka plan hizmeti eklenmemiştir.
 
-- Google / Facebook / Apple ile giriş, gömülü WebView'de sağlayıcılar tarafından engellenebilir. E-posta ve şifre ya da e-posta ile giriş kodu kullanın.
-- Spotify'ın mobil web sayfası oynatıcıyı açmazsa Ayarlar'daki "Masaüstü sitesini iste" seçeneğini deneyin.
-- WebView, Android medya bildirimine ve kilit ekranı kontrollerine kendiliğinden bağlanmaz.
-- "Tarayıcıda aç", telefonda Spotify uygulaması kuruluysa bağlantıyı o uygulamada açabilir.
+Reklam engelleme Spotify koşullarına aykırı olabilir; hesap kısıtlaması/kapatılma riski vardır.
+Xiaomi HyperOS'ta arka plan çalışması işletim sistemi politikalarına bağlıdır; pil kısıtlaması
+kullanıcı tarafından değiştirilebilir. Gerçek cihaz ölçümü olmadan pil/oynatma garantisi verilmez.
 
-## Kaynak proje hakkında
+## Belgeler ve lisans
 
-Araştırma aşamasında [spotify-ad-blocker](https://github.com/YASMANTH-VEMALA/spotify-ad-blocker) (MIT, Yasmanth Vemula) incelendi. Bu depoda o projeden **kod kopyalanmamıştır**. Reklam engelleme mekanizmaları bilerek alınmamıştır.
+[Güvenlik raporu](docs/GUVENLIK_DENETIMI.md) · [Özellik matrisi](docs/OZELLIK_MATRISI.md) ·
+[Kaynak araştırması](docs/KAYNAK_ARASTIRMASI_V10.md) · [Kurulum](docs/KURULUM_V10.md).
 
-## Yasal
-
-Supfy bağımsız bir projedir; Spotify ile bağlantılı değildir ve Spotify tarafından onaylanmamıştır. Spotify, Spotify AB'nin tescilli markasıdır.
-
-Lisans: [MIT](LICENSE)
+Supfy bağımsızdır; Spotify ile bağlantılı veya onaylı değildir. Spotify, Spotify AB'nin markasıdır.
+[MIT](LICENSE) lisansı korunur. GPL myspoti ve erişilemeyen Spotilol kaynak kodu alınmadı.
+[Üçüncü taraf bildirimleri](app/src/main/assets/THIRD_PARTY_NOTICES.txt) kaynak ve APK içindedir.

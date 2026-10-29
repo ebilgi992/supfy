@@ -7,7 +7,6 @@
     <string name="status_offline">Çevrimdışı</string>
     <string name="action_refresh">Yenile</string>
     <string name="action_more">Diğer seçenekler</string>
-    <string name="action_open_browser">Tarayıcıda aç</string>
     <string name="action_settings">Ayarlar</string>
     <string name="action_home">Ana sayfa</string>
     <string name="action_back">Geri</string>
@@ -18,14 +17,12 @@
     <!-- Koruma ve durum -->
     <string name="protection_title">Koruma ve durum</string>
     <string name="protection_summary">%1$d / %2$d koruma etkin</string>
-    <string name="protection_summary_desc">Bu korumalar Supfy\'nin kendi güvenlik ayarlarıdır ve Spotify sayfasının çalışmasını değiştirmez.</string>
+    <string name="protection_summary_desc">WebView güvenlik korumaları reklam modülünden bağımsızdır.</string>
     <string name="protection_section_active">Etkin korumalar</string>
     <string name="protection_section_stats">Bu oturumda</string>
     <string name="protection_section_trouble">Sorun mu yaşıyorsun?</string>
-    <string name="protection_section_unsupported">Sunulmayan özellikler</string>
     <string name="status_active">Etkin</string>
     <string name="status_unsupported">Desteklenmiyor</string>
-    <string name="status_not_offered">Sunulmuyor</string>
 
     <string name="prot_https_title">Yalnızca HTTPS</string>
     <string name="prot_https_desc">Şifresiz bağlantılar ve karışık içerik engellenir; sertifika hataları atlanmaz.</string>
@@ -51,13 +48,11 @@
     <string name="stat_external">Tarayıcıda açılan bağlantı</string>
     <string name="stat_note">Yalnızca gerçekten gerçekleşen olaylar sayılır. Uygulama kapanınca sıfırlanır.</string>
 
-    <string name="trouble_desc">Supfy Spotify sayfasına kod eklemez. Oynatma takılırsa sayfayı sıfırla; oturumun kapanmaz.</string>
+    <string name="trouble_desc">Oynatma veya giriş etkilenirse önce reklam korumasını kapat. Sayfayı sıfırlamak oturumunu kapatmaz.</string>
     <string name="action_reset_page">Sayfayı sıfırla</string>
     <string name="action_desktop_off">Masaüstü modunu kapat</string>
     <string name="page_reset_done">Sayfa sıfırlandı.</string>
 
-    <string name="unsupported_ads_title">Reklam engelleme</string>
-    <string name="unsupported_ads_desc">Spotify Kullanıcı Yönergeleri reklamları engellemeyi veya atlatmayı yasaklar; hesabın askıya alınmasına veya kapatılmasına yol açabilir.</string>
 
     <!-- Güncelleme -->
     <string name="update_title">Supfy Güncellemesi Mevcut</string>
@@ -102,7 +97,7 @@
     <string name="cache_cleared">Önbellek temizlendi.</string>
 
     <string name="section_privacy">Gizlilik ve veriler</string>
-    <string name="privacy_body">Giriş yalnızca Spotify\'ın kendi sayfasında yapılır. Supfy sayfaya kod eklemez; şifreni okumaz, kaydetmez ve hiçbir sunucuya göndermez. Oturum çerezleri yalnızca bu cihazda, uygulamanın kendi alanında tutulur. Supfy kendi sunucusuna veri göndermez ve analiz aracı içermez.</string>
+    <string name="privacy_body">Giriş Spotify\'ın kendi sayfasında yapılır. İsteğe bağlı koruma betiği yalnızca open.spotify.com oynatıcısındaki reklam işaretleri ve medya öğeleriyle çalışır; giriş sayfasında çalışmaz. Şifreler, çerezler ve belirteçler okunmaz veya dışarı aktarılmaz. Tanılama sayaçları yalnızca bellekte tutulur. Sürüm denetimi GitHub\'a bağlanır.</string>
     <string name="action_clear_data">Oturumu ve site verilerini sil</string>
     <string name="clear_confirm_title">Veriler silinsin mi?</string>
     <string name="clear_confirm_body">Çerezler, önbellek ve site depolaması silinir. Spotify oturumun kapanır.</string>
@@ -121,6 +116,38 @@
 
     <string name="section_about">Hakkında</string>
     <string name="about_version">Sürüm: %1$s</string>
-    <string name="about_disclaimer">Supfy bağımsız bir uygulamadır. Spotify ile bağlantılı değildir ve Spotify tarafından onaylanmamıştır. Spotify, Spotify AB\'nin tescilli markasıdır. Supfy reklam engellemez, reklamları atlamaz veya susturmaz.</string>
+    <string name="about_disclaimer">Supfy bağımsız bir uygulamadır; Spotify tarafından onaylanmamıştır. Deneysel reklam koruması isteğe bağlıdır. Spotify koşulları ve hesap hakları geçerlidir. Reklamsız veya tam oynatma garantisi verilmez.</string>
     <string name="about_licenses">Açık kaynak bileşenler: AndroidX, Jetpack Compose, AndroidX WebKit ve Kotlin (Apache 2.0). Supfy, MIT lisansıyla yayımlanır.</string>
+    <string name="ad_engine_title">Deneysel reklam koruması</string>
+    <string name="ad_engine_master">Reklam korumasını aç</string>
+    <string name="engine_disabled">Kapalı</string>
+    <string name="engine_waiting">Oynatıcı bekleniyor; girişte müdahale yok</string>
+    <string name="engine_starting">Sayfa modülü doğrulanıyor</string>
+    <string name="engine_active">Modül yanıt veriyor · gerçek reklam testi doğrulanmadı</string>
+    <string name="engine_error">Hata nedeniyle durduruldu; kapatıp açarak yeniden dene</string>
+    <string name="ad_engine_limits">Açık reklam işaretlerinde yalnızca medya sesi susturulur. Şarkı atlama, hızlandırma ve DRM aşma yoktur. Görünmeyen medya ve sayfa değişiklikleri desteği sınırlayabilir.</string>
+    <string name="ad_engine_risk">Spotify koşulları reklam engellemeyi yasaklayabilir; hesap kısıtlaması veya kapatılma riski vardır.</string>
+    <string name="ad_engine_features">Modül tercihleri</string>
+    <string name="ad_mute">Algılanan reklamın sesini sustur</string>
+    <string name="ad_banners">Bilinen reklam bannerlarını gizle</string>
+    <string name="ad_promos">Bilinen tanıtım bannerlarını gizle</string>
+    <string name="ad_network">Üçüncü taraf reklam isteklerini filtrele</string>
+    <string name="engine_features_running">Seçili özellikler sayfaya uygulandı.</string>
+    <string name="engine_features_idle">Tercihler kayıtlı; sayfa modülü şu anda etkin değil.</string>
+    <string name="engine_sw_available">Service Worker istek filtresi destekleniyor. Önbellek yanıtları ve WebSocket filtrelenmez.</string>
+    <string name="engine_sw_unavailable">Service Worker filtresi desteklenmiyor; yalnızca WebView istekleri değerlendirilebilir.</string>
+    <string name="engine_eme_available">Sayfa EME API sunuyor. Widevine, hesap yetkileri ve tam oynatma ayrıca doğrulanmalıdır.</string>
+    <string name="engine_eme_unavailable">Sayfada EME API yok; korumalı tam oynatma desteklenmeyebilir.</string>
+    <string name="engine_eme_unknown">EME durumu henüz ölçülmedi.</string>
+    <string name="ad_engine_stats">Gerçek modül işlemleri · bu oturum</string>
+    <string name="ad_detected">Algılanan reklam aralıkları</string>
+    <string name="ad_muted">Susturulan medya öğeleri</string>
+    <string name="ad_banner_count">Gizlenen reklam bannerları</string>
+    <string name="ad_promo_count">Gizlenen tanıtım bannerları</string>
+    <string name="ad_requests">Engellenen ağ istekleri</string>
+    <string name="ad_errors">Koruma hataları</string>
+    <string name="ad_engine_logs">Koruma günlüğü · en son 40 olay</string>
+    <string name="engine_no_events">Henüz işlem yok.</string>
+    <string name="engine_playing">Sayfadaki medya oynatılıyor.</string>
+    <string name="engine_paused">Sayfada oynayan medya ölçülmedi.</string>
 </resources>

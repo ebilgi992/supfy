@@ -5,8 +5,9 @@ plugins {
 }
 
 // Sürüm kodu: CI her derlemede `-PsupfyVersionCode=<1000 + çalışma no>` geçer, böylece her yeni APK
-// bir öncekinden büyük olur ve Android onu güncelleme olarak kabul eder. Yerel derlemede 5 kullanılır.
-val supfyVersionCode = (project.findProperty("supfyVersionCode") as String?)?.toIntOrNull() ?: 5
+// bir öncekinden büyük olur. Yerel V10 derlemesinin tabanı 1019; CI 2000 + çalışma no kullanır.
+val supfyVersionCode = (project.findProperty("supfyVersionCode") as String?)?.toIntOrNull() ?: 1019
+require(supfyVersionCode >= 1019) { "V10 sürüm kodu 1018 kurulumundan büyük olmalıdır." }
 
 // İmza: anahtar dosyası ve şifreler yalnızca ortam değişkenlerinden okunur (CI'da GitHub Secrets).
 // Depoda hiçbir anahtar veya şifre bulunmaz. Değişkenler yoksa Android'in debug anahtarı kullanılır.
@@ -22,7 +23,8 @@ android {
         minSdk = 26
         targetSdk = 35
         versionCode = supfyVersionCode
-        versionName = "0.4.0"
+        versionName = "0.5.0-v10"
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         // Uygulama içi güncelleme denetiminin sorguladığı depo (owner/repo).
         buildConfigField("String", "UPDATE_REPO", "\"ebilgi992/supfy\"")
@@ -90,4 +92,7 @@ dependencies {
     implementation(libs.androidx.compose.material.icons.core)
 
     testImplementation(libs.junit)
+    androidTestImplementation(libs.androidx.test.runner)
+    androidTestImplementation(libs.androidx.test.junit)
+    androidTestImplementation(libs.androidx.test.core)
 }

@@ -57,6 +57,9 @@ import com.supfy.app.web.PageErrorKind
 import com.supfy.app.web.UrlPolicy
 import com.supfy.app.web.WebUiState
 import com.supfy.app.web.WebViewFactory
+import com.supfy.app.protection.ProtectionEngine
+import com.supfy.app.protection.ProtectionOptions
+import com.supfy.app.protection.ProtectionWebController
 
 class MainActivity : ComponentActivity() {
 
@@ -67,6 +70,8 @@ class MainActivity : ComponentActivity() {
     private val updates = UpdateRepository(BuildConfig.UPDATE_REPO)
     private var pendingUpdate: AvailableUpdate? by mutableStateOf<AvailableUpdate?>(null)
     private var updateCheckRunning = false
+    private val protectionEngine = ProtectionEngine()
+    private lateinit var protection: ProtectionWebController
 
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
@@ -74,8 +79,11 @@ class MainActivity : ComponentActivity() {
 
         appSettings = AppSettings(applicationContext)
         connectivity = ConnectivityObserver(applicationContext)
+        protection = ProtectionWebController(applicationContext, protectionEngine)
+        protection.configure(appSettings.protectionOptions)
 
         WebViewFactory.hardenServiceWorkers()
+        protection.installServiceWorkerFilter()
         val wv = buildWebView()
         webView = wv
         // Süreç sistem tarafından kapatıldıysa kaldığı sayfaya döner.
@@ -113,6 +121,7 @@ class MainActivity : ComponentActivity() {
                 val online by connectivity.online.collectAsStateWithLifecycle()
                 val background by appSettings.backgroundPlayback.collectAsStateWithLifecycle()
                 val desktop by appSettings.desktopMode.collectAsStateWithLifecycle()
+                val engineState by protectionEngine.state.collectAsStateWithLifecycle()
                 var showSettings by rememberSaveable { mutableStateOf(false) }
                 var showProtection by rememberSaveable { mutableStateOf(false) }
 
@@ -136,7 +145,6 @@ class MainActivity : ComponentActivity() {
                         online = online,
                         onRefresh = { webView?.reload() },
                         onHome = { webView?.loadUrl(UrlPolicy.HOME_URL) },
-                        onOpenBrowser = { openExternally(Uri.parse(uiState.currentUrl ?: UrlPolicy.HOME_URL)) },
                         onRetry = ::retry,
                         onOpenSettings = { showSettings = true },
                         onOpenProtection = { showProtection = true },
@@ -168,6 +176,9 @@ class MainActivity : ComponentActivity() {
                         exit = slideOutHorizontally { it } + fadeOut(),
                     ) {
                         ProtectionScreen(
+                            engine = engineState,
+                            serviceWorkerFiltering = protection.serviceWorkerFiltering,
+                            onOptionsChange = ::setProtectionOptions,
                             support = support,
                             stats = uiState.stats,
                             desktopMode = desktop,
@@ -216,9 +227,14 @@ class MainActivity : ComponentActivity() {
     private fun buildWebView(): WebView = WebViewFactory.create(
         context = this,
         desktopMode = appSettings.desktopMode.value,
-        webViewClient = SupfyWebViewClient(uiState, ::openExternally, ::onRendererGone),
+        webViewClient = SupfyWebViewClient(uiState, ::openExternally, ::onRendererGone, protection),
         chromeClient = SupfyChromeClient(uiState),
-    )
+    ).also(protection::attach)
+
+    private fun setProtectionOptions(options: ProtectionOptions) {
+        appSettings.setProtectionOptions(options)
+        protection.configure(options)
+    }
 
     private fun retry() {
         val failing = uiState.error?.failingUrl
@@ -346,6 +362,8 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun destroyWebView(wv: WebView) {
+        protection.detach()
+        (wv.webChromeClient as? SupfyChromeClient)?.close()
         (wv.parent as? ViewGroup)?.removeView(wv)
         wv.stopLoading()
         wv.destroy()
@@ -359,9 +377,11 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         webView?.onResume()
+        if (::protection.isInitialized) protection.setForeground(true)
     }
 
     override fun onPause() {
+        protection.setForeground(false)
         CookieManager.getInstance().flush()
         if (!appSettings.backgroundPlayback.value) webView?.onPause()
         super.onPause()
@@ -400,6 +420,7 @@ class MainActivity : ComponentActivity() {
     override fun onDestroy() {
         webView?.let { destroyWebView(it) }
         webView = null
+        if (::protection.isInitialized) protection.close()
         super.onDestroy()
     }
 }

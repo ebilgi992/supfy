@@ -1,0 +1,6 @@
+{
+  "name": "supfy-dom-tests",
+  "private": true,
+  "scripts": { "test": "node protection.test.cjs" },
+  "devDependencies": { "jsdom": "26.1.0" }
+}
