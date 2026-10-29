@@ -22,6 +22,70 @@ function player(title='Song') {
 }
 const wait = () => new Promise(r=>setTimeout(r,220));
 
+test('positive track link vetoes a stale advertiser marker',()=>{
+ const d=page(player()); try {
+  const w=d.window.document.querySelector('[data-testid="now-playing-widget"]');
+  w.innerHTML='<i data-testid="track-info-advertiser"></i><a href="/track/0123456789ABCDEFGHIJKL">Music</a>';
+  const a=api(d); assert.equal(a.snapshot().detected,0); assert.equal(d.window.document.querySelector('audio').muted,false);
+ } finally { d.window.close(); }
+});
+
+test('an explicit ad badge without media or corroborating playback state cannot mute',()=>{
+ const d=page('<div data-testid="now-playing-widget"><i data-testid="track-info-advertiser"></i></div>');
+ try { assert.equal(api(d).snapshot().detected,0); } finally {d.window.close();}
+});
+
+test('audio component failure leaves visual protection running',()=>{
+ const d=page(player()+'<div data-testid="ad-banner">Ad</div>'); try {
+  const doc=d.window.document;
+  doc.querySelector('[data-testid="now-playing-widget"]').innerHTML='<i data-testid="track-info-advertiser"></i>';
+  Object.defineProperty(doc.querySelector('audio'),'muted',{get:()=>false,set:()=>{throw new Error('unsupported mute');}});
+  const a=api(d); assert.equal(a.snapshot().audioError,true);
+  assert.notEqual(a.snapshot().phase,'error'); assert.equal(a.snapshot().banners,1);
+ } finally {d.window.close();}
+});
+
+test('confirmed normal track playback is counted only after an ad ends',async()=>{
+ const d=page(player()); try {
+  const doc=d.window.document, w=doc.querySelector('[data-testid="now-playing-widget"]');
+  w.innerHTML='<i data-testid="track-info-advertiser"></i>';
+  const a=api(d); Object.defineProperty(doc.querySelector('audio'),'paused',{value:false,configurable:true});
+  w.innerHTML='<a href="/track/0123456789ABCDEFGHIJKL">Music</a>'; await wait();
+  assert.equal(a.snapshot().resumed,1); a.snapshot(); assert.equal(a.snapshot().resumed,1);
+ } finally {d.window.close();}
+});
+
+test('document-start initialization waits safely for the root element',async()=>{
+ const d=page(); try {
+  const doc=d.window.document, root=doc.documentElement; root.remove();
+  const a=api(d); assert.equal(a.snapshot().ready,false);
+  doc.appendChild(root); doc.dispatchEvent(new d.window.Event('DOMContentLoaded')); await wait();
+  assert.equal(a.snapshot().ready,true);
+ } finally {d.window.close();}
+});
+
+test('CSS class changes end the ad and restore sound',async()=>{
+ const d=page('<style>.off{display:none}</style>'+player()); try {
+  const doc=d.window.document,w=doc.querySelector('[data-testid="now-playing-widget"]');
+  w.innerHTML='<i data-testid="track-info-advertiser"></i>';const a=api(d);
+  assert.equal(doc.querySelector('audio').muted,true);
+  w.firstChild.className='off';await wait();
+  assert.equal(a.snapshot().phase,'music');assert.equal(doc.querySelector('audio').muted,false);
+ }finally{d.window.close();}
+});
+
+test('snapshot rescan observes computed visibility without DOM mutations',()=>{
+ const d=page('<style>.hideAd{display:block}</style>'+player());try{
+  const doc=d.window.document,w=doc.querySelector('[data-testid="now-playing-widget"]');
+  w.innerHTML='<i class="hideAd" data-testid="track-info-advertiser"></i>';const a=api(d);
+  assert.equal(doc.querySelector('audio').muted,true);
+  // jsdom does not invalidate computed-style caches on CSSOM edits; model that browser boundary.
+  const marker=w.firstChild, original=d.window.getComputedStyle.bind(d.window);
+  d.window.getComputedStyle=(el)=>el===marker?{display:'none',visibility:'visible'}:original(el);
+  assert.equal(a.snapshot().phase,'music');assert.equal(doc.querySelector('audio').muted,false);
+ }finally{d.window.close();}
+});
+
 test('playback tracking follows pause and play events without controlling playback',async()=>{
  const d=page(player()); try {
   const a=api(d), media=d.window.document.querySelector('audio');
@@ -159,7 +223,7 @@ test('DOM exception fails open, restoring audio and styles',async()=>{
 test('missing host heartbeat restores audio after lease timeout',()=>{
  const d=page(player()); try {
   const doc=d.window.document; doc.querySelector('[data-testid="now-playing-widget"]').innerHTML='<i data-testid="track-info-advertiser"></i>';
-  let clock=100; let watchdog; d.window.Date.now=()=>clock;
+  let clock=100; let watchdog; Object.defineProperty(d.window.performance,'now',{value:()=>clock,configurable:true});
   d.window.setInterval=(fn)=>{watchdog=fn;return 1;};
   const a=api(d); assert.equal(doc.querySelector('audio').muted,true);
   clock=31000; watchdog(); assert.equal(doc.querySelector('audio').muted,false); assert.equal(a.snapshot().phase,'error');

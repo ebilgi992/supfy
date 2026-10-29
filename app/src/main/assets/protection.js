@@ -1,117 +1,144 @@
-/* Supfy protection, original MIT implementation. No credentials, network or native bridge. */
+/* Supfy protection — original MIT implementation. No credentials, network or native bridge. */
 (function () {
   'use strict';
   if (window.top !== window || location.origin !== 'https://open.spotify.com') return;
   if (window.__supfyProtection) return;
-
-  let options = {enabled:false, muteAds:true, hideBanners:true, hidePromos:true};
-  let observer = null, pending = null, watchdog = null, heartbeat = 0, adSince = 0;
-  let phase = 'idle', inAd = false, failed = false, playing = false;
-  const mediaSaved = new Map(), hidden = new Map();
-  const totals = {detected:0, muted:0, banners:0, promos:0, restored:0, errors:0};
-  const adSelector = '[data-testid="now-playing-widget"] [data-testid="track-info-advertiser"], ' +
-    '[data-testid="now-playing-widget"] [data-testid="context-item-info-advertiser"], ' +
-    '[data-testid="video-player-ad-overlay"]';
-  const bannerSelector = '[data-testid="ad-banner"], [data-testid="leaderboard-ad"], [data-testid="companion-ad"]';
-  const promoSelector = '[data-testid="premium-upsell-banner"], [data-testid="home-upsell-banner"]';
-
+  let options = {enabled:false, muteAds:true, hideBanners:true, hidePromos:true, nativeAudio:false};
+  let observer=null, pending=null, watchdog=null, heartbeat=0, adSince=0, awaitingRoot=false;
+  let phase='idle', inAd=false, failed=false, playing=false, ready=false, awaitingMusic=false;
+  let audioError=false, visualError=false, mediaAvailable=false, evidence=0;
+  const mediaSaved=new Map(), hidden=new Map();
+  const totals={detected:0, muted:0, banners:0, promos:0, restored:0, errors:0, resumed:0};
+  const widgets='[data-testid="now-playing-widget"], [data-testid="now-playing-bar"]';
+  const advertiser='[data-testid="track-info-advertiser"], [data-testid="context-item-info-advertiser"]';
+  const bannerSelector='[data-testid="ad-banner"], [data-testid="leaderboard-ad"], [data-testid="companion-ad"]';
+  const promoSelector='[data-testid="premium-upsell-banner"], [data-testid="home-upsell-banner"]';
+  const clock=()=>performance.now();
   function visible(node) {
-    for (let el = node; el && el.nodeType === 1; el = el.parentElement) {
-      if (el.hidden || el.getAttribute('aria-hidden') === 'true') return false;
-      const style = getComputedStyle(el);
-      if (style.display === 'none' || style.visibility === 'hidden' || style.visibility === 'collapse') return false;
+    for(let el=node;el&&el.nodeType===1;el=el.parentElement) {
+      if(el.hidden||el.getAttribute('aria-hidden')==='true') return false;
+      const style=getComputedStyle(el);
+      if(style.display==='none'||style.visibility==='hidden'||style.visibility==='collapse') return false;
     }
     return true;
   }
+  function audioFault() {if(!audioError){audioError=true;totals.errors++;}}
+  function visualFault() {if(!visualError){visualError=true;totals.errors++;}}
   function restoreAudio() {
-    mediaSaved.forEach((muted, media) => {
-      // A user who already unmuted this element keeps that newer choice.
-      if (media.muted === true) {media.muted = muted; totals.restored++;}
+    mediaSaved.forEach((muted,media)=>{
+      try {if(media.muted===true){media.muted=muted;if(media.muted===muted)totals.restored++;}}
+      catch(_){audioFault();}
     });
     mediaSaved.clear();
   }
-  function restoreHidden(kind, detachedOnly = false) {
-    hidden.forEach((record, el) => {
-      if (kind && record.kind !== kind) return;
-      if (detachedOnly && el.isConnected) return;
-      if (el.style.getPropertyValue('display') === 'none' && el.style.getPropertyPriority('display') === 'important') {
-        if (record.value) el.style.setProperty('display', record.value, record.priority);
-        else el.style.removeProperty('display');
-      }
+  function restoreHidden(kind,detachedOnly=false) {
+    hidden.forEach((record,el)=>{
+      if((kind&&record.kind!==kind)||(detachedOnly&&el.isConnected))return;
+      try {
+        if(el.style.getPropertyValue('display')==='none'&&el.style.getPropertyPriority('display')==='important') {
+          if(record.value)el.style.setProperty('display',record.value,record.priority);
+          else el.style.removeProperty('display');
+        }
+      }catch(_){visualFault();}
       hidden.delete(el);
     });
   }
   function cleanup() {
-    if (observer) observer.disconnect();
-    observer = null;
-    if (pending !== null) clearTimeout(pending);
-    if (watchdog !== null) clearInterval(watchdog);
-    pending = watchdog = null;
-    ['play','pause','ended','error'].forEach(name => document.removeEventListener(name,schedule,true));
-    restoreAudio(); restoreHidden(); inAd = false; adSince = 0;
+    if(observer)observer.disconnect();observer=null;
+    if(pending!==null)clearTimeout(pending);
+    if(watchdog!==null)clearInterval(watchdog);
+    pending=watchdog=null;
+    document.removeEventListener('DOMContentLoaded',start);
+    awaitingRoot=false;
+    ['play','pause','ended','error'].forEach(name=>document.removeEventListener(name,schedule,true));
+    restoreAudio();restoreHidden();inAd=false;adSince=0;ready=false;awaitingMusic=false;
   }
-  function fail() {
-    failed = true; options.enabled = false; phase = 'error'; totals.errors++;
-    cleanup();
-  }
-  function hide(selector, kind) {
-    document.querySelectorAll(selector).forEach(el => {
-      if (hidden.has(el) || !visible(el)) return;
-      hidden.set(el, {kind, value:el.style.getPropertyValue('display'), priority:el.style.getPropertyPriority('display')});
+  function fail() {failed=true;options.enabled=false;phase='error';totals.errors++;cleanup();}
+  function hide(selector,kind) {
+    document.querySelectorAll(selector).forEach(el=>{
+      if(hidden.has(el)||!visible(el))return;
+      hidden.set(el,{kind,value:el.style.getPropertyValue('display'),priority:el.style.getPropertyPriority('display')});
       el.style.setProperty('display','none','important');
-      totals[kind]++;
+      if(el.style.getPropertyValue('display')==='none')totals[kind]++;
     });
   }
   function scan() {
-    pending = null;
-    if (!options.enabled || failed) return;
+    if(pending!==null)clearTimeout(pending);
+    pending=null;
+    if(!options.enabled||failed||!ready)return;
     try {
-      restoreHidden(null,true);
-      const ad = Array.from(document.querySelectorAll(adSelector)).some(visible);
-      if (ad && !inAd) {totals.detected++; adSince = Date.now();}
-      if (!ad || !options.muteAds) restoreAudio();
-      const mediaElements = Array.from(document.querySelectorAll('audio,video'));
-      playing = mediaElements.some(media => !media.paused && !media.ended);
-      if (ad && options.muteAds) {
-        mediaElements.forEach(media => {
-          if (!mediaSaved.has(media) && media.muted === false) {
-            mediaSaved.set(media, false); media.muted = true; totals.muted++;
-          }
-        });
+      const media=Array.from(document.querySelectorAll('audio,video'));
+      mediaAvailable=media.length>0;
+      const players=Array.from(document.querySelectorAll(widgets)).filter(visible);
+      const marker=players.some(w=>Array.from(w.querySelectorAll(advertiser)).some(visible))||
+        Array.from(document.querySelectorAll('[data-testid="video-player-ad-overlay"]')).some(visible);
+      const normalTrack=players.some(w=>Array.from(w.querySelectorAll('a[href]')).some(a=>
+        visible(a)&&/\/(?:track|episode)\/[A-Za-z0-9]{22}(?:[?#]|$)/.test(a.getAttribute('href')||'')));
+      const pauseControl=Array.from(document.querySelectorAll('[data-testid="control-button-playpause"]')).some(b=>
+        visible(b)&&/^(pause|duraklat)$/i.test((b.getAttribute('aria-label')||'').trim()));
+      const playbackEvidence=mediaAvailable||(options.nativeAudio&&pauseControl);
+      evidence=Number(marker)+Number(playbackEvidence)+Number(!normalTrack);
+      const ad=marker&&playbackEvidence&&!normalTrack;
+      playing=media.some(m=>!m.paused&&!m.ended)||(options.nativeAudio&&pauseControl);
+      if(ad&&!inAd){totals.detected++;adSince=clock();}
+      if(inAd&&!ad)awaitingMusic=true;
+      if(awaitingMusic&&!ad&&normalTrack&&playing){totals.resumed++;awaitingMusic=false;}
+      if(!ad||!options.muteAds||audioError)restoreAudio();
+      if(ad&&options.muteAds&&!audioError) {
+        try {
+          media.forEach(m=>{
+            if(!mediaSaved.has(m)&&m.muted===false){
+              mediaSaved.set(m,false);m.muted=true;
+              if(m.muted===true)totals.muted++;
+            }
+          });
+        }catch(_){audioFault();restoreAudio();}
       }
-      inAd = ad;
-      phase = ad ? 'ad' : (mediaElements.length ? 'music' : 'idle');
-      if (options.hideBanners) hide(bannerSelector,'banners'); else restoreHidden('banners');
-      if (options.hidePromos) hide(promoSelector,'promos'); else restoreHidden('promos');
-    } catch (_) {fail();}
+      inAd=ad;phase=ad?'ad':(mediaAvailable||pauseControl?'music':'idle');
+      if(!visualError) {
+        try {
+          restoreHidden(null,true);
+          if(options.hideBanners)hide(bannerSelector,'banners');else restoreHidden('banners');
+          if(options.hidePromos)hide(promoSelector,'promos');else restoreHidden('promos');
+        }catch(_){visualFault();restoreHidden();}
+      }
+    }catch(_){fail();}
   }
-  function schedule() {
-    if (pending === null && options.enabled) pending = setTimeout(scan,100);
+  function schedule(){if(pending===null&&options.enabled&&ready)pending=setTimeout(scan,100);}
+  function start() {
+    awaitingRoot=false;
+    if(!options.enabled||failed)return;
+    if(!document.documentElement){
+      awaitingRoot=true;document.addEventListener('DOMContentLoaded',start,{once:true});return;
+    }
+    if(!observer) {
+      observer=new MutationObserver(schedule);
+      observer.observe(document.documentElement,{subtree:true,childList:true,attributes:true,
+        attributeFilter:['data-testid','aria-hidden','hidden','style','class','data-state','src','href','aria-label']});
+      ['play','pause','ended','error'].forEach(name=>document.addEventListener(name,schedule,true));
+      watchdog=setInterval(()=>{
+        if(clock()-heartbeat>20000||(inAd&&clock()-adSince>120000))fail();
+      },5000);
+    }
+    ready=true;scan();
   }
-  const api = {
+  const api={
     configure(next) {
-      if (!next || !next.enabled) {api.stop(); return;}
-      if (failed) return;
-      options = {enabled:true, muteAds:next.muteAds === true, hideBanners:next.hideBanners === true, hidePromos:next.hidePromos === true};
-      heartbeat = Date.now();
-      if (!observer) {
-        ['play','pause','ended','error'].forEach(name => document.addEventListener(name,schedule,true));
-        observer = new MutationObserver(schedule);
-        observer.observe(document.documentElement, {subtree:true, childList:true, attributes:true,
-          attributeFilter:['data-testid','aria-hidden','hidden','style','src']});
-        watchdog = setInterval(() => {
-          if (Date.now() - heartbeat > 20000 || (inAd && Date.now() - adSince > 120000)) fail();
-        },5000);
-      }
-      scan();
+      if(!next||!next.enabled){api.stop();return;}
+      if(failed)return;
+      options={enabled:true,muteAds:next.muteAds===true,hideBanners:next.hideBanners===true,
+        hidePromos:next.hidePromos===true,nativeAudio:next.nativeAudio===true};
+      heartbeat=clock();if(!awaitingRoot)start();
     },
-    snapshot() {
-      heartbeat = Date.now();
-      return {...totals, version:1, enabled:options.enabled, phase, playing,
-        eme:typeof navigator.requestMediaKeySystemAccess === 'function'};
+    snapshot(){
+      heartbeat=clock();
+      if(options.enabled&&ready&&!failed)scan();
+      return {...totals,version:2,enabled:options.enabled,ready,phase,playing,evidence,
+        audioError,visualError,audioReady:ready&&!audioError&&(mediaAvailable||options.nativeAudio),
+        eme:typeof navigator.requestMediaKeySystemAccess==='function'};
     },
-    stop() {options.enabled = false; cleanup(); phase = 'idle'; failed = false;}
+    stop(){options.enabled=false;cleanup();phase='idle';failed=false;audioError=visualError=false;playing=false;}
   };
-  Object.defineProperty(window,'__supfyProtection',{value:api, configurable:false});
-  window.addEventListener('pagehide', () => api.stop());
+  Object.defineProperty(window,'__supfyProtection',{value:api,configurable:false});
+  window.addEventListener('pagehide',()=>api.stop());
 })();

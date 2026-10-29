@@ -72,6 +72,7 @@ fun SupfyScreen(
     online: Boolean,
     onRefresh: () -> Unit,
     onHome: () -> Unit,
+    onLogin: () -> Unit,
     onRetry: () -> Unit,
     onOpenSettings: () -> Unit,
     onOpenProtection: () -> Unit,
@@ -84,6 +85,7 @@ fun SupfyScreen(
                 progress = state.progress,
                 onRefresh = onRefresh,
                 onHome = onHome,
+                onLogin = onLogin,
                 onOpenSettings = onOpenSettings,
                 onOpenProtection = onOpenProtection,
             )
@@ -105,6 +107,13 @@ fun SupfyScreen(
                         },
                         modifier = Modifier.fillMaxSize(),
                     )
+                }
+            }
+
+            if (state.playbackNotice) {
+                Surface(modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth(),
+                    color = MaterialTheme.colorScheme.surfaceVariant) {
+                    Text(stringResource(R.string.playback_app_notice), modifier = Modifier.padding(16.dp))
                 }
             }
 
@@ -145,6 +154,7 @@ private fun SupfyTopBar(
     progress: Int,
     onRefresh: () -> Unit,
     onHome: () -> Unit,
+    onLogin: () -> Unit,
     onOpenSettings: () -> Unit,
     onOpenProtection: () -> Unit,
 ) {
@@ -173,6 +183,11 @@ private fun SupfyTopBar(
                         Icon(Icons.Filled.MoreVert, contentDescription = stringResource(R.string.action_more))
                     }
                     DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.action_login)) },
+                            leadingIcon = { Icon(Icons.Filled.Lock, contentDescription = null) },
+                            onClick = { menuOpen = false; onLogin() },
+                        )
                         DropdownMenuItem(
                             text = { Text(stringResource(R.string.action_home)) },
                             leadingIcon = { Icon(Icons.Filled.Home, contentDescription = null) },

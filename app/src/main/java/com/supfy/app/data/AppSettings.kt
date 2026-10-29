@@ -32,12 +32,12 @@ class AppSettings(context: Context) {
     private val _backgroundPlayback = MutableStateFlow(prefs.getBoolean(KEY_BACKGROUND, true))
     val backgroundPlayback: StateFlow<Boolean> = _backgroundPlayback.asStateFlow()
 
-    private val _desktopMode = MutableStateFlow(prefs.getBoolean(KEY_DESKTOP, false))
+    private val _desktopMode = MutableStateFlow(prefs.getBoolean(KEY_DESKTOP, true))
     val desktopMode: StateFlow<Boolean> = _desktopMode.asStateFlow()
 
     private val _themeMode = MutableStateFlow(
         runCatching { ThemeMode.valueOf(prefs.getString(KEY_THEME, null) ?: "") }
-            .getOrDefault(ThemeMode.SYSTEM),
+            .getOrDefault(ThemeMode.DARK),
     )
     val themeMode: StateFlow<ThemeMode> = _themeMode.asStateFlow()
 

@@ -60,6 +60,8 @@ import com.supfy.app.web.WebViewFactory
 import com.supfy.app.protection.ProtectionEngine
 import com.supfy.app.protection.ProtectionOptions
 import com.supfy.app.protection.ProtectionWebController
+import com.supfy.app.ui.AuthenticationWindow
+import com.supfy.app.web.PlayerNavigation
 
 class MainActivity : ComponentActivity() {
 
@@ -72,6 +74,8 @@ class MainActivity : ComponentActivity() {
     private var updateCheckRunning = false
     private val protectionEngine = ProtectionEngine()
     private lateinit var protection: ProtectionWebController
+    private var authenticationWindow: WebView? by mutableStateOf(null)
+    private var mainChrome: SupfyChromeClient? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
@@ -79,7 +83,7 @@ class MainActivity : ComponentActivity() {
 
         appSettings = AppSettings(applicationContext)
         connectivity = ConnectivityObserver(applicationContext)
-        protection = ProtectionWebController(applicationContext, protectionEngine)
+        protection = ProtectionWebController(applicationContext, protectionEngine, ::recoverAudio)
         protection.configure(appSettings.protectionOptions)
 
         WebViewFactory.hardenServiceWorkers()
@@ -145,6 +149,7 @@ class MainActivity : ComponentActivity() {
                         online = online,
                         onRefresh = { webView?.reload() },
                         onHome = { webView?.loadUrl(UrlPolicy.HOME_URL) },
+                        onLogin = { webView?.loadUrl(PlayerNavigation.LOGIN_URL) },
                         onRetry = ::retry,
                         onOpenSettings = { showSettings = true },
                         onOpenProtection = { showProtection = true },
@@ -216,6 +221,10 @@ class MainActivity : ComponentActivity() {
                     )
                 }
 
+                authenticationWindow?.let { popup ->
+                    AuthenticationWindow(popup) { (webView?.webChromeClient as? SupfyChromeClient)?.closePopup() }
+                }
+
                 // Sonra tanımlanan BackHandler önceliklidir: önce ayarlar kapanır, sonra sayfa geri gider.
                 BackHandler(enabled = !showSettings && !showProtection && uiState.canGoBack) { webView?.goBack() }
                 BackHandler(enabled = showSettings) { showSettings = false }
@@ -224,16 +233,28 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun buildWebView(): WebView = WebViewFactory.create(
+    private fun buildWebView(): WebView {
+        val chrome=SupfyChromeClient(uiState, { authenticationWindow=it }, ::openExternally)
+        mainChrome=chrome
+        return WebViewFactory.create(
         context = this,
         desktopMode = appSettings.desktopMode.value,
         webViewClient = SupfyWebViewClient(uiState, ::openExternally, ::onRendererGone, protection),
-        chromeClient = SupfyChromeClient(uiState),
+        chromeClient = chrome,
     ).also(protection::attach)
+    }
 
     private fun setProtectionOptions(options: ProtectionOptions) {
         appSettings.setProtectionOptions(options)
         protection.configure(options)
+    }
+
+    private fun recoverAudio() {
+        if (isDestroyed) return
+        val url=uiState.currentUrl?.takeIf { UrlPolicy.decide(it)==UrlPolicy.Decision.LOAD_IN_APP } ?: UrlPolicy.HOME_URL
+        CookieManager.getInstance().flush()
+        replaceWebView(url)
+        Toast.makeText(this,R.string.audio_recovery_reset,Toast.LENGTH_LONG).show()
     }
 
     private fun retry() {
@@ -270,24 +291,25 @@ class MainActivity : ComponentActivity() {
     private var lastRendererCrashMs = 0L
 
     private fun onRendererGone() {
+        protection.rendererGone()
         val now = System.currentTimeMillis()
         val repeated = now - lastRendererCrashMs < RENDERER_CRASH_WINDOW_MS
         lastRendererCrashMs = now
         if (repeated) {
             // Kısa sürede ikinci çökme: döngüye girmemek için sayfayı otomatik yüklemeyiz;
             // kullanıcı hata ekranından "Tekrar dene" ile kendisi başlatır.
-            webView?.let { destroyWebView(it) }
+            webView?.let { destroyWebView(it, rendererGone = true) }
             webView = buildWebView()
             uiState.canGoBack = false
             uiState.error = PageError(PageErrorKind.GENERIC, UrlPolicy.HOME_URL)
         } else {
-            replaceWebView(UrlPolicy.HOME_URL)
+            replaceWebView(UrlPolicy.HOME_URL, rendererGone = true)
             Toast.makeText(this, R.string.error_renderer, Toast.LENGTH_SHORT).show()
         }
     }
 
-    private fun replaceWebView(url: String) {
-        webView?.let { destroyWebView(it) }
+    private fun replaceWebView(url: String, rendererGone: Boolean = false) {
+        webView?.let { destroyWebView(it, rendererGone) }
         webView = null
         uiState.error = null
         uiState.canGoBack = false
@@ -361,11 +383,11 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun destroyWebView(wv: WebView) {
+    private fun destroyWebView(wv: WebView, rendererGone: Boolean = false) {
         protection.detach()
-        (wv.webChromeClient as? SupfyChromeClient)?.close()
+        mainChrome?.close(rendererGone)
         (wv.parent as? ViewGroup)?.removeView(wv)
-        wv.stopLoading()
+        if (!rendererGone) wv.stopLoading()
         wv.destroy()
     }
 

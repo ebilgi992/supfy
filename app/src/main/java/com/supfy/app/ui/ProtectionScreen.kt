@@ -49,6 +49,7 @@ import com.supfy.app.web.SessionStats
 import com.supfy.app.protection.EngineState
 import com.supfy.app.protection.EngineStatus
 import com.supfy.app.protection.ProtectionOptions
+import com.supfy.app.protection.ComponentStatus
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -100,6 +101,17 @@ fun ProtectionScreen(
                 Muted(stringResource(R.string.ad_engine_limits))
                 Spacer(Modifier.height(8.dp))
                 Muted(stringResource(R.string.ad_engine_risk))
+                Spacer(Modifier.height(8.dp))
+                ComponentRow(R.string.component_detection, engine.detectionStatus)
+                ComponentRow(R.string.component_network, engine.networkStatus)
+                ComponentRow(R.string.component_visual, engine.visualStatus)
+                ComponentRow(R.string.component_audio, engine.audioStatus)
+                engine.lastError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                Spacer(Modifier.height(8.dp))
+                OutlinedButton(onClick = {
+                    onOptionsChange(engine.options.copy(enabled = false))
+                    onResetPage()
+                }) { Text(stringResource(R.string.normal_playback)) }
             }
 
             Section(stringResource(R.string.ad_engine_features)) {
@@ -117,6 +129,8 @@ fun ProtectionScreen(
                     onOptionsChange(engine.options.copy(filterNetwork = it))
                 }
                 Muted(stringResource(if (active) R.string.engine_features_running else R.string.engine_features_idle))
+                Muted(stringResource(if (engine.nativeAudioSupported && !engine.nativeAudioError)
+                    R.string.audio_backend_native else R.string.audio_backend_dom))
                 Muted(stringResource(if (serviceWorkerFiltering) R.string.engine_sw_available else R.string.engine_sw_unavailable))
                 Muted(stringResource(when (engine.eme) {
                     true -> R.string.engine_eme_available
@@ -133,6 +147,9 @@ fun ProtectionScreen(
                 EngineStat(R.string.ad_promo_count, engine.hiddenPromos)
                 EngineStat(R.string.ad_requests, engine.blockedRequests)
                 EngineStat(R.string.ad_errors, engine.errors)
+                EngineStat(R.string.native_mute_count, engine.nativeMutes)
+                EngineStat(R.string.native_restore_count, engine.nativeRestores)
+                EngineStat(R.string.music_resume_count, engine.resumedMusic)
                 Muted(stringResource(R.string.stat_note))
             }
 
@@ -202,6 +219,20 @@ fun ProtectionScreen(
             }
 
         }
+    }
+}
+
+@Composable
+private fun ComponentRow(@StringRes label: Int, status: ComponentStatus) {
+    Row(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+        Text(stringResource(label), modifier = Modifier.weight(1f))
+        Text(stringResource(when (status) {
+            ComponentStatus.DISABLED -> R.string.component_disabled
+            ComponentStatus.WAITING -> R.string.component_waiting
+            ComponentStatus.READY -> R.string.component_ready
+            ComponentStatus.PROCESSING -> R.string.component_processing
+            ComponentStatus.ERROR -> R.string.component_error
+        }), color = if (status == ComponentStatus.ERROR) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary)
     }
 }
 

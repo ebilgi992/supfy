@@ -4,6 +4,23 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class ProtectionEngineTest {
+    @Test fun rendererFailureStopsFilteringUntilExplicitRecovery() {
+        val e=active()
+        e.rendererFailed()
+        assertEquals(EngineStatus.ERROR,e.state.value.status)
+        assertFalse(e.shouldBlock("https://doubleclick.net/ad","GET",false))
+        e.configure(ProtectionOptions(enabled=false));e.configure(ProtectionOptions(enabled=true))
+        e.acceptSnapshot(PageSnapshot())
+        assertEquals(EngineStatus.ACTIVE,e.state.value.status)
+    }
+    @Test fun componentErrorsRemainSeparateFromDetectionAndFiltering() {
+        val e = active()
+        e.acceptSnapshot(PageSnapshot(audioError = true, visualError = false, errors = 1))
+        assertEquals(EngineStatus.ACTIVE, e.state.value.status)
+        assertEquals(ComponentStatus.ERROR, e.state.value.audioStatus)
+        assertEquals(ComponentStatus.READY, e.state.value.visualStatus)
+        assertTrue(e.shouldBlock("https://doubleclick.net/ad", "GET", false))
+    }
     private fun active(): ProtectionEngine = ProtectionEngine().apply {
         configure(ProtectionOptions(enabled = true))
         pageStarted("https://open.spotify.com/")

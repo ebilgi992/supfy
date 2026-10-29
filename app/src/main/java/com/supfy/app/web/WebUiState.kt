@@ -11,6 +11,7 @@ data class PageError(val kind: PageErrorKind, val failingUrl: String?)
 
 /** WebView'den gelen olayların Compose arayüzüne yansıyan durumu. */
 class WebUiState {
+    var playbackNotice by mutableStateOf(false)
     var progress by mutableIntStateOf(0)
     var error by mutableStateOf<PageError?>(null)
     var canGoBack by mutableStateOf(false)

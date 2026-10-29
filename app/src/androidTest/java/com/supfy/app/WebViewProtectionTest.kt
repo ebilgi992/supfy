@@ -3,115 +3,215 @@ package com.supfy.app
 import android.os.Handler
 import android.os.Looper
 import android.os.Message
-import android.view.View
-import android.view.ViewGroup
 import android.webkit.RenderProcessGoneDetail
 import android.webkit.WebView
+import android.webkit.WebResourceRequest
+import android.net.Uri
 import androidx.test.core.app.ActivityScenario
+import com.supfy.app.testing.WebViewTestActivity
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.supfy.app.protection.EngineStatus
-import com.supfy.app.protection.ProtectionEngine
-import com.supfy.app.protection.ProtectionOptions
-import com.supfy.app.protection.ProtectionWebController
-import com.supfy.app.web.SupfyChromeClient
-import com.supfy.app.web.WebUiState
+import androidx.test.platform.app.InstrumentationRegistry
+import com.supfy.app.data.AppSettings
+import com.supfy.app.protection.*
+import com.supfy.app.web.*
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
+import org.json.JSONObject
 import org.junit.Assert.*
+import org.junit.After
+import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 
-/** Real Android WebView, synthetic HTML. No Spotify account, advertisements or DRM tests. */
+/** Real Android WebView with local synthetic HTML. Not a Spotify account/ad/DRM test. */
 @RunWith(AndroidJUnit4::class)
 class WebViewProtectionTest {
-    private fun findWebView(v: View): WebView? {
-        if (v is WebView) return v
-        if (v is ViewGroup) for (i in 0 until v.childCount) findWebView(v.getChildAt(i))?.let { return it }
-        return null
-    }
+    private val instrumentation get() = InstrumentationRegistry.getInstrumentation()
+    private lateinit var web: WebView
+    private lateinit var controller: ProtectionWebController
+    private lateinit var chrome: SupfyChromeClient
+    private lateinit var engine: ProtectionEngine
+    private lateinit var scenario: ActivityScenario<WebViewTestActivity>
+    private lateinit var activity: WebViewTestActivity
+    private lateinit var state: WebUiState
+    @Volatile private var rendererLost=false
 
-    private fun evaluate(s: ActivityScenario<MainActivity>, js: String): String {
+    private fun <T> ui(block: () -> T): T {
+        var result: Result<T>? = null
+        instrumentation.runOnMainSync { result = runCatching(block) }
+        return result!!.getOrThrow()
+    }
+    @Before fun setUp() {
+        scenario=ActivityScenario.launch(WebViewTestActivity::class.java)
+        scenario.onActivity { activity=it }
+        ui {
+        engine = ProtectionEngine()
+        controller = ProtectionWebController(instrumentation.targetContext, engine)
+        state = WebUiState()
+        chrome = SupfyChromeClient(state)
+        web = WebViewFactory.create(activity, false,
+            SupfyWebViewClient(state, {}, { rendererLost=true;controller.rendererGone() }, controller), chrome)
+        controller.attach(web)
+        activity.container.addView(web, android.widget.FrameLayout.LayoutParams(-1,-1))
+        web.onResume()
+        }
+    }
+    @After fun tearDown() {
+      ui {
+        if (::controller.isInitialized) controller.close()
+        if (::chrome.isInitialized) chrome.close()
+        if (::web.isInitialized) { activity.container.removeView(web); if(!rendererLost)web.stopLoading(); web.destroy() }
+      }
+      if (::scenario.isInitialized) scenario.close()
+    }
+    private fun evaluate(js: String, target: WebView = web): String {
         val done = CountDownLatch(1)
         var result = ""
-        s.onActivity { a ->
-            val web = findWebView(a.window.decorView) ?: error("WebView missing")
-            web.evaluateJavascript(js) { result = it; done.countDown() }
+        ui { target.evaluateJavascript(js) { result = it; done.countDown() } }
+        val deadline=System.nanoTime()+TimeUnit.SECONDS.toNanos(30)
+        while(!done.await(100,TimeUnit.MILLISECONDS)) {
+            check(!rendererLost) { "Android renderer exited before synthetic JavaScript completed" }
+            check(System.nanoTime()<deadline) { "Synthetic WebView JS timed out" }
         }
-        check(done.await(45, TimeUnit.SECONDS)) { "JS timed out" }
         return result
     }
-
-    private fun fixture(s: ActivityScenario<MainActivity>, ad: Boolean = false, waitForScript: Boolean = true) {
-        s.onActivity { a ->
-            val web = findWebView(a.window.decorView) ?: error("WebView missing")
-            web.stopLoading()
-            web.loadDataWithBaseURL("https://open.spotify.com/", """
+    private fun fixture(ad: Boolean = false, url: String = "https://open.spotify.com/") {
+        ui {
+            web.loadDataWithBaseURL(url, """
                 <html><body data-fixture="ready"><div data-testid="now-playing-widget">
                 ${if (ad) "<i data-testid='track-info-advertiser'></i>" else "Song"}
                 </div><audio></audio><div data-testid="ad-banner">Ad</div></body></html>
-            """.trimIndent(), "text/html", "UTF-8", "https://open.spotify.com/")
+            """.trimIndent(), "text/html", "UTF-8", url)
         }
-        repeat(60) {
-            if (waitForScript) {
-                if (evaluate(s, "document.body && document.body.dataset.fixture") == "\"ready\"") return
-            } else {
-                var ready = false
-                s.onActivity { ready = findWebView(it.window.decorView)?.url == "https://open.spotify.com/" }
-                if (ready) return
-            }
-            Thread.sleep(200)
+        repeat(30) {
+            if (evaluate("document.body && document.body.dataset.fixture") == "\"ready\"") return
+            Thread.sleep(100)
         }
-        error("Fixture did not load")
+        error("Synthetic fixture did not load")
     }
-
-    @Test fun popupRendererLossIsHandledWithoutKillingActivity() {
-        ActivityScenario.launch(MainActivity::class.java).use { s ->
-            fixture(s, waitForScript = false)
-            var created = false
-            var handled = false
-            var finishing = true
-            s.onActivity { a ->
-                val web = findWebView(a.window.decorView)!!
-                val chrome = SupfyChromeClient(WebUiState())
-                val transport = web.WebViewTransport()
-                val message = Message.obtain(Handler(Looper.getMainLooper())).apply { obj = transport }
-                created = chrome.onCreateWindow(web, false, true, message)
-                val popup = requireNotNull(transport.webView)
-                handled = popup.webViewClient.onRenderProcessGone(popup, object : RenderProcessGoneDetail() {
-                    override fun didCrash() = true
-                    override fun rendererPriorityAtExit() = WebView.RENDERER_PRIORITY_IMPORTANT
-                })
-                chrome.close(); chrome.close()
-                finishing = a.isFinishing
-            }
-            assertTrue(created)
-            assertTrue("Popup renderer loss must be handled", handled)
-            assertFalse(finishing)
+    @Test(timeout = 120000) fun popupKeepsJavaScriptAndDomStorageForAuthentication() {
+        fixture()
+        val target = ui {
+            val transport = web.WebViewTransport()
+            val message = Message.obtain(Handler(Looper.getMainLooper())).apply { obj = transport }
+            check(chrome.onCreateWindow(web, false, true, message))
+            requireNotNull(transport.webView)
         }
+        assertTrue(ui { target.settings.javaScriptEnabled })
+        assertTrue(ui { target.settings.domStorageEnabled })
+        assertFalse(ui { target.settings.allowFileAccess })
+        assertFalse(ui { target.settings.allowContentAccess })
+        val handled = ui { target.webViewClient.onRenderProcessGone(target, object : RenderProcessGoneDetail() {
+            override fun didCrash() = true
+            override fun rendererPriorityAtExit() = WebView.RENDERER_PRIORITY_IMPORTANT
+        }) }
+        assertTrue(handled)
     }
-
-    @Test fun realWebViewMutesFixtureAndRestoresOnDisable() {
-        ActivityScenario.launch(MainActivity::class.java).use { s ->
-            fixture(s, ad = true)
-            val engine = ProtectionEngine()
-            lateinit var controller: ProtectionWebController
-            s.onActivity { a ->
-                val web = findWebView(a.window.decorView)!!
-                controller = ProtectionWebController(a, engine)
-                controller.attach(web)
-                controller.pageStarted(web.url)
-                controller.configure(ProtectionOptions(enabled = true))
-            }
-            repeat(40) { if (engine.state.value.status != EngineStatus.ACTIVE) Thread.sleep(200) }
-            assertEquals(EngineStatus.ACTIVE, engine.state.value.status)
-            assertEquals("true", evaluate(s, "document.querySelector('audio').muted"))
-            assertEquals(1L, engine.state.value.detectedAds)
-            assertEquals(1L, engine.state.value.mutedMedia)
-            assertEquals(1L, engine.state.value.hiddenBanners)
-            s.onActivity { controller.configure(ProtectionOptions(enabled = false)) }
-            assertEquals("false", evaluate(s, "document.querySelector('audio').muted"))
-            assertEquals(EngineStatus.DISABLED, engine.state.value.status)
-            s.onActivity { controller.close() }
+    @Test(timeout = 120000) fun realWebViewMutesFixtureAndRestoresOnDisable() {
+        fixture(ad = true)
+        ui { controller.configure(ProtectionOptions(enabled = true)) }
+        repeat(60) { if (engine.state.value.status != EngineStatus.ACTIVE) Thread.sleep(100) }
+        assertEquals(EngineStatus.ACTIVE, engine.state.value.status)
+        assertEquals(1L, engine.state.value.detectedAds)
+        assertEquals(1L, engine.state.value.hiddenBanners)
+        assertEquals("true", evaluate("document.querySelector('audio').muted"))
+        ui { controller.configure(ProtectionOptions(enabled = false)) }
+        assertEquals("false", evaluate("document.querySelector('audio').muted"))
+        assertEquals(EngineStatus.DISABLED, engine.state.value.status)
+        val metrics=JSONObject().put("synthetic",true).put("detected",engine.state.value.detectedAds)
+            .put("hiddenBanners",engine.state.value.hiddenBanners).put("domMutes",engine.state.value.mutedMedia)
+            .put("nativeSupported",engine.state.value.nativeAudioSupported).put("nativeMutes",engine.state.value.nativeMutes)
+            .put("nativeRestores",engine.state.value.nativeRestores).put("disabled",true)
+        java.io.File(instrumentation.targetContext.cacheDir,"supfy-v11-media-evidence.json").writeText(metrics.toString())
+    }
+    @Test(timeout = 120000) fun authenticationDocumentReceivesNoProtection() {
+        fixture(ad = true, url = "https://accounts.spotify.com/login")
+        ui { controller.configure(ProtectionOptions(enabled = true)) }
+        assertEquals("\"undefined\"", evaluate("typeof window.__supfyProtection"))
+        assertEquals("false", evaluate("document.querySelector('audio').muted"))
+        assertEquals(EngineStatus.WAITING_FOR_PLAYER, engine.state.value.status)
+    }
+    @Test fun preferencesSurviveSettingsRecreation() {
+        val context = instrumentation.targetContext
+        val settings = AppSettings(context)
+        val before = settings.protectionOptions
+        try {
+            settings.setProtectionOptions(ProtectionOptions(enabled = true, muteAds = false, hidePromos = false))
+            val restored = AppSettings(context).protectionOptions
+            assertTrue(restored.enabled); assertFalse(restored.muteAds); assertFalse(restored.hidePromos)
+        } finally { settings.setProtectionOptions(before) }
+    }
+    private fun request(url: String, methodName: String, main: Boolean=true) = object : WebResourceRequest {
+        override fun getUrl()=Uri.parse(url)
+        override fun isForMainFrame()=main
+        override fun isRedirect()=false
+        override fun hasGesture()=false
+        override fun getMethod()=methodName
+        override fun getRequestHeaders(): Map<String,String> = emptyMap()
+    }
+    @Test(timeout=120000) fun popupPostIsAllowedOnlyOnTrustedOrigins() {
+        fixture()
+        val target=ui {
+            val transport=web.WebViewTransport()
+            val message=Message.obtain(Handler(Looper.getMainLooper())).apply {obj=transport}
+            check(chrome.onCreateWindow(web,false,true,message))
+            requireNotNull(transport.webView)
         }
+        val client=ui {target.webViewClient}
+        assertNull(client.shouldInterceptRequest(target,request("https://accounts.spotify.com/login","POST")))
+        val response=client.shouldInterceptRequest(target,request("https://example.org/untrusted","POST"))
+        assertNotNull("Foreign POST must be refused before network access",response)
+        assertEquals(403,response!!.statusCode)
+    }
+    @Test(timeout=120000) fun networkFilterReceivesAnActualWebViewFetch() {
+        fixture()
+        ui {controller.configure(ProtectionOptions(enabled=true))}
+        repeat(60) {if(engine.state.value.status!=EngineStatus.ACTIVE)Thread.sleep(100)}
+        assertEquals(EngineStatus.ACTIVE,engine.state.value.status)
+        evaluate("fetch('https://doubleclick.net/supfy-synthetic-fixture').catch(function(){});true")
+        repeat(60) {if(engine.state.value.blockedRequests==0L)Thread.sleep(100)}
+        assertEquals(1L,engine.state.value.blockedRequests)
+        java.io.File(instrumentation.targetContext.cacheDir,"supfy-v11-network-evidence.json")
+            .writeText(JSONObject().put("synthetic",true).put("blockedRequests",engine.state.value.blockedRequests).toString())
+    }
+    @Test(timeout=120000) fun actualPopupFormCannotNavigateToAnUntrustedOrigin() {
+        fixture()
+        val target=ui {
+            val transport=web.WebViewTransport()
+            val message=Message.obtain(Handler(Looper.getMainLooper())).apply {obj=transport}
+            check(chrome.onCreateWindow(web,false,true,message))
+            requireNotNull(transport.webView).also {
+                activity.container.addView(it,android.widget.FrameLayout.LayoutParams(-1,-1))
+                it.loadDataWithBaseURL("https://accounts.spotify.com/", """
+                    <html><body><form method="post" action="https://example.org/supfy-fixture">
+                    <input name="fixture" value="synthetic"></form></body></html>
+                """.trimIndent(),"text/html","UTF-8","https://accounts.spotify.com/")
+            }
+        }
+        repeat(30) {
+            if(evaluate("document.forms.length",target)=="1")return@repeat
+            Thread.sleep(100)
+        }
+        ui {target.evaluateJavascript("document.forms[0].submit();",null)}
+        repeat(60) {if(state.stats.blockedNavigations==0)Thread.sleep(100)}
+        assertTrue("External popup POST must be blocked",state.stats.blockedNavigations>0)
+    }
+    @Test(timeout=120000) fun plainWebViewRendersWithoutAnyAdEngineClient() {
+        ui {
+            controller.detach()
+            web.webChromeClient=android.webkit.WebChromeClient()
+            web.webViewClient=object:android.webkit.WebViewClient(){
+                override fun onRenderProcessGone(v:WebView,d:RenderProcessGoneDetail):Boolean {
+                    rendererLost=true;return true
+                }
+            }
+        }
+        fixture()
+        assertEquals("2",evaluate("1+1"))
+    }
+    @Test fun postRequestGateEnforcesOriginBeforeNetworkAccess() {
+        assertNull(NavigationRequestGate.intercept(request("https://accounts.spotify.com/login","POST")))
+        assertEquals(403,NavigationRequestGate.intercept(request("https://example.org/untrusted","POST"))!!.statusCode)
+        assertEquals(403,NavigationRequestGate.intercept(request("https://user@accounts.spotify.com/login","POST"))!!.statusCode)
     }
 }

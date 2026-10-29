@@ -24,10 +24,17 @@ class SupfyWebViewClient(
 ) : WebViewClient() {
 
     override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? =
-        protection.intercept(request)
+        NavigationRequestGate.intercept(request) ?: protection.intercept(request)
 
     override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
         val url = request.url?.toString()
+        if (request.isForMainFrame && request.hasGesture()) {
+            PlayerNavigation.webUrl(url)?.let { target ->
+                if (view.url != target) view.loadUrl(target)
+                else state.playbackNotice = true
+                return true
+            }
+        }
         if (!request.isForMainFrame) {
             val allowed = UrlPolicy.allowSubframe(url)
             if (!allowed) state.stats = state.stats.withBlockedNavigation()
@@ -45,6 +52,7 @@ class SupfyWebViewClient(
                 true
             }
             UrlPolicy.Decision.BLOCK -> {
+                if (url?.startsWith("spotify:") == true || url?.startsWith("intent:") == true) state.playbackNotice = true
                 state.stats = state.stats.withBlockedNavigation()
                 true
             }
@@ -55,12 +63,17 @@ class SupfyWebViewClient(
         protection.pageStarted(url)
         state.error = null
         state.currentUrl = url
+        state.playbackNotice = false
     }
 
     override fun onPageFinished(view: WebView, url: String?) {
         state.currentUrl = url
         state.canGoBack = view.canGoBack()
         CookieManager.getInstance().flush()
+        if (state.error == null) protection.pageFinished()
+    }
+
+    override fun onPageCommitVisible(view: WebView, url: String?) {
         if (state.error == null) protection.pageFinished()
     }
 

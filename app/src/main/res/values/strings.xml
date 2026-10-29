@@ -15,7 +15,11 @@
     <string name="action_protection">Koruma ve durum</string>
 
     <!-- Koruma ve durum -->
-    <string name="protection_title">Koruma ve durum</string>
+    <string name="protection_title">Supfy Koruma</string>
+    <string name="action_login">Spotify giriş ekranı</string>
+    <string name="login_window_title">Spotify oturum açma</string>
+    <string name="action_close">Kapat</string>
+    <string name="playback_app_notice">Spotify bu içerik için uygulamaya geçiş istiyor. Masaüstü sitesi ayarını kontrol et. Hesap ve DRM sınırlamaları Supfy tarafından aşılamaz.</string>
     <string name="protection_summary">%1$d / %2$d koruma etkin</string>
     <string name="protection_summary_desc">WebView güvenlik korumaları reklam modülünden bağımsızdır.</string>
     <string name="protection_section_active">Etkin korumalar</string>
@@ -56,7 +60,7 @@
 
     <!-- Güncelleme -->
     <string name="update_title">Supfy Güncellemesi Mevcut</string>
-    <string name="update_body">Supfy\'nin yeni bir sürümü yayınlandı.\n\nYeni özelliklerden ve hata düzeltmelerinden yararlanmak için uygulamanı güncelleyebilirsin.\n\nMevcut sürüm: %1$s (%2$d)\nYeni sürüm: %3$s (%4$d)</string>
+    <string name="update_body">Supfy\'nin yeni bir sürümü yayınlandı.\n\nGüncelleme ile performans iyileştirmeleri ve hata düzeltmelerinden yararlanabilirsiniz.\n\nMevcut sürüm: %1$s (%2$d)\nYeni sürüm: %3$s (%4$d)</string>
     <string name="update_now">Güncelle</string>
     <string name="update_later">Daha Sonra</string>
     <string name="update_none">Supfy güncel.</string>
@@ -148,6 +152,22 @@
     <string name="ad_errors">Koruma hataları</string>
     <string name="ad_engine_logs">Koruma günlüğü · en son 40 olay</string>
     <string name="engine_no_events">Henüz işlem yok.</string>
+    <string name="component_detection">Reklam algılama</string>
+    <string name="component_network">Ağ filtresi</string>
+    <string name="component_visual">Görsel filtre</string>
+    <string name="component_audio">Ses yönetimi</string>
+    <string name="component_disabled">Kapalı</string>
+    <string name="component_waiting">Bekleniyor</string>
+    <string name="component_ready">Hazır · olay bekleniyor</string>
+    <string name="component_processing">Reklam durumu algılandı</string>
+    <string name="component_error">Hata · devre dışı</string>
+    <string name="normal_playback">Normal oynatmaya dön</string>
+    <string name="native_mute_count">WebView susturma işlemleri</string>
+    <string name="native_restore_count">WebView sesini geri yükleme</string>
+    <string name="music_resume_count">Reklam sonrası gözlenen müzik dönüşü</string>
+    <string name="audio_backend_native">Ses yöntemi: yalnızca Supfy WebView sesini yönetme desteği mevcut.</string>
+    <string name="audio_backend_dom">Ses yöntemi: sayfadaki medya öğeleri. WebAudio veya görünmeyen medya kapsanmayabilir.</string>
+    <string name="audio_recovery_reset">Ses geri yüklenemediği için oynatıcı yeniden kuruldu. Oturum korunur; gerekirse çalmayı yeniden başlatın.</string>
     <string name="engine_playing">Sayfadaki medya oynatılıyor.</string>
     <string name="engine_paused">Sayfada oynayan medya ölçülmedi.</string>
 </resources>
