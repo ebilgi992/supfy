@@ -16,4 +16,9 @@ class WebUiState {
     var canGoBack by mutableStateOf(false)
     var currentUrl by mutableStateOf<String?>(null)
     var stats by mutableStateOf(SessionStats())
+    var diag by mutableStateOf(DiagLog())
+
+    fun log(kind: DiagKind, detail: String) {
+        diag = diag.add(kind, detail)
+    }
 }

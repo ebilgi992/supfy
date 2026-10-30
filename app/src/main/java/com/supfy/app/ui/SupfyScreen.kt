@@ -30,7 +30,6 @@ import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -42,7 +41,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -74,7 +72,6 @@ fun SupfyScreen(
     online: Boolean,
     onRefresh: () -> Unit,
     onHome: () -> Unit,
-    onOpenBrowser: () -> Unit,
     onRetry: () -> Unit,
     onOpenSettings: () -> Unit,
     onOpenProtection: () -> Unit,
@@ -87,7 +84,6 @@ fun SupfyScreen(
                 progress = state.progress,
                 onRefresh = onRefresh,
                 onHome = onHome,
-                onOpenBrowser = onOpenBrowser,
                 onOpenSettings = onOpenSettings,
                 onOpenProtection = onOpenProtection,
             )
@@ -136,7 +132,7 @@ fun SupfyScreen(
                 enter = fadeIn(),
                 exit = fadeOut(),
             ) {
-                state.error?.let { ErrorOverlay(it, onRetry, onOpenBrowser) }
+                state.error?.let { ErrorOverlay(it, onRetry) }
             }
         }
     }
@@ -149,7 +145,6 @@ private fun SupfyTopBar(
     progress: Int,
     onRefresh: () -> Unit,
     onHome: () -> Unit,
-    onOpenBrowser: () -> Unit,
     onOpenSettings: () -> Unit,
     onOpenProtection: () -> Unit,
 ) {
@@ -182,11 +177,6 @@ private fun SupfyTopBar(
                             text = { Text(stringResource(R.string.action_home)) },
                             leadingIcon = { Icon(Icons.Filled.Home, contentDescription = null) },
                             onClick = { menuOpen = false; onHome() },
-                        )
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.action_open_browser)) },
-                            leadingIcon = { Icon(Icons.Filled.Share, contentDescription = null) },
-                            onClick = { menuOpen = false; onOpenBrowser() },
                         )
                         DropdownMenuItem(
                             text = { Text(stringResource(R.string.action_protection)) },
@@ -241,7 +231,7 @@ private fun StatusChip(online: Boolean) {
 }
 
 @Composable
-private fun ErrorOverlay(error: PageError, onRetry: () -> Unit, onOpenBrowser: () -> Unit) {
+private fun ErrorOverlay(error: PageError, onRetry: () -> Unit) {
     val message = when (error.kind) {
         PageErrorKind.NO_CONNECTION -> R.string.error_no_connection
         PageErrorKind.TIMEOUT -> R.string.error_timeout
@@ -277,10 +267,7 @@ private fun ErrorOverlay(error: PageError, onRetry: () -> Unit, onOpenBrowser: (
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,
                 )
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    OutlinedButton(onClick = onOpenBrowser) { Text(stringResource(R.string.action_open_browser)) }
-                    Button(onClick = onRetry) { Text(stringResource(R.string.action_retry)) }
-                }
+                Button(onClick = onRetry) { Text(stringResource(R.string.action_retry)) }
             }
         }
     }

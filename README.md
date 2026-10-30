@@ -15,7 +15,7 @@ Spotify Web Player'ı Android'de kendi sade penceresinde açan, tamamen Türkçe
 - Oturumu cihazda (WebView çerezleri) korur.
 - Ekran dönünce sayfayı yenilemez; geri tuşu sayfa geçmişinde geri gider.
 - Bağlantı durumunu gösterir, hataları Türkçe açıklar, bağlantı gelince otomatik yeniden dener.
-- Oynatma mümkün olmazsa sayfayı tarayıcıda açma seçeneği sunar.
+- Varsayılan olarak Spotify'ın tam (masaüstü) web oynatıcısını açar.
 
 **Yapmaz**
 - Reklam engellemez, susturmaz, hızlandırmaz veya atlamaz. Spotify Kullanıcı Yönergeleri bunu yasaklar.
@@ -32,7 +32,7 @@ Spotify Web Player'ı Android'de kendi sade penceresinde açan, tamamen Türkçe
 | JavaScript köprüsü | Yok |
 | Şifresiz HTTP | Engelli (network security config + karışık içerik kapalı) |
 | Safe Browsing | Açık |
-| Üçüncü taraf çerezler | Kapalı |
+| Üçüncü taraf çerezler | Açık (Spotify girişindeki güvenlik doğrulaması için gerekli) |
 | DRM izni | Yalnızca `https://open.spotify.com` kaynağına |
 | Uygulama içinde açılan alan adları | `spotify.com`, `scdn.co`, `spotifycdn.com` ve alt alan adları |
 | Uygulama izinleri | `INTERNET`, `ACCESS_NETWORK_STATE` |
@@ -71,9 +71,8 @@ En kolay yol: deponun **Releases** bölümünden en son `Supfy-...-debug.apk` do
 ## Bilinen sınırlamalar
 
 - Google / Facebook / Apple ile giriş, gömülü WebView'de sağlayıcılar tarafından engellenebilir. E-posta ve şifre ya da e-posta ile giriş kodu kullanın.
-- Spotify'ın mobil web sayfası oynatıcıyı açmazsa Ayarlar'daki "Masaüstü sitesini iste" seçeneğini deneyin.
+- "Masaüstü sitesini iste" kapatılırsa Spotify'ın mobil sayfası şarkıları kısıtlayıp uygulamaya yönlendirebilir.
 - WebView, Android medya bildirimine ve kilit ekranı kontrollerine kendiliğinden bağlanmaz.
-- "Tarayıcıda aç", telefonda Spotify uygulaması kuruluysa bağlantıyı o uygulamada açabilir.
 
 ## Kaynak proje hakkında
 

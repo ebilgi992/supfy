@@ -1,8 +1,11 @@
 package com.supfy.app
 
 import android.content.ActivityNotFoundException
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.os.Parcel
 import android.view.ViewGroup
@@ -52,6 +55,7 @@ import com.supfy.app.ui.theme.SupfyTheme
 import com.supfy.app.web.SupfyChromeClient
 import com.supfy.app.web.SupfyWebViewClient
 import com.supfy.app.web.DeviceSupport
+import com.supfy.app.web.DiagLog
 import com.supfy.app.web.PageError
 import com.supfy.app.web.PageErrorKind
 import com.supfy.app.web.UrlPolicy
@@ -136,7 +140,6 @@ class MainActivity : ComponentActivity() {
                         online = online,
                         onRefresh = { webView?.reload() },
                         onHome = { webView?.loadUrl(UrlPolicy.HOME_URL) },
-                        onOpenBrowser = { openExternally(Uri.parse(uiState.currentUrl ?: UrlPolicy.HOME_URL)) },
                         onRetry = ::retry,
                         onOpenSettings = { showSettings = true },
                         onOpenProtection = { showProtection = true },
@@ -170,9 +173,11 @@ class MainActivity : ComponentActivity() {
                         ProtectionScreen(
                             support = support,
                             stats = uiState.stats,
+                            diag = uiState.diag,
                             desktopMode = desktop,
                             onResetPage = ::resetPage,
                             onDisableDesktopMode = { setDesktopMode(false) },
+                            onCopyDiagnostics = { copyDiagnostics(webViewVersion, desktop) },
                             onClose = { showProtection = false },
                         )
                     }
@@ -312,6 +317,17 @@ class MainActivity : ComponentActivity() {
     private fun snooze(update: AvailableUpdate) {
         pendingUpdate = null
         appSettings.snoozeUpdate(update.versionCode, System.currentTimeMillis() + ReleaseSelector.SNOOZE_MS)
+    }
+
+    /** Tanılama kaydını panoya kopyalar (adreslerde sorgu kısmı yoktur; çerez/token içermez). */
+    private fun copyDiagnostics(webViewVersion: String?, desktop: Boolean) {
+        val header = "Supfy ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE}) · " +
+            "${Build.MANUFACTURER} ${Build.MODEL} · Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT}) · " +
+            "WebView ${webViewVersion ?: "?"} · masaüstü=${if (desktop) "açık" else "kapalı"} · " +
+            "sayfa=${DiagLog.sanitizeUrl(uiState.currentUrl)}"
+        val clipboard = getSystemService(ClipboardManager::class.java)
+        clipboard?.setPrimaryClip(ClipData.newPlainText("Supfy tanılama", uiState.diag.format(header)))
+        Toast.makeText(this, R.string.diag_copied, Toast.LENGTH_SHORT).show()
     }
 
     /** WebView'i yeniden kurar; çerezler ve oturum korunur. */

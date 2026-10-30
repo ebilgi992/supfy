@@ -22,7 +22,7 @@ android {
         minSdk = 26
         targetSdk = 35
         versionCode = supfyVersionCode
-        versionName = "0.4.0"
+        versionName = "0.4.1"
 
         // Uygulama içi güncelleme denetiminin sorguladığı depo (owner/repo).
         buildConfigField("String", "UPDATE_REPO", "\"ebilgi992/supfy\"")

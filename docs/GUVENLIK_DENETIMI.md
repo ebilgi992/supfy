@@ -24,6 +24,9 @@ Dependabot güncelleme PR'ları açtı.
 ### Düşük: Gömülü WebView'de üçüncü taraf girişleri
 Google, Facebook ve Apple girişleri dış tarayıcıya yönlendirilir ve oturum uygulamaya dönmez. Bu bir güvenlik açığı değil; kullanılabilirlik sınırlaması.
 
+### Düşük (0.4.0 değişikliği): Üçüncü taraf çerezleri açıldı
+Spotify'ın giriş sayfasındaki güvenlik doğrulaması (reCAPTCHA) iframe içinde çalışır ve üçüncü taraf çerezi ister; kapalıyken giriş ekranı takılabiliyordu. Ödün: Spotify sayfasına gömülü üçüncü taraf hizmetler kendi çerezlerini yazabilir. Çerezler yalnızca bu uygulamanın WebView'inde kalır ve "Oturumu ve site verilerini sil" ile silinir.
+
 ### Düşük: Güncelleme denetimi GitHub'a bağlanır
 En fazla 12 saatte bir `api.github.com`'a kimliksiz bir GET isteği gider. Yanıt 512 KB ile sınırlı, 10 sn zaman aşımlı, yönlendirme izlenmiyor. Yalnızca `https://github.com/ebilgi992/supfy/releases/...` adreslerine güvenilir (birim testli). APK uygulama tarafından indirilmez veya kurulmaz.
 
@@ -32,6 +35,7 @@ En fazla 12 saatte bir `api.github.com`'a kimliksiz bir GET isteği gider. Yanı
 - Şifresiz HTTP kapalı (network security config), karışık içerik engelli, SSL hataları iptal edilir.
 - Safe Browsing açık; WebView kullanım istatistikleri kapalı (`MetricsOptOut`).
 - Dosya ve içerik erişimi kapalı; Service Worker'lar için de kapalı.
+- Uygulama, kimliğini Spotify'dan gizleyen hiçbir ayar (X-Requested-With bastırma, sahte istemci ipuçları) kullanmaz.
 - JavaScript köprüsü (`addJavascriptInterface`) yok; sayfaya JS/CSS enjeksiyonu yok.
 - Gezinme izin listesi: `spotify.com`, `scdn.co`, `spotifycdn.com`. `intent:`, `javascript:`, `file:` ve özel şemalar engelli. Benzer görünen alan adları (`evilspotify.com`) birim testleriyle doğrulandı.
 - DRM izni yalnızca `https://open.spotify.com` kaynağına; mikrofon, kamera ve konum her zaman reddedilir.

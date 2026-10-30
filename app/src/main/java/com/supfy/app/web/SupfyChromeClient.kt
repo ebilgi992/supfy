@@ -1,5 +1,6 @@
 package com.supfy.app.web
 
+import android.webkit.ConsoleMessage
 import android.webkit.PermissionRequest
 import android.webkit.WebChromeClient
 import android.webkit.WebView
@@ -8,6 +9,14 @@ class SupfyChromeClient(private val state: WebUiState) : WebChromeClient() {
 
     override fun onProgressChanged(view: WebView, newProgress: Int) {
         state.progress = newProgress
+    }
+
+    /** Sayfanın yalnızca hata düzeyindeki konsol mesajları tanılama kaydına girer. */
+    override fun onConsoleMessage(message: ConsoleMessage): Boolean {
+        if (message.messageLevel() == ConsoleMessage.MessageLevel.ERROR) {
+            state.log(DiagKind.CONSOLE, message.message())
+        }
+        return true
     }
 
     /**
@@ -24,6 +33,10 @@ class SupfyChromeClient(private val state: WebUiState) : WebChromeClient() {
         } else {
             emptyArray()
         }
+        state.log(
+            DiagKind.PERMISSION,
+            "${DiagLog.sanitizeUrl(request.origin?.toString())} istedi=${request.resources.size} verildi=${granted.size}",
+        )
         if (granted.isNotEmpty()) {
             request.grant(granted)
             state.stats = state.stats.withDrmGranted()

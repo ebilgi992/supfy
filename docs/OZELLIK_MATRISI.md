@@ -20,7 +20,9 @@ Supfy sürümü: 0.4.0 · Tarih: 28 Ekim 2026
 | Kilit ekranı medya kontrolleri | **Desteklenmiyor** | WebView, Android MediaSession'a kendiliğinden bağlanmaz. |
 | Tema seçimi (sistem/açık/koyu) | Test bekliyor | Yalnızca Supfy ekranları; Spotify sayfası değişmez. |
 | Önbellek ve oturum temizleme | Test bekliyor | İki ayrı düğme. |
-| Masaüstü sitesi modu | Kısmen çalışıyor | Yalnızca mobil sayfa oynatıcıyı açmazsa gerekir. |
+| Masaüstü sitesi modu (varsayılan açık) | Test bekliyor | 0.4.0'dan itibaren varsayılan. Mobil sayfadaki "uygulamada dinle" yönlendirmesini ve kısıtlı oynatmayı önlemesi beklenir. |
+| Giriş ekranı düzeltmesi | Test bekliyor | Üçüncü taraf çerezleri açıldı (reCAPTCHA). Cihazda doğrulanmadı. |
+| Ekran kapalıyken oynatma | Test bekliyor | Sayfa motoru önceliği "önemli" olarak sabitlendi. |
 | Koruma ve durum ekranı | Test bekliyor | Etkin güvenlik korumaları ve cihaz desteği; sayaçlar yalnızca gerçek WebView olaylarından oluşur. |
 | Sayfayı sıfırlama | Test bekliyor | WebView yeniden kurulur, oturum korunur. |
 | Mevcut kurulumun üzerine güncelleme | Test bekliyor | Sabit applicationId + kalıcı imza + artan sürüm kodu. İlk imzalı sürümden sonraki güncellemede doğrulanabilir. |

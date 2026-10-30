@@ -38,7 +38,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.supfy.app.R
+import androidx.compose.ui.text.font.FontFamily
 import com.supfy.app.web.DeviceSupport
+import com.supfy.app.web.DiagLog
 import com.supfy.app.web.Protection
 import com.supfy.app.web.ProtectionStatus
 import com.supfy.app.web.Protections
@@ -49,9 +51,11 @@ import com.supfy.app.web.SessionStats
 fun ProtectionScreen(
     support: DeviceSupport,
     stats: SessionStats,
+    diag: DiagLog,
     desktopMode: Boolean,
     onResetPage: () -> Unit,
     onDisableDesktopMode: () -> Unit,
+    onCopyDiagnostics: () -> Unit,
     onClose: () -> Unit,
 ) {
     Scaffold(
@@ -136,24 +140,40 @@ fun ProtectionScreen(
                 }
             }
 
-            Section(stringResource(R.string.protection_section_unsupported)) {
-                StatusRow(
-                    title = stringResource(R.string.unsupported_ads_title),
-                    description = stringResource(R.string.unsupported_ads_desc),
-                    active = false,
-                    inactiveLabel = R.string.status_not_offered,
-                )
+            Section(stringResource(R.string.diag_title)) {
+                Muted(stringResource(R.string.diag_desc))
+                Spacer(Modifier.height(12.dp))
+                if (diag.events.isEmpty()) {
+                    Muted(stringResource(R.string.diag_empty))
+                } else {
+                    diag.events.takeLast(15).reversed().forEach { e ->
+                        Text(
+                            "${e.kind.name} ${e.detail}",
+                            style = MaterialTheme.typography.bodySmall,
+                            fontFamily = FontFamily.Monospace,
+                            color = if (e.kind.name in ERROR_KINDS) {
+                                MaterialTheme.colorScheme.error
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            },
+                            modifier = Modifier.padding(vertical = 2.dp),
+                        )
+                    }
+                }
+                Spacer(Modifier.height(12.dp))
+                Button(onClick = onCopyDiagnostics) { Text(stringResource(R.string.diag_copy)) }
             }
         }
     }
 }
+
+private val ERROR_KINDS = setOf("NET_ERROR", "HTTP_ERROR", "BLOCKED", "SSL", "CONSOLE", "RENDERER")
 
 private fun texts(p: Protection): Pair<Int, Int> = when (p) {
     Protection.HTTPS_ONLY -> R.string.prot_https_title to R.string.prot_https_desc
     Protection.DOMAIN_ALLOWLIST -> R.string.prot_allowlist_title to R.string.prot_allowlist_desc
     Protection.SAFE_BROWSING -> R.string.prot_safebrowsing_title to R.string.prot_safebrowsing_desc
     Protection.DRM_GATE -> R.string.prot_drm_title to R.string.prot_drm_desc
-    Protection.THIRD_PARTY_COOKIES_BLOCKED -> R.string.prot_cookies_title to R.string.prot_cookies_desc
     Protection.NO_JS_BRIDGE -> R.string.prot_bridge_title to R.string.prot_bridge_desc
     Protection.FILE_ACCESS_OFF -> R.string.prot_files_title to R.string.prot_files_desc
     Protection.SERVICE_WORKER_HARDENING -> R.string.prot_sw_title to R.string.prot_sw_desc
@@ -179,7 +199,6 @@ private fun StatusRow(
     title: String,
     description: String,
     active: Boolean,
-    @StringRes inactiveLabel: Int = R.string.status_unsupported,
 ) {
     Row(verticalAlignment = Alignment.Top, modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.weight(1f)) {
@@ -188,17 +207,17 @@ private fun StatusRow(
             Muted(description)
         }
         Spacer(Modifier.width(12.dp))
-        StatusChip(active, inactiveLabel)
+        StatusChip(active)
     }
 }
 
 @Composable
-private fun StatusChip(active: Boolean, @StringRes inactiveLabel: Int) {
+private fun StatusChip(active: Boolean) {
     val bg = if (active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant
     val fg: Color = if (active) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
     Surface(shape = CircleShape, color = bg) {
         Text(
-            stringResource(if (active) R.string.status_active else inactiveLabel),
+            stringResource(if (active) R.string.status_active else R.string.status_unsupported),
             style = MaterialTheme.typography.labelMedium,
             fontWeight = FontWeight.SemiBold,
             color = fg,

@@ -23,7 +23,8 @@ object WebViewFactory {
             // Gerekli olanlar
             javaScriptEnabled = true
             domStorageEnabled = true
-            mediaPlaybackRequiresUserGesture = true
+            // Çalma listesinde sonraki parçanın kendiliğinden başlayabilmesi için.
+            mediaPlaybackRequiresUserGesture = false
 
             // Kapalı tutulanlar
             allowFileAccess = false
@@ -40,9 +41,13 @@ object WebViewFactory {
 
         CookieManager.getInstance().also { cookies ->
             cookies.setAcceptCookie(true)
-            cookies.setAcceptThirdPartyCookies(this, false)
+            // Spotify girişindeki güvenlik doğrulaması (reCAPTCHA) iframe içinde çalışır ve
+            // üçüncü taraf çerezi ister; kapalıyken giriş ekranı takılabiliyordu.
+            cookies.setAcceptThirdPartyCookies(this, true)
         }
 
+        // Müzik çalarken ekran kapanınca sayfa motoru düşük önceliğe alınıp kapatılmasın.
+        setRendererPriorityPolicy(WebView.RENDERER_PRIORITY_IMPORTANT, false)
         setBackgroundColor(ContextCompat.getColor(context, R.color.supfy_bg))
         this.webViewClient = webViewClient
         this.webChromeClient = chromeClient

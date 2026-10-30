@@ -7,7 +7,6 @@
     <string name="status_offline">Çevrimdışı</string>
     <string name="action_refresh">Yenile</string>
     <string name="action_more">Diğer seçenekler</string>
-    <string name="action_open_browser">Tarayıcıda aç</string>
     <string name="action_settings">Ayarlar</string>
     <string name="action_home">Ana sayfa</string>
     <string name="action_back">Geri</string>
@@ -22,10 +21,8 @@
     <string name="protection_section_active">Etkin korumalar</string>
     <string name="protection_section_stats">Bu oturumda</string>
     <string name="protection_section_trouble">Sorun mu yaşıyorsun?</string>
-    <string name="protection_section_unsupported">Sunulmayan özellikler</string>
     <string name="status_active">Etkin</string>
     <string name="status_unsupported">Desteklenmiyor</string>
-    <string name="status_not_offered">Sunulmuyor</string>
 
     <string name="prot_https_title">Yalnızca HTTPS</string>
     <string name="prot_https_desc">Şifresiz bağlantılar ve karışık içerik engellenir; sertifika hataları atlanmaz.</string>
@@ -35,8 +32,6 @@
     <string name="prot_safebrowsing_desc">Google\'ın zararlı site listesiyle kontrol. Cihazdaki WebView desteklemiyorsa çalışmaz.</string>
     <string name="prot_drm_title">DRM izin kapısı</string>
     <string name="prot_drm_desc">Korumalı içerik izni yalnızca open.spotify.com\'a verilir; mikrofon, kamera ve konum reddedilir.</string>
-    <string name="prot_cookies_title">Üçüncü taraf çerezleri kapalı</string>
-    <string name="prot_cookies_desc">Başka sitelerin seni Spotify sayfası üzerinden izlemesini zorlaştırır.</string>
     <string name="prot_bridge_title">JavaScript köprüsü yok</string>
     <string name="prot_bridge_desc">Web sayfası telefonundaki uygulama koduna erişemez.</string>
     <string name="prot_files_title">Dosya erişimi kapalı</string>
@@ -56,8 +51,12 @@
     <string name="action_desktop_off">Masaüstü modunu kapat</string>
     <string name="page_reset_done">Sayfa sıfırlandı.</string>
 
-    <string name="unsupported_ads_title">Reklam engelleme</string>
-    <string name="unsupported_ads_desc">Spotify Kullanıcı Yönergeleri reklamları engellemeyi veya atlatmayı yasaklar; hesabın askıya alınmasına veya kapatılmasına yol açabilir.</string>
+    <!-- Tanılama -->
+    <string name="diag_title">Tanılama</string>
+    <string name="diag_desc">Giriş veya oynatma sorunlarında son sayfa olaylarını gösterir. Adreslerin sorgu kısmı silinir; çerez, şifre veya token kaydedilmez. Kayıt uygulama kapanınca silinir.</string>
+    <string name="diag_empty">Henüz olay yok.</string>
+    <string name="diag_copy">Tanıyı kopyala</string>
+    <string name="diag_copied">Tanılama panoya kopyalandı.</string>
 
     <!-- Güncelleme -->
     <string name="update_title">Supfy Güncellemesi Mevcut</string>
@@ -88,7 +87,7 @@
     <string name="pref_background_title">Arka planda çalmaya devam et</string>
     <string name="pref_background_desc">Uygulamadan çıkınca veya ekran kilitlenince sayfa çalışmaya devam eder. Kapalıyken sayfa duraklatılır ve pil tasarrufu sağlanır.</string>
     <string name="pref_desktop_title">Masaüstü sitesini iste</string>
-    <string name="pref_desktop_desc">Mobil sayfa oynatıcıyı açmazsa dene. Tarayıcılardaki “Masaüstü sitesi” seçeneğiyle aynıdır.</string>
+    <string name="pref_desktop_desc">Spotify\'ın tam web oynatıcısını açar (önerilir). Kapalıyken mobil sayfa şarkıları kısıtlayıp uygulamaya yönlendirebilir. Tarayıcılardaki “Masaüstü sitesi” seçeneğiyle aynıdır.</string>
 
     <string name="section_appearance">Görünüm</string>
     <string name="theme_system">Sistem varsayılanı</string>

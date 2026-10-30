@@ -1,5 +1,13 @@
 # Değişiklik Günlüğü
 
+## [0.4.1] - 2026-10-30
+
+### Eklendi
+- **Tanılama kaydı** (menü → Koruma ve durum → Tanılama): sayfa yüklemeleri, ağ/HTTP hataları, engellenen yönlendirmeler, sayfa konsol hataları, DRM izin istekleri ve sayfa motoru çökmeleri. "Tanıyı kopyala" cihaz, Android ve WebView sürümüyle birlikte panoya kopyalar. Adreslerin sorgu kısmı silinir; çerez, şifre veya token kaydedilmez.
+
+### Kaldırıldı
+- Koruma ekranındaki "Sunulmayan özellikler" kartı.
+
 ## [0.4.0] - 2026-10-29
 
 ### Düzeltildi
@@ -8,6 +16,13 @@
 - Sayfa motoru kısa sürede tekrar çökerse sonsuz yeniden kurma döngüsü engellendi.
 - Büyük WebView geçmişinde kayıt verisi sınırını aşıp çökme riski giderildi (200 KB sınırı).
 - Kullanılmayan `ui-tooling` bağımlılıkları kaldırıldı.
+
+- **Giriş ekranı takılması:** üçüncü taraf çerezleri kapalıyken Spotify girişindeki güvenlik doğrulaması çalışmıyordu; açıldı.
+- **Şarkıların tam çalmaması / uygulamaya yönlendirme:** mobil web sayfası bunu yapıyor; masaüstü web oynatıcı artık varsayılan.
+- Ekran kapalıyken sayfa motoru önceliği korunuyor; çalma listesinde sonraki parça kendiliğinden başlayabiliyor.
+
+### Kaldırıldı
+- "Tarayıcıda aç" menü öğesi ve hata ekranındaki düğme.
 
 ### Eklendi
 - Uygulama içi güncelleme denetimi (GitHub Releases): açılışta en fazla 12 saatte bir, "Daha Sonra" 24 saat erteler, Ayarlar'dan elle denetim. "Güncelle" doğrulanmış Release sayfasını açar; sessiz kurulum yok.
