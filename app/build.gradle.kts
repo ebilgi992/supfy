@@ -4,9 +4,9 @@ plugins {
     alias(libs.plugins.kotlin.compose)
 }
 
-// Yerel V11 tabanı 1020; CI `-PsupfyVersionCode=<2000 + çalışma no>` kullanır.
-val supfyVersionCode = (project.findProperty("supfyVersionCode") as String?)?.toIntOrNull() ?: 1020
-require(supfyVersionCode >= 1020) { "V11 sürüm kodu 1019 kurulumundan büyük olmalıdır." }
+// Giriş düzeltmesinin yerel tabanı 1021; CI `-PsupfyVersionCode=<2000 + çalışma no>` kullanır.
+val supfyVersionCode = (project.findProperty("supfyVersionCode") as String?)?.toIntOrNull() ?: 1021
+require(supfyVersionCode >= 1021) { "Düzeltme sürüm kodu 1020 kurulumundan büyük olmalıdır." }
 
 // İmza: anahtar dosyası ve şifreler yalnızca ortam değişkenlerinden okunur (CI'da GitHub Secrets).
 // Depoda hiçbir anahtar veya şifre bulunmaz. Değişkenler yoksa Android'in debug anahtarı kullanılır.
@@ -22,7 +22,7 @@ android {
         minSdk = 26
         targetSdk = 35
         versionCode = supfyVersionCode
-        versionName = "0.6.0-v11"
+        versionName = "0.6.1-login-fix"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         // Uygulama içi güncelleme denetiminin sorguladığı depo (owner/repo).

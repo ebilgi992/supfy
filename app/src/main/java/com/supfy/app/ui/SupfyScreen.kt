@@ -34,6 +34,7 @@ import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -116,6 +117,8 @@ fun SupfyScreen(
                     Text(stringResource(R.string.playback_app_notice), modifier = Modifier.padding(16.dp))
                 }
             }
+
+            if(state.loading && state.error==null) PageLoadingNotice(Modifier.align(Alignment.Center))
 
             AnimatedVisibility(
                 visible = !online,
@@ -246,12 +249,25 @@ private fun StatusChip(online: Boolean) {
 }
 
 @Composable
-private fun ErrorOverlay(error: PageError, onRetry: () -> Unit) {
+internal fun PageLoadingNotice(modifier: Modifier=Modifier) {
+    Card(modifier=modifier.padding(24.dp)) {
+        Row(Modifier.padding(20.dp),verticalAlignment=Alignment.CenterVertically,
+            horizontalArrangement=Arrangement.spacedBy(16.dp)) {
+            CircularProgressIndicator(Modifier.size(24.dp),strokeWidth=2.dp)
+            Text(stringResource(R.string.page_loading))
+        }
+    }
+}
+
+@Composable
+internal fun ErrorOverlay(error: PageError, onRetry: () -> Unit) {
     val message = when (error.kind) {
         PageErrorKind.NO_CONNECTION -> R.string.error_no_connection
         PageErrorKind.TIMEOUT -> R.string.error_timeout
         PageErrorKind.SSL -> R.string.error_ssl
         PageErrorKind.GENERIC -> R.string.error_generic
+        PageErrorKind.HTTP -> R.string.error_http
+        PageErrorKind.EMPTY -> R.string.error_empty
     }
     Box(
         Modifier
@@ -277,7 +293,7 @@ private fun ErrorOverlay(error: PageError, onRetry: () -> Unit) {
                 )
                 Text(stringResource(R.string.error_title), style = MaterialTheme.typography.titleMedium)
                 Text(
-                    stringResource(message),
+                    if(error.kind==PageErrorKind.HTTP)stringResource(message,error.httpStatus?:0) else stringResource(message),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,

@@ -26,6 +26,116 @@ import org.junit.runner.RunWith
 /** Real Android WebView with local synthetic HTML. Not a Spotify account/ad/DRM test. */
 @RunWith(AndroidJUnit4::class)
 class WebViewProtectionTest {
+    @Test(timeout=90000) fun mobileAuthenticationFixtureRendersAndAcceptsInteraction() {
+        var popup: WebView?=null
+        val auth=ui {SupfyChromeClient(state,{popup=it})}
+        try {
+            val target=ui {
+                auth.openAuthentication(web,PlayerNavigation.LOGIN_URL)
+                requireNotNull(popup).also {
+                    it.stopLoading()
+                    activity.container.addView(it,android.widget.FrameLayout.LayoutParams(-1,-1))
+                    it.loadDataWithBaseURL("https://accounts.spotify.com/supfy-local-fixture", """
+                        <html><head><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+                        <body data-fixture="ready"><h1>Sentetik giriş</h1><label>E-posta<input type="email"></label>
+                        <button id="next" onclick="document.body.dataset.step='next'">Devam</button></body></html>
+                    """.trimIndent(),"text/html","UTF-8","https://accounts.spotify.com/supfy-local-fixture")
+                }
+            }
+            var ready=false
+            for(attempt in 0 until 30) {
+                if(evaluate("document.body && document.body.dataset.fixture",target)=="\"ready\"") {ready=true;break}
+                Thread.sleep(100)
+            }
+            assertTrue("Local authentication document must render",ready)
+            assertEquals("\"next\"",evaluate("document.getElementById('next').click();document.body.dataset.step",target))
+            repeat(30) {if(ui{auth.authenticationState.loading})Thread.sleep(100)}
+            assertFalse(ui{auth.authenticationState.loading})
+            assertNull(ui{auth.authenticationState.error})
+        } finally {ui {auth.close()}}
+    }
+    @Test fun aClosedGuardCannotCoverANewLoginWindowWithAnOldError() {
+        ui {
+            val shared=WebUiState()
+            val old=WebPageGuard(shared)
+            val current=WebPageGuard(shared)
+            try {
+                old.started(web,PlayerNavigation.LOGIN_URL)
+                old.close()
+                current.started(web,PlayerNavigation.LOGIN_URL)
+                old.failed(PlayerNavigation.LOGIN_URL,PageErrorKind.HTTP,503)
+                assertNull(shared.error)
+                assertTrue(shared.loading)
+            } finally {old.close();current.close()}
+        }
+    }
+    @Test fun aClosedPopupCannotOverwriteItsReplacementThroughLateCallbacks() {
+        var popup: WebView?=null
+        val auth=ui {SupfyChromeClient(state,{popup=it})}
+        try {
+            ui {
+                auth.openAuthentication(web,PlayerNavigation.LOGIN_URL)
+                val old=requireNotNull(popup)
+                val oldClient=old.webViewClient
+                auth.openAuthentication(web,PlayerNavigation.LOGIN_URL)
+                val current=requireNotNull(popup)
+                current.webViewClient.onPageStarted(current,PlayerNavigation.LOGIN_URL,null)
+                oldClient.onPageStarted(old,PlayerNavigation.LOGIN_URL,null)
+                oldClient.onReceivedHttpError(old,request(PlayerNavigation.LOGIN_URL,"GET"),
+                    android.webkit.WebResourceResponse("text/plain","UTF-8",503,"Unavailable",emptyMap(),
+                        java.io.ByteArrayInputStream(ByteArray(0))))
+                assertSame(current,popup)
+                assertNull(auth.authenticationState.error)
+            }
+        } finally {ui {auth.close()}}
+    }
+    @Test fun separateAuthenticationWindowUsesMobileSettingsAndShowsMainDocumentHttpErrors() {
+        var popup: WebView?=null
+        val auth=ui {SupfyChromeClient(state,{popup=it})}
+        try {
+            ui {
+                WebViewFactory.applyDesktopMode(web,true)
+                assertTrue(auth.openAuthentication(web,PlayerNavigation.LOGIN_URL))
+                val target=requireNotNull(popup)
+                assertNotSame(web,target)
+                assertTrue(target.settings.javaScriptEnabled)
+                assertTrue(target.settings.domStorageEnabled)
+                assertTrue(target.settings.userAgentString.contains("Android"))
+                assertFalse(target.settings.useWideViewPort)
+                assertFalse(target.settings.allowFileAccess)
+                target.webViewClient.onPageStarted(target,PlayerNavigation.LOGIN_URL,null)
+                target.webViewClient.onReceivedHttpError(target,request(PlayerNavigation.LOGIN_URL,"GET"),
+                    android.webkit.WebResourceResponse("text/plain","UTF-8",503,"Unavailable",emptyMap(),
+                        java.io.ByteArrayInputStream(ByteArray(0))))
+                assertEquals(PageErrorKind.HTTP,auth.authenticationState.error?.kind)
+                assertEquals(503,auth.authenticationState.error?.httpStatus)
+                assertFalse(auth.authenticationState.loading)
+            }
+        } finally {ui{auth.close()}}
+    }
+    @Test fun playerLoginIntermediatePageDoesNotPrematurelyCloseAuthentication() {
+        var popup: WebView?=null
+        val auth=ui {SupfyChromeClient(state,{popup=it})}
+        try {
+            ui {
+                assertTrue(auth.openAuthentication(web,"https://open.spotify.com/login"))
+                val target=requireNotNull(popup)
+                target.webViewClient.onPageFinished(target,"https://open.spotify.com/login")
+                assertSame(target,popup)
+            }
+        } finally {ui{auth.close()}}
+    }
+    @Test fun mobileDefaultDoesNotOverwriteAnExplicitDesktopPreference() {
+        val testContext=instrumentation.context
+        val fixture=testContext.getSharedPreferences("mobile-fixture-${System.nanoTime()}",android.content.Context.MODE_PRIVATE)
+        val isolated=object:android.content.ContextWrapper(testContext) {
+            override fun getSharedPreferences(name:String,mode:Int)=fixture
+        }
+        val defaults=AppSettings(isolated)
+        assertFalse(defaults.desktopMode.value)
+        defaults.setDesktopMode(true)
+        assertTrue(AppSettings(isolated).desktopMode.value)
+    }
     private val instrumentation get() = InstrumentationRegistry.getInstrumentation()
     private lateinit var web: WebView
     private lateinit var controller: ProtectionWebController

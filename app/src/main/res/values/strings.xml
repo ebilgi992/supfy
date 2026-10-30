@@ -77,6 +77,9 @@
     <string name="error_timeout">Bağlantı zaman aşımına uğradı. Ağ yavaş olabilir; biraz sonra tekrar dene.</string>
     <string name="error_ssl">Güvenli bağlantı doğrulanamadı. Güvenliğin için sayfa açılmadı.</string>
     <string name="error_generic">Beklenmeyen bir yükleme hatası oluştu.</string>
+    <string name="error_http">Spotify sayfası yüklenemedi (HTTP %1$d). Biraz sonra tekrar dene.</string>
+    <string name="error_empty">Spotify sayfası yanıt verdi ancak görünür içerik yüklenmedi. Tekrar dene; sorun sürerse Android System WebView ve Chrome güncelliğini kontrol et.</string>
+    <string name="page_loading">Spotify yükleniyor…</string>
     <string name="error_renderer">Sayfa motoru yeniden başlatıldı.</string>
     <string name="action_retry">Tekrar dene</string>
     <string name="no_browser">Bağlantıyı açacak bir tarayıcı bulunamadı.</string>
@@ -87,7 +90,7 @@
     <string name="pref_background_title">Arka planda çalmaya devam et</string>
     <string name="pref_background_desc">Uygulamadan çıkınca veya ekran kilitlenince sayfa çalışmaya devam eder. Kapalıyken sayfa duraklatılır ve pil tasarrufu sağlanır.</string>
     <string name="pref_desktop_title">Masaüstü sitesini iste</string>
-    <string name="pref_desktop_desc">Mobil sayfa oynatıcıyı açmazsa dene. Tarayıcılardaki “Masaüstü sitesi” seçeneğiyle aynıdır.</string>
+    <string name="pref_desktop_desc">Telefon görünümü varsayılandır. Mobil sayfa oynatıcıyı açmazsa masaüstü sitesini deneyebilirsin; giriş penceresi her zaman mobil görünümü kullanır.</string>
 
     <string name="section_appearance">Görünüm</string>
     <string name="theme_system">Sistem varsayılanı</string>

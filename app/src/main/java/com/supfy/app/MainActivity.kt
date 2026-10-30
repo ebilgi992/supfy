@@ -76,6 +76,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var protection: ProtectionWebController
     private var authenticationWindow: WebView? by mutableStateOf(null)
     private var mainChrome: SupfyChromeClient? = null
+    private var mainClient: SupfyWebViewClient? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
@@ -149,7 +150,7 @@ class MainActivity : ComponentActivity() {
                         online = online,
                         onRefresh = { webView?.reload() },
                         onHome = { webView?.loadUrl(UrlPolicy.HOME_URL) },
-                        onLogin = { webView?.loadUrl(PlayerNavigation.LOGIN_URL) },
+                        onLogin = ::openLogin,
                         onRetry = ::retry,
                         onOpenSettings = { showSettings = true },
                         onOpenProtection = { showProtection = true },
@@ -222,7 +223,8 @@ class MainActivity : ComponentActivity() {
                 }
 
                 authenticationWindow?.let { popup ->
-                    AuthenticationWindow(popup) { (webView?.webChromeClient as? SupfyChromeClient)?.closePopup() }
+                    val chrome=mainChrome?:return@let
+                    AuthenticationWindow(popup,chrome.authenticationState,chrome::retryAuthentication) {chrome.closePopup()}
                 }
 
                 // Sonra tanımlanan BackHandler önceliklidir: önce ayarlar kapanır, sonra sayfa geri gider.
@@ -236,12 +238,20 @@ class MainActivity : ComponentActivity() {
     private fun buildWebView(): WebView {
         val chrome=SupfyChromeClient(uiState, { authenticationWindow=it }, ::openExternally)
         mainChrome=chrome
+        val client=SupfyWebViewClient(uiState, ::openExternally, ::onRendererGone, protection) {url->
+            webView?.let {chrome.openAuthentication(it,url)}?:false
+        }
+        mainClient=client
         return WebViewFactory.create(
         context = this,
         desktopMode = appSettings.desktopMode.value,
-        webViewClient = SupfyWebViewClient(uiState, ::openExternally, ::onRendererGone, protection),
+        webViewClient = client,
         chromeClient = chrome,
     ).also(protection::attach)
+    }
+
+    private fun openLogin() {
+        webView?.let {mainChrome?.openAuthentication(it,PlayerNavigation.LOGIN_URL)}
     }
 
     private fun setProtectionOptions(options: ProtectionOptions) {
@@ -384,6 +394,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun destroyWebView(wv: WebView, rendererGone: Boolean = false) {
+        mainClient?.close()
         protection.detach()
         mainChrome?.close(rendererGone)
         (wv.parent as? ViewGroup)?.removeView(wv)

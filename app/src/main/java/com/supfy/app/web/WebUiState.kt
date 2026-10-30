@@ -5,12 +5,13 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 
-enum class PageErrorKind { NO_CONNECTION, TIMEOUT, SSL, GENERIC }
+enum class PageErrorKind { NO_CONNECTION, TIMEOUT, SSL, GENERIC, HTTP, EMPTY }
 
-data class PageError(val kind: PageErrorKind, val failingUrl: String?)
+data class PageError(val kind: PageErrorKind, val failingUrl: String?, val httpStatus: Int? = null)
 
 /** WebView'den gelen olayların Compose arayüzüne yansıyan durumu. */
 class WebUiState {
+    var loading by mutableStateOf(false)
     var playbackNotice by mutableStateOf(false)
     var progress by mutableIntStateOf(0)
     var error by mutableStateOf<PageError?>(null)

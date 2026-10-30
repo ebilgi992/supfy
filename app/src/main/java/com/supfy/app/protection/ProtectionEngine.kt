@@ -89,7 +89,8 @@ class ProtectionEngine {
             eme = if (options.enabled) mutableState.value.eme else null,
             audioError = if (!options.enabled) false else mutableState.value.audioError,
             visualError = if (!options.enabled) false else mutableState.value.visualError,
-            nativeAudioError = if (!options.enabled) false else mutableState.value.nativeAudioError)
+            nativeAudioError = if (!options.enabled) false else mutableState.value.nativeAudioError,
+            lastError = if (!options.enabled) null else mutableState.value.lastError)
         log(if (options.enabled) "Koruma tercihleri uygulandı." else "Koruma kapalı; sayfa geri yükleniyor.")
     }
 

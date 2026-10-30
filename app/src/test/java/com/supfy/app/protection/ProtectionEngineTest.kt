@@ -4,6 +4,16 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class ProtectionEngineTest {
+    @Test fun successfulRecoveryDoesNotShowAnOldErrorBesideReadyComponents() {
+        val e=active()
+        e.fail()
+        assertNotNull(e.state.value.lastError)
+        e.configure(ProtectionOptions(enabled=false))
+        e.configure(ProtectionOptions(enabled=true))
+        e.acceptSnapshot(PageSnapshot())
+        assertEquals(ComponentStatus.READY,e.state.value.detectionStatus)
+        assertNull(e.state.value.lastError)
+    }
     @Test fun rendererFailureStopsFilteringUntilExplicitRecovery() {
         val e=active()
         e.rendererFailed()

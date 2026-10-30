@@ -1,10 +1,10 @@
 <p align="center"><img src="branding/supfy-logo-dark.png" alt="Supfy" width="320"></p>
 
-# Supfy 0.6.0-v11 — test sürümü
+# Supfy 0.6.1-login-fix — test sürümü
 
 Mevcut Supfy'nin `test-1018` kaynakları üzerinde Kotlin + Compose + Android WebView geliştirmesi.
-`com.supfy.app` kimliği korunur. Yerel sürüm kodu **1020**; minSdk 26, targetSdk 35.
-Bu sürüm **deneysel koruma** içerir; doğrulanmış reklamsız Spotify ürünü değildir. Yeni kullanıcılar için koyu tema/masaüstü görünümü varsayılandır; mevcut tercihler korunur.
+`com.supfy.app` kimliği korunur. Yerel sürüm kodu **1021**; minSdk 26, targetSdk 35.
+Bu sürüm **deneysel koruma** içerir; doğrulanmış reklamsız Spotify ürünü değildir. Koyu tema ve telefon görünümü varsayılandır; kullanıcının açıkça seçtiği masaüstü tercihi korunur.
 
 - Ana anahtar, dört özellik tercihi, modül durumu, gerçek sayaçlar ve son 40 olay koruma ekranına bağlıdır.
 - Çoklu DOM kanıtıyla reklam sınıflandırılır. DOM medya ve destek varsa yalnızca bu WebView sesine özgü native mute kullanılır; önceki durum korunur.
@@ -12,7 +12,8 @@ Bu sürüm **deneysel koruma** içerir; doğrulanmış reklamsız Spotify ürün
 - İsteğe bağlı ağ filtresi bilinen üçüncü taraf reklam alanlarının GET alt istekleriyle sınırlıdır.
   Spotify oturum, ses, spclient ve Widevine lisans isteklerine müdahale edilmez.
 - Koruma varsayılan olarak kapalıdır. Ayarlar cihazda saklanır; hata durumunda müdahaleler durur.
-- Giriş için kullanıcı hareketiyle açılan gerçek Spotify popup belgesi korunur; POST, JavaScript ve DOM Storage ile aynı çerez oturumu devam ettirilir.
+- Spotify içindeki giriş bağlantıları ve Supfy giriş menüsü aynı mobil oturum penceresine yönlendirilir. Gerçek belge, POST ve çerez oturumu korunur; ara /login sayfası oynatıcıya dönüş sayılmaz.
+- Boş giriş sayfası, HTTP hatası ve 30 saniyelik yükleme sorunu görünür Türkçe hata/yeniden deneme sunar. Yeni belge commit edilmeden eski sayfa başarı sayılmaz; kapanmış pencerenin geç callback'leri yeni girişe taşınmaz.
 - “Tarayıcıda Aç” düğmesi kaldırıldı. Gereken güvenli dış bağlantı ve Release sayfası açma akışı korunur.
 - Mevcut GitHub Releases güncelleyicisi korunur; yalnızca `build-<versionCode>` sürümleri önerilir.
 
@@ -30,14 +31,16 @@ npm test
 APK: `app/build/outputs/apk/debug/app-debug.apk`. Instrumentasyon APK:
 `app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk`.
 DOM ve Android fixture testleri gerçek Spotify reklamı/oturumu/DRM doğrulaması değildir.
-Güncel ölçümler: [V11 sonuç raporu](docs/SONUC_RAPORU_V11.md). 38 JVM ve 29 DOM testi geçti; gerçek Spotify reklamı, oturum veya ses çıkışı kanıtı değildir. Android fixture denemeleri renderer/başlangıç hataları nedeniyle başarılı sayılmadı.
+Güncel sonuçlar ve kurulum: [1021 giriş düzeltmesi](docs/GIRIS_DUZELTMESI_1021.md). Önceki V11 test sonuçları tarihsel kayıttır. Sentetik testler gerçek Spotify hesabı/reklamı/DRM veya fiziksel cihaz doğrulaması değildir.
 
 **Ana kabul kriteri karşılanmadı: canlı Spotify reklam işleme başarısı doğrulanmadı.**
 Debug kaynak kümesindeki dışa kapalı WebViewTestActivity sentetik testlere yüzey sağlar; release uygulamasına dahil değildir.
 
 ## Kurulum ve imza
 
-Gönderilen eski APK'nın sertifikası ile bu ortamda üretilen debug sertifikası farklıdır.
+Bu düzeltme yerel V11 (1020) test APK'sıyla aynı sertifikayı kullanır. Aynı imzalı V11 üzerine veri silmeden güncelleme hedeflenir.
+
+Gönderilen özgün 1018 APK'nın sertifikası ile bu ortamda üretilen debug sertifikası farklıdır.
 Bu APK mevcut 1018 kurulumunun üzerine **kurulamaz**. Eski uygulamayı kaldırmak oturum ve site
 verilerini siler; bu çalışma sırasında kaldırma yapılmadı. Güncelleme için aynı özel imzalama
 anahtarıyla yeniden derleme gerekir. Anahtar APK'dan geri çıkarılamaz.
@@ -48,14 +51,14 @@ rapora veya teslim paketine girmez. CI sürüm kodu `2000 + GITHUB_RUN_NUMBER` k
 Kalıcı imza tanımlı olmadan üretilen debug APK yalnızca test içindir.
 
 Boş bir test cihazında APK'yı açıp Android kurulum istemini izleyin. Mevcut Supfy kuruluysa
-[V11 kurulum notlarını](docs/KURULUM_V11.md) önce okuyun. Güncelleme dosyasının son paket ve imza
+[1021 kurulum notlarını](docs/GIRIS_DUZELTMESI_1021.md) önce okuyun. Güncelleme dosyasının son paket ve imza
 kontrolünü Android Package Installer yapar; Supfy kendi kendine APK kurmaz.
 
 ## Güvenlik ve sınırlar
 
 HTTPS, sertifika hatasında iptal, Safe Browsing, dosya/içerik erişiminin kapatılması,
 üçüncü taraf çerezlerin kapalı olması ve yalnızca oynatıcıya verilen korumalı medya izni korunur.
-`addJavascriptInterface` yoktur; yerel kod yalnızca oynatıcıdan sınırlı sayısal durum alır.
+`addJavascriptInterface` yoktur; oynatıcıdan sınırlı sayısal durum, yükleme denetiminde yalnızca görünür içerik var/yok sonucu alınır. Giriş formunun değerleri veya sayfa metni okunmaz.
 Şifre/çerez/belirteçler okunmaz veya dışarı aktarılmaz. Günlükte URL veya kişisel veri yoktur.
 
 Tam şarkı oynatma Spotify hesabının haklarına, güncel WebView'e, EME/Widevine'e ve Spotify
