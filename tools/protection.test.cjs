@@ -263,3 +263,41 @@ test('repeated native suspension preserves an ongoing ad identity',()=>{
   a.configure(options);assert.equal(a.snapshot().detected,1);assert.equal(media.muted,true);assert.equal(a.snapshot().errors,0);
  }finally{d.window.close()}
 });
+
+test('a silently ignored DOM mute reports an audio fault instead of claiming readiness',()=>{
+ const d=page(player());try{
+  const doc=d.window.document;doc.querySelector('[data-testid="now-playing-widget"]').innerHTML='<i data-testid="track-info-advertiser"></i>';
+  Object.defineProperty(doc.querySelector('audio'),'muted',{get:()=>false,set:()=>{}});
+  const s=api(d).snapshot();assert.equal(s.phase,'ad');assert.equal(s.muted,0);
+  assert.equal(s.audioError,true);assert.equal(s.audioReady,false);
+ }finally{d.window.close()}
+});
+
+test('current muted DOM count distinguishes a live mute from historical totals',()=>{
+ const d=page(player());try{
+  const doc=d.window.document,w=doc.querySelector('[data-testid="now-playing-widget"]');
+  w.innerHTML='<i data-testid="track-info-advertiser"></i>';const a=api(d);
+  assert.equal(a.snapshot().mutedDomCount,1);
+  w.innerHTML='<a href="/track/0123456789ABCDEFGHIJKL">Song</a>';
+  const s=a.snapshot();assert.equal(s.phase,'music');assert.equal(s.muted,1);assert.equal(s.mutedDomCount,0);
+ }finally{d.window.close()}
+});
+
+test('native-only audio needs an explicit visible pause control and three ad signals',()=>{
+ const d=page('<div data-testid="now-playing-widget"><i data-testid="track-info-advertiser"></i></div><button data-testid="control-button-playpause" aria-label="Pause"></button>');try{
+  const a=api(d);assert.notEqual(a.snapshot().phase,'ad');
+  a.configure({...options,nativeAudio:true});const s=a.snapshot();
+  assert.equal(s.phase,'ad');assert.equal(s.evidence,3);assert.equal(s.mutedDomCount,0);assert.equal(s.muted,0);
+  d.window.document.querySelector('button').setAttribute('aria-label','Play');
+  assert.notEqual(a.snapshot().phase,'ad');assert.equal(a.snapshot().detected,1);
+ }finally{d.window.close()}
+});
+
+test('current muted DOM count clears after user unmutes without changing history',()=>{
+ const d=page(player());try{
+  const doc=d.window.document;doc.querySelector('[data-testid="now-playing-widget"]').innerHTML='<i data-testid="track-info-advertiser"></i>';
+  const a=api(d);assert.equal(a.snapshot().mutedDomCount,1);
+  doc.querySelector('audio').muted=false;const s=a.snapshot();
+  assert.equal(s.phase,'ad');assert.equal(s.mutedDomCount,0);assert.equal(s.muted,1);
+ }finally{d.window.close()}
+});

@@ -170,7 +170,8 @@ class ProtectionWebController(context: Context, val engine: ProtectionEngine,
             phase=json.getString("phase"),eme=json.getBoolean("eme"),playing=json.getBoolean("playing"),
             ready=json.getBoolean("ready"),audioReady=json.getBoolean("audioReady"),
             audioError=json.getBoolean("audioError"),visualError=json.getBoolean("visualError"),
-            evidence=json.getInt("evidence"),resumed=json.getInt("resumed"),reason=json.optInt("reason",0))
+            evidence=json.getInt("evidence"),resumed=json.getInt("resumed"),reason=json.optInt("reason",0),
+            mutedDomCount=json.optInt("mutedDomCount",0))
     }
     private fun handleAudioResult(result: AudioResult, retry: Boolean = true) {
         when (result) {
@@ -190,6 +191,14 @@ class ProtectionWebController(context: Context, val engine: ProtectionEngine,
             }
             AudioResult.NONE -> Unit
         }
+        // Re-read the public API even for an unchanged session: capability and past writes
+        // cannot establish the current mute state. This does not measure audible output.
+        val current = view?.takeIf { nativeAudio != null }?.let { wv ->
+            runCatching {
+                if (WebViewFeature.isFeatureSupported(WebViewFeature.MUTE_AUDIO)) WebViewCompat.isAudioMuted(wv) else null
+            }.getOrNull()
+        }
+        engine.nativeAudioObserved(current)
     }
     private fun restoreNative(retry: Boolean = true) {
         handleAudioResult(nativeAudio?.apply(false) ?: AudioResult.NONE,retry)

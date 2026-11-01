@@ -7,7 +7,7 @@
   let observer=null, pending=null, watchdog=null, heartbeat=0, adSince=0, awaitingRoot=false;
   let phase='idle', inAd=false, failed=false, playing=false, ready=false, awaitingMusic=false;
   let audioError=false, visualError=false, mediaAvailable=false, evidence=0;
-  let leaseSuspended=false, suspendedAd=false, reason=0;
+  let leaseSuspended=false, suspendedAd=false, reason=0, mutedDomCount=0;
   const mediaSaved=new Map(), hidden=new Map();
   const totals={detected:0, muted:0, banners:0, promos:0, restored:0, errors:0, resumed:0};
   const widgets='[data-testid="now-playing-widget"], [data-testid="now-playing-bar"]';
@@ -52,7 +52,7 @@
     document.removeEventListener('DOMContentLoaded',start);
     awaitingRoot=false;
     ['play','pause','ended','error'].forEach(name=>document.removeEventListener(name,schedule,true));
-    restoreAudio();restoreHidden();inAd=false;adSince=0;ready=false;awaitingMusic=false;
+    restoreAudio();mutedDomCount=0;restoreHidden();inAd=false;adSince=0;ready=false;awaitingMusic=false;
   }
   function fail(code=3) {failed=true;options.enabled=false;phase='error';reason=code;totals.errors++;cleanup();}
   function suspendForLease() {
@@ -100,11 +100,15 @@
           media.forEach(m=>{
             if(!mediaSaved.has(m)&&m.muted===false){
               mediaSaved.set(m,false);m.muted=true;
-              if(m.muted===true)totals.muted++;
+              if(m.muted!==true)throw new Error('Media mute did not apply');
+              totals.muted++;
             }
           });
         }catch(_){audioFault();restoreAudio();}
       }
+      mutedDomCount=0;
+      try {mediaSaved.forEach((_,m)=>{if(m.isConnected&&m.muted===true)mutedDomCount=Math.min(10000,mutedDomCount+1);});}
+      catch(_){audioFault();restoreAudio();mutedDomCount=0;}
       inAd=ad;phase=ad?'ad':(mediaAvailable||pauseControl?'music':'idle');
       if(!visualError) {
         try {
@@ -147,7 +151,7 @@
       if(options.enabled&&leaseSuspended&&!failed){resumeLease();start();}
       if(options.enabled&&ready&&!failed)scan();
       return {...totals,version:2,enabled:options.enabled,ready,phase,playing,evidence,
-        reason,audioError,visualError,audioReady:ready&&!audioError&&(mediaAvailable||options.nativeAudio),
+        reason,mutedDomCount,audioError,visualError,audioReady:ready&&!audioError&&(mediaAvailable||options.nativeAudio),
         eme:typeof navigator.requestMediaKeySystemAccess==='function'};
     },
     suspend(){if(options.enabled&&!failed)suspendForLease();},

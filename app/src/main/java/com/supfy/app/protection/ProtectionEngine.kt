@@ -23,7 +23,17 @@ data class PageSnapshot(
     val phase: String = "idle", val eme: Boolean = false, val playing: Boolean = false,
     val ready: Boolean = true, val audioReady: Boolean = true,
     val audioError: Boolean = false, val visualError: Boolean = false,
-    val evidence: Int = 3, val resumed: Int = 0, val reason: Int = 0,
+    val evidence: Int = 3, val resumed: Int = 0, val reason: Int = 0, val mutedDomCount: Int = 0,
+)
+
+/** Numeric, bounded current observations only. A native getter is not an audible-output measurement.
+ * phase: 0 idle, 1 music, 2 ad, 3 error. nativeGetter: -1 unknown, 0 false, 1 true.
+ * nativeStatus: 0 unsupported, 1 available, 2 requested mute confirmed, 3 failed.
+ * backend: 0 no confirmed current mute, 1 DOM, 2 native, 3 both.
+ */
+data class AudioDiagnostics(
+    val phase: Int, val evidence: Int, val muteRequested: Int, val nativeGetter: Int,
+    val nativeStatus: Int, val backend: Int, val mutedDomCount: Int,
 )
 
 data class EngineState(
@@ -38,7 +48,22 @@ data class EngineState(
     val nativeAudioSupported: Boolean = false, val nativeAudioError: Boolean = false,
     val nativeMutes: Long = 0, val nativeRestores: Long = 0, val resumedMusic: Long = 0,
     val lastError: String? = null,
+    val evidence: Int = 0, val mutedDomCount: Int = 0, val nativeAudioMuted: Boolean? = null,
 ) {
+    val audioDiagnostics: AudioDiagnostics get() {
+        val live = options.enabled && status == EngineStatus.ACTIVE
+        val requested = live && options.muteAds && phase == "ad" && evidence == 3
+        val dom = requested && mutedDomCount > 0
+        val native = requested && nativeAudioSupported && !nativeAudioError && nativeAudioMuted == true
+        return AudioDiagnostics(
+            phase = if (!options.enabled) 0 else when (phase) { "music" -> 1; "ad" -> 2; "error" -> 3; else -> 0 },
+            evidence = evidence.coerceIn(0,3), muteRequested = if (requested) 1 else 0,
+            nativeGetter = when (nativeAudioMuted) { true -> 1; false -> 0; null -> -1 },
+            nativeStatus = when { nativeAudioError -> 3; !nativeAudioSupported -> 0; native -> 2; else -> 1 },
+            backend = (if (dom) 1 else 0) + (if (native) 2 else 0),
+            mutedDomCount = if (live) mutedDomCount.coerceIn(0,10_000) else 0,
+        )
+    }
     private val common: ComponentStatus get() = when (status) {
         EngineStatus.DISABLED -> ComponentStatus.DISABLED
         EngineStatus.ERROR -> ComponentStatus.ERROR
@@ -55,6 +80,7 @@ data class EngineState(
         common != ComponentStatus.READY -> common
         (audioError && (!nativeAudioSupported || nativeAudioError)) || (!audioReady && nativeAudioError) -> ComponentStatus.ERROR
         !audioReady && !nativeAudioSupported -> ComponentStatus.WAITING
+        phase == "ad" && audioDiagnostics.backend == 0 -> ComponentStatus.WAITING
         phase == "ad" -> ComponentStatus.PROCESSING
         else -> ComponentStatus.READY
     }
@@ -105,7 +131,7 @@ class ProtectionEngine {
             else -> EngineStatus.WAITING_FOR_PLAYER
         }
         mutableState.value = mutableState.value.copy(status = status, phase = "idle", eme = null, playing = false,
-            audioReady = false, audioError = false, visualError = false)
+            audioReady = false, audioError = false, visualError = false, evidence = 0, mutedDomCount = 0)
     }
 
     @Synchronized fun shouldBlock(url: String, method: String, mainFrame: Boolean): Boolean {
@@ -127,7 +153,7 @@ class ProtectionEngine {
         val current = counts(report)
         val old = counts(previous)
         if (current.any { it !in 0..1_000_000 } || current.zip(old).any { (a,b) -> a < b } ||
-            report.evidence !in 0..3 || report.reason !in 0..3 || report.phase !in setOf("idle", "music", "ad", "error")) { fail(); return }
+            report.mutedDomCount !in 0..10_000 || report.evidence !in 0..3 || report.reason !in 0..3 || report.phase !in setOf("idle", "music", "ad", "error")) { fail(); return }
         val s = mutableState.value
         mutableState.value = s.copy(
             status = if (report.ready) EngineStatus.ACTIVE else EngineStatus.STARTING,
@@ -138,6 +164,7 @@ class ProtectionEngine {
             errors = s.errors + report.errors - previous.errors,
             restoredMedia = s.restoredMedia + report.restored - previous.restored,
             phase = report.phase, eme = report.eme, playing = report.playing,
+            evidence = report.evidence, mutedDomCount = report.mutedDomCount,
             audioReady = report.audioReady, audioError = report.audioError, visualError = report.visualError,
             resumedMusic = s.resumedMusic + report.resumed - previous.resumed,
             lastError = when {
@@ -168,7 +195,7 @@ class ProtectionEngine {
     @Synchronized fun pageTemporarilyUnavailable() {
         if(!onPlayer || fault || !mutableState.value.options.enabled)return
         val first=!transientPageWait;transientPageWait=true
-        mutableState.value=mutableState.value.copy(status=EngineStatus.STARTING,phase="idle",playing=false,audioReady=false,
+        mutableState.value=mutableState.value.copy(status=EngineStatus.STARTING,phase="idle",playing=false,audioReady=false,evidence=0,mutedDomCount=0,
             lastError="Sayfa yanıtı bekleniyor; ses müdahalesi geri alındı.")
         if(first)log("Sayfa yanıtı gecikti; koruma güvenli biçimde yeniden denenecek.")
     }
@@ -182,7 +209,11 @@ class ProtectionEngine {
     }
 
     @Synchronized fun nativeAudioSupport(supported: Boolean) {
-        mutableState.value = mutableState.value.copy(nativeAudioSupported = supported, nativeAudioError = false)
+        mutableState.value = mutableState.value.copy(nativeAudioSupported = supported, nativeAudioError = false, nativeAudioMuted = null)
+    }
+    /** Last public WebView getter observation, never inferred from feature availability. */
+    @Synchronized fun nativeAudioObserved(muted: Boolean?) {
+        mutableState.value = mutableState.value.copy(nativeAudioMuted = muted)
     }
     @Synchronized fun nativeAudioChanged(muted: Boolean) {
         val s = mutableState.value

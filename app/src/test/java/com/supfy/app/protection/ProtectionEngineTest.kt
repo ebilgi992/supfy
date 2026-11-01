@@ -4,6 +4,36 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class ProtectionEngineTest {
+    @Test fun nativeCapabilityAloneDoesNotReportAnAppliedAdMute() {
+        val e=active();e.nativeAudioSupport(true)
+        e.acceptSnapshot(PageSnapshot(detected=1,phase="ad",mutedDomCount=0))
+        val d=e.state.value.audioDiagnostics
+        assertEquals(2,d.phase);assertEquals(3,d.evidence);assertEquals(1,d.muteRequested)
+        assertEquals(-1,d.nativeGetter);assertEquals(1,d.nativeStatus);assertEquals(0,d.backend)
+        assertEquals(ComponentStatus.WAITING,e.state.value.audioStatus)
+        e.nativeAudioObserved(true)
+        assertEquals(1,e.state.value.audioDiagnostics.nativeGetter)
+        assertEquals(2,e.state.value.audioDiagnostics.nativeStatus)
+        assertEquals(2,e.state.value.audioDiagnostics.backend)
+        assertEquals(ComponentStatus.PROCESSING,e.state.value.audioStatus)
+    }
+    @Test fun audioDiagnosticsTrackCurrentPhaseSeparatelyFromHistoricalDetections() {
+        val e=active()
+        e.acceptSnapshot(PageSnapshot(detected=1,muted=1,phase="ad",mutedDomCount=1))
+        assertEquals(1,e.state.value.audioDiagnostics.backend)
+        e.acceptSnapshot(PageSnapshot(detected=1,muted=1,phase="music"))
+        assertEquals(1L,e.state.value.detectedAds)
+        assertEquals(1,e.state.value.audioDiagnostics.phase)
+        assertEquals(0,e.state.value.audioDiagnostics.muteRequested)
+        assertEquals(0,e.state.value.audioDiagnostics.mutedDomCount)
+        assertEquals(0,e.state.value.audioDiagnostics.backend)
+    }
+    @Test fun malformedLiveDomCountFailsOpen() {
+        for(count in listOf(-1,10_001)) {
+            val e=active();e.acceptSnapshot(PageSnapshot(mutedDomCount=count))
+            assertEquals(EngineStatus.ERROR,e.state.value.status)
+        }
+    }
     @Test fun successfulRecoveryDoesNotShowAnOldErrorBesideReadyComponents() {
         val e=active()
         e.fail()
