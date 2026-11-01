@@ -11,10 +11,12 @@ data class PlaybackSnapshot(
     val next:Boolean=false,
     val previous:Boolean=false,
     val canPlayPause:Boolean=true,
+    val probeFlags:Int=0,
+    val evidence:Int=0,
 ) {
     fun bounded()=copy(title=title.take(200),artist=artist.take(120),
         positionMs=positionMs.coerceIn(0,if(durationMs>0)durationMs.coerceAtMost(MAX_TIME) else MAX_TIME),
-        durationMs=durationMs.coerceIn(0,MAX_TIME))
+        durationMs=durationMs.coerceIn(0,MAX_TIME),probeFlags=probeFlags.coerceIn(0,255),evidence=evidence.coerceIn(0,3))
     companion object {const val MAX_TIME=86_400_000L}
 }
 

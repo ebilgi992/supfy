@@ -17,15 +17,17 @@ import android.os.Looper
 import android.os.SystemClock
 import com.supfy.app.MainActivity
 import com.supfy.app.R
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 
 /** Framework media session + mediaPlayback foreground service; no external media/token API. */
 class PlaybackNotificationService:Service() {
     private lateinit var session:MediaSession
     private val handler=Handler(Looper.getMainLooper())
-    private val expire=Runnable {stopSelf()}
+    private val expire=Runnable {mutableHealth.value=mutableHealth.value.copy(stopCode=3);stopSelf()}
     private val idleLease=PausedPlaybackLease()
     override fun onCreate(){
-        super.onCreate();running=true
+        super.onCreate();running=true;mutableHealth.value=PlaybackServiceHealth(running=1)
         getSystemService(NotificationManager::class.java).createNotificationChannel(
             NotificationChannel(CHANNEL,"Supfy oynatıcı",NotificationManager.IMPORTANCE_LOW).apply {description="Müzik ve kilit ekranı kontrolleri";setSound(null,null)})
         session=MediaSession(this,"Supfy").apply {
@@ -41,12 +43,12 @@ class PlaybackNotificationService:Service() {
         }
     }
     override fun onStartCommand(intent:Intent?,flags:Int,startId:Int):Int {
-        if(!PlaybackConnection.hasOwner()){stopSelf();return START_NOT_STICKY}
+        if(!PlaybackConnection.hasOwner()){mutableHealth.value=mutableHealth.value.copy(stopCode=1);stopSelf();return START_NOT_STICKY}
         intent?.getStringExtra(COMMAND)?.let {name->
             PlaybackCommand.entries.firstOrNull {it.name==name}?.let {PlaybackConnection.dispatch(it)}
         }
         val data=PlaybackConnection.snapshot
-        if(!data.available){stopSelf();return START_NOT_STICKY}
+        if(!data.available){mutableHealth.value=mutableHealth.value.copy(stopCode=2);stopSelf();return START_NOT_STICKY}
         val title=data.title.ifBlank {"Spotify oynatıcı"}
         session.setMetadata(MediaMetadata.Builder().putString(MediaMetadata.METADATA_KEY_TITLE,title)
             .putString(MediaMetadata.METADATA_KEY_ARTIST,data.artist).putLong(MediaMetadata.METADATA_KEY_DURATION,data.durationMs).build())
@@ -66,25 +68,42 @@ class PlaybackNotificationService:Service() {
         if(data.next){builder.addAction(action(android.R.drawable.ic_media_next,"Sonraki",PlaybackCommand.NEXT));compact.add(actionIndex)}
         builder.setStyle(Notification.MediaStyle().setMediaSession(session.sessionToken).setShowActionsInCompactView(*compact.toIntArray()))
         val notification=builder.build()
-        if(Build.VERSION.SDK_INT>=29)startForeground(NOTIFICATION_ID,notification,ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK)
-        else startForeground(NOTIFICATION_ID,notification)
+        try {
+            if(Build.VERSION.SDK_INT>=29)startForeground(NOTIFICATION_ID,notification,ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK)
+            else startForeground(NOTIFICATION_ID,notification)
+        }catch(_:RuntimeException){
+            mutableHealth.value=mutableHealth.value.copy(stopCode=4,notificationFlags=notificationFlags())
+            stopSelf();return START_NOT_STICKY
+        }
+        mutableHealth.value=PlaybackServiceHealth(running=1,foreground=1,notificationFlags=notificationFlags())
         handler.removeCallbacks(expire)
         idleLease.remainingMs(data.playing,SystemClock.elapsedRealtime())?.let {remaining->
             handler.postDelayed(expire,remaining)
         }
         return START_NOT_STICKY
     }
+    private fun notificationFlags():Int {
+        val manager=getSystemService(NotificationManager::class.java)
+        var flags=if(manager.areNotificationsEnabled())1 else 0
+        manager.getNotificationChannel(CHANNEL)?.let {channel->flags=flags or 2;if(channel.importance==NotificationManager.IMPORTANCE_NONE)flags=flags or 4}
+        if(manager.activeNotifications.any {it.id==NOTIFICATION_ID})flags=flags or 8
+        return flags
+    }
     private fun action(icon:Int,label:String,command:PlaybackCommand):Notification.Action {
         val pending=PendingIntent.getService(this,command.ordinal,Intent(this,PlaybackNotificationService::class.java)
             .putExtra(COMMAND,command.name),PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
         return Notification.Action.Builder(icon,label,pending).build()
     }
-    override fun onDestroy(){handler.removeCallbacksAndMessages(null);if(::session.isInitialized){session.isActive=false;session.release()};running=false;stopForeground(STOP_FOREGROUND_REMOVE);super.onDestroy()}
+    override fun onDestroy(){handler.removeCallbacksAndMessages(null);if(::session.isInitialized){session.isActive=false;session.release()};running=false;stopForeground(STOP_FOREGROUND_REMOVE)
+        mutableHealth.value=mutableHealth.value.copy(running=0,foreground=0,stopCode=mutableHealth.value.stopCode.takeIf {it!=0}?:5,notificationFlags=notificationFlags())
+        super.onDestroy()}
     override fun onBind(intent:Intent?):IBinder?=null
     companion object {
         const val CHANNEL="supfy_playback"
         const val NOTIFICATION_ID=1027
         private const val COMMAND="playback_command"
         @Volatile var running=false;private set
+        private val mutableHealth=MutableStateFlow(PlaybackServiceHealth())
+        val health=mutableHealth.asStateFlow()
     }
 }
