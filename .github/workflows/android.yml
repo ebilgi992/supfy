@@ -54,7 +54,7 @@ jobs:
 
       - name: Release olarak yayımla (debug)
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: build-${{ github.run_number }}
           name: Supfy ${{ env.VERSION }} (debug, derleme ${{ github.run_number }})
