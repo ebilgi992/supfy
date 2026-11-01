@@ -1,9 +1,15 @@
 <p align="center"><img src="branding/supfy-logo-dark.png" alt="Supfy" width="320"></p>
 
-# Supfy 0.6.1-login-fix — test sürümü
+# Supfy — 1027 medya ve hesap güncellemesi
 
-Mevcut Supfy'nin `test-1018` kaynakları üzerinde Kotlin + Compose + Android WebView geliştirmesi.
-`com.supfy.app` kimliği korunur. Yerel sürüm kodu **1021**; minSdk 26, targetSdk 35.
+Mevcut Supfy'nin Kotlin + Compose + Android WebView kaynakları korunur.
+`com.supfy.app`, minSdk26/targetSdk35; **0.7.0-media-account / 1027**.
+Compose'un varsayılan WRAP_CONTENT parametresi Chromium'da CSS yüksekliğini sıfırlıyordu.
+Aynı public giriş düzeni Android'de siyah/rootHTML hit2 ile tekrar üretildi; yalnız
+native MATCH_PARENT yüksekliğiyle form çizildi ve gerçek pencere dokunması geçti.
+WebViewFactory artık açık MATCH_PARENT parametreleri verir; Spotify CSS'sine,
+oturum çerezlerine veya güvenlik protokollerine müdahale etmez.
+Fiziksel WebView156'da gerçek hesap girişi/oturum kalıcılığı ayrıca doğrulanmalıdır.
 Bu sürüm **deneysel koruma** içerir; doğrulanmış reklamsız Spotify ürünü değildir. Koyu tema ve telefon görünümü varsayılandır; kullanıcının açıkça seçtiği masaüstü tercihi korunur.
 
 - Ana anahtar, dört özellik tercihi, modül durumu, gerçek sayaçlar ve son 40 olay koruma ekranına bağlıdır.
@@ -12,10 +18,21 @@ Bu sürüm **deneysel koruma** içerir; doğrulanmış reklamsız Spotify ürün
 - İsteğe bağlı ağ filtresi bilinen üçüncü taraf reklam alanlarının GET alt istekleriyle sınırlıdır.
   Spotify oturum, ses, spclient ve Widevine lisans isteklerine müdahale edilmez.
 - Koruma varsayılan olarak kapalıdır. Ayarlar cihazda saklanır; hata durumunda müdahaleler durur.
-- Spotify içindeki giriş bağlantıları ve Supfy giriş menüsü aynı mobil oturum penceresine yönlendirilir. Gerçek belge, POST ve çerez oturumu korunur; ara /login sayfası oynatıcıya dönüş sayılmaz.
+- Spotify içindeki ve menüdeki giriş aynı mevcut WebView üzerinde normal gezinmeye bırakıldı. Giriş için ikinci WebView/Dialog açılmaz; POST ve yönlendirmeler özel popup koduyla tekrar oynatılmaz.
+- Girişte denetim ilk formdan sonra da sürer; sonradan kaybolan form görünür hata oluşturur. Form mevcutken yalnızca hit-test başarısızlığı boş sayfa sayılmaz. Geç gelen form, istek yeniden oynatılmadan toparlanabilir. Arka planda denetim durur.
+- Girişteki mevcut yazılımsal çizim yoluna karşı aynı belge üzerinde “Normal çizimi dene” karşılaştırması sunulur; seçim giriş adımlarında korunur, oynatıcıya dönünce sıfırlanır. Telefonun GPU'sunun kök neden olduğu kanıtlanmadı. Native giriş durum satırı gerçek yükleme aşamasını ve sürüm kodunu gösterir.
 - Boş giriş sayfası, HTTP hatası ve 30 saniyelik yükleme sorunu görünür Türkçe hata/yeniden deneme sunar. Yeni belge commit edilmeden eski sayfa başarı sayılmaz; kapanmış pencerenin geç callback'leri yeni girişe taşınmaz.
 - “Tarayıcıda Aç” düğmesi kaldırıldı. Gereken güvenli dış bağlantı ve Release sayfası açma akışı korunur.
 - Mevcut GitHub Releases güncelleyicisi korunur; yalnızca `build-<versionCode>` sürümleri önerilir.
+
+## 1027 değişiklikleri
+
+- Gerçek oynatma işaretlerinden beslenen Android MediaSession ve medya ön plan servisi; bildirimde oynat/duraklat ve destekleniyorsa önceki/sonraki. Arka plan tercihi kapatılınca servis kapanır.
+- Ayarlarda Spotify hesap kartı: sayfada doğrulanabilen oturum ve ad, giriş/kayıt veya hesap menüsü/çıkış. E-posta, token ve çerezler okunmaz; başka kullanıcının profil başlığı hesap adı sayılmaz.
+- `spotify:signup` resmi kayıt sayfasına yönlenir. Google/Apple/Facebook yönlendirmeleri kullanıcı etkileşimine bağlı, sınırlı bir izinle açıklama gösterir. Harici tarayıcı oturumu WebView'e aktarılmaz; uygulama içi giriş için Spotify e-posta/kod akışı gerekir. Kayıtlı geliştirici uygulaması olmadığından yeni bir OAuth entegrasyonu eklenmedi.
+- Arka plan zamanlayıcı gecikmesi koruma motorunu kalıcı hataya düşürmez; müdahaleler güvenle geri alınır ve sınırlı yeniden deneme yapılır. Gerçek reklam susturma başarısı doğrulanmadı.
+
+Güncel kapsam ve kanıtlar: [1027 raporu](docs/SURUM_1027_RAPORU.md).
 
 ## Derleme ve test
 
@@ -31,14 +48,14 @@ npm test
 APK: `app/build/outputs/apk/debug/app-debug.apk`. Instrumentasyon APK:
 `app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk`.
 DOM ve Android fixture testleri gerçek Spotify reklamı/oturumu/DRM doğrulaması değildir.
-Güncel sonuçlar ve kurulum: [1021 giriş düzeltmesi](docs/GIRIS_DUZELTMESI_1021.md). Önceki V11 test sonuçları tarihsel kayıttır. Sentetik testler gerçek Spotify hesabı/reklamı/DRM veya fiziksel cihaz doğrulaması değildir.
+Güncel kök neden ve doğrulama: [1026 raporu](docs/GIRIS_1026_KOK_NEDEN_VE_TEST.md). [1025 tanı kaydı](docs/GIRIS_1025_DERIN_INCELEME.md), [1024 raporu](docs/GIRIS_1024_RAPORU.md), [1023 raporu](docs/GIRIS_1023_RAPORU.md), [1022 raporu](docs/GIRIS_1022_RAPORU.md), [önceki giriş incelemesi](docs/GIRIS_KOK_NEDEN_INCELEMESI.md), 1021 ve V11 raporları tarihsel kayıttır. Sentetik testler gerçek Spotify hesabı/reklamı/DRM veya fiziksel cihaz doğrulaması değildir.
 
-**Ana kabul kriteri karşılanmadı: canlı Spotify reklam işleme başarısı doğrulanmadı.**
+**Ana kabul kriterleri karşılanmadı: gerçek cihazda Spotify girişi ve canlı reklam işleme başarısı doğrulanmadı.**
 Debug kaynak kümesindeki dışa kapalı WebViewTestActivity sentetik testlere yüzey sağlar; release uygulamasına dahil değildir.
 
 ## Kurulum ve imza
 
-Bu düzeltme yerel V11 (1020) test APK'sıyla aynı sertifikayı kullanır. Aynı imzalı V11 üzerine veri silmeden güncelleme hedeflenir.
+1027 APK, önceki yerel 1026 test APK'sıyla aynı sertifikayı kullanır ve sürüm kodu artmıştır. Mevcut test kurulumunu kaldırmadan güncellenebilir. **Tanıyı kopyala**, yalnızca sabit kodlar/sayılar içeren yerel raporu kullanıcı dokunuşuyla panoya koyar; kendiliğinden göndermez. Parola, form değeri, çerez, token, sayfa metni veya tam URL alınmaz.
 
 Gönderilen özgün 1018 APK'nın sertifikası ile bu ortamda üretilen debug sertifikası farklıdır.
 Bu APK mevcut 1018 kurulumunun üzerine **kurulamaz**. Eski uygulamayı kaldırmak oturum ve site
@@ -58,7 +75,7 @@ kontrolünü Android Package Installer yapar; Supfy kendi kendine APK kurmaz.
 
 HTTPS, sertifika hatasında iptal, Safe Browsing, dosya/içerik erişiminin kapatılması,
 üçüncü taraf çerezlerin kapalı olması ve yalnızca oynatıcıya verilen korumalı medya izni korunur.
-`addJavascriptInterface` yoktur; oynatıcıdan sınırlı sayısal durum, yükleme denetiminde yalnızca görünür içerik var/yok sonucu alınır. Giriş formunun değerleri veya sayfa metni okunmaz.
+`addJavascriptInterface` yoktur. Hesap kartı yalnızca görünür kendi kullanıcı bileşenindeki adı, medya bildirimi yalnızca oynatıcı başlık/sanatçı/durum bilgisini yerel olarak kullanır. Giriş formunun değerleri okunmaz; bu bilgiler ağa veya loglara aktarılmaz.
 Şifre/çerez/belirteçler okunmaz veya dışarı aktarılmaz. Günlükte URL veya kişisel veri yoktur.
 
 Tam şarkı oynatma Spotify hesabının haklarına, güncel WebView'e, EME/Widevine'e ve Spotify
@@ -66,7 +83,7 @@ uyumluluğuna bağlıdır. DRM veya giriş korumaları aşılmaz. Google/Apple/F
 sağlayıcı tarafından reddedilebilir; e-posta/kod ile Spotify'ın kendi girişini kullanın.
 Native MUTE_AUDIO desteği yoksa DOM dışında üretilen medya susturulamayabilir. Native destek, gerçek reklam sesinin susturulduğu anlamına gelmez. WebSocket,
 SW önbelleği ve genel ağ trafiği filtrelenmez. DRM uygunluğu EME varlığından çıkarılamaz.
-Kilit ekranı MediaSession kontrolleri ve kesintisiz HyperOS arka plan hizmeti eklenmemiştir.
+MediaSession ve medya ön plan servisi eklendi. İşletim sisteminin süreci kapatmasından sonra çalma sürdürülmez; fiziksel cihazda kesintisiz arka plan/HyperOS testi yapılmadı.
 
 Reklam engelleme Spotify koşullarına aykırı olabilir; hesap kısıtlaması/kapatılma riski vardır.
 Xiaomi HyperOS'ta arka plan çalışması işletim sistemi politikalarına bağlıdır; pil kısıtlaması

@@ -4,6 +4,35 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class PageLoadTrackerTest {
+    @Test fun aFormThatDisappearsAfterBeingReadyMustBecomeAnEmptyPageFailure() {
+        val load=PageLoadTracker()
+        val document=load.begin()
+        load.committed(document)
+        load.observed(document,true)
+        assertFalse(load.waiting)
+        load.observed(document,false)
+        assertTrue("A vanished form must re-arm the page health deadline",load.waiting)
+        load.timeout(document)
+        assertEquals(PageLoadProblem.EMPTY,load.problem)
+    }
+    @Test fun aReadyDocumentCanStillBeCheckedForLaterBlankContent() {
+        val load=PageLoadTracker()
+        val document=load.begin()
+        load.committed(document)
+        load.observed(document,true)
+        assertTrue("Readiness cannot permanently disable authentication health checks",load.canProbe)
+    }
+    @Test fun aLateFormCanRecoverAnEmptyPageWithoutReplayingTheLoginRequest() {
+        val load=PageLoadTracker()
+        val document=load.begin()
+        load.committed(document)
+        load.observed(document,false)
+        load.timeout(document)
+        assertEquals(PageLoadProblem.EMPTY,load.problem)
+        load.observed(document,true)
+        assertNull("Late usable content must clear only the empty-content failure",load.problem)
+        assertFalse(load.waiting)
+    }
     @Test fun visibleOutgoingContentCannotMarkANewNavigationReady() {
         val load=PageLoadTracker()
         val document=load.begin()

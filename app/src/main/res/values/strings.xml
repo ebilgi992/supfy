@@ -18,6 +18,16 @@
     <string name="protection_title">Supfy Koruma</string>
     <string name="action_login">Spotify giriş ekranı</string>
     <string name="login_window_title">Spotify oturum açma</string>
+    <string name="login_stage_status">Spotify girişi · %1$d\n%2$s</string>
+    <string name="copy_login_diagnostics">Tanıyı kopyala</string>
+    <string name="login_diagnostics_copied">Tanılama kopyalandı. Parola veya oturum bilgisi içermez.</string>
+    <string name="login_stage_requested">Bağlantı başlatılıyor…</string>
+    <string name="login_stage_loading">Giriş sayfası yükleniyor…</string>
+    <string name="login_stage_checking">Giriş formu bekleniyor…</string>
+    <string name="login_stage_drawing">Giriş ekranı çiziliyor…</string>
+    <string name="login_stage_responding">Giriş sayfası yanıt veriyor.</string>
+    <string name="login_stage_interaction">Spotify sayfasındaki giriş adımını tamamlayın.</string>
+    <string name="login_stage_failed">Giriş yüklenemedi. Yukarıdaki hata bilgisini kontrol et.</string>
     <string name="action_close">Kapat</string>
     <string name="playback_app_notice">Spotify bu içerik için uygulamaya geçiş istiyor. Masaüstü sitesi ayarını kontrol et. Hesap ve DRM sınırlamaları Supfy tarafından aşılamaz.</string>
     <string name="protection_summary">%1$d / %2$d koruma etkin</string>
@@ -78,7 +88,7 @@
     <string name="error_ssl">Güvenli bağlantı doğrulanamadı. Güvenliğin için sayfa açılmadı.</string>
     <string name="error_generic">Beklenmeyen bir yükleme hatası oluştu.</string>
     <string name="error_http">Spotify sayfası yüklenemedi (HTTP %1$d). Biraz sonra tekrar dene.</string>
-    <string name="error_empty">Spotify sayfası yanıt verdi ancak görünür içerik yüklenmedi. Tekrar dene; sorun sürerse Android System WebView ve Chrome güncelliğini kontrol et.</string>
+    <string name="error_empty">Spotify sayfası yanıt verdi ancak kullanılabilir içerik görünmüyor. Tekrar dene. Geçici yükleme tamamlanırsa ekran kendiliğinden geri döner.</string>
     <string name="page_loading">Spotify yükleniyor…</string>
     <string name="error_renderer">Sayfa motoru yeniden başlatıldı.</string>
     <string name="action_retry">Tekrar dene</string>
@@ -88,9 +98,9 @@
     <string name="settings_title">Ayarlar</string>
     <string name="section_playback">Oynatma</string>
     <string name="pref_background_title">Arka planda çalmaya devam et</string>
-    <string name="pref_background_desc">Uygulamadan çıkınca veya ekran kilitlenince sayfa çalışmaya devam eder. Kapalıyken sayfa duraklatılır ve pil tasarrufu sağlanır.</string>
+    <string name="pref_background_desc">Müzik çalarken bildirim ve kilit ekranı kontrollerini gösterir. Sistem uygulamayı kapatırsa oynatma sona erebilir.</string>
     <string name="pref_desktop_title">Masaüstü sitesini iste</string>
-    <string name="pref_desktop_desc">Telefon görünümü varsayılandır. Mobil sayfa oynatıcıyı açmazsa masaüstü sitesini deneyebilirsin; giriş penceresi her zaman mobil görünümü kullanır.</string>
+    <string name="pref_desktop_desc">Telefon görünümü varsayılandır. Mobil sayfa oynatıcıyı açmazsa masaüstü sitesini deneyebilirsin. Seçimin giriş sırasında da korunur.</string>
 
     <string name="section_appearance">Görünüm</string>
     <string name="theme_system">Sistem varsayılanı</string>
@@ -113,7 +123,7 @@
     <string name="clear_done">Veriler silindi.</string>
 
     <string name="section_permissions">İzinler</string>
-    <string name="permissions_body">İnternet erişimi: sayfayı yüklemek için.\nAğ durumu: bağlantı göstergesi için.\nKorumalı içerik (DRM): yalnızca open.spotify.com istediğinde, şifreli müziği çalabilmek için verilir. Mikrofon, kamera ve konum izinleri her zaman reddedilir.</string>
+    <string name="permissions_body">İnternet, ağ durumu ve arka planda medya oynatma için ön plan servis izinleri kullanılır. Medya oturumu kilit ekranı ve bildirim kontrollerini sağlar.</string>
 
     <string name="section_device">Cihaz bilgisi</string>
     <string name="device_model">Cihaz: %1$s %2$s</string>
@@ -173,4 +183,6 @@
     <string name="audio_recovery_reset">Ses geri yüklenemediği için oynatıcı yeniden kuruldu. Oturum korunur; gerekirse çalmayı yeniden başlatın.</string>
     <string name="engine_playing">Sayfadaki medya oynatılıyor.</string>
     <string name="engine_paused">Sayfada oynayan medya ölçülmedi.</string>
+    <string name="login_rendering_retry">Normal çizimi dene</string>
+    <string name="login_rendering_tried">Normal çizim denendi · Tanıyı kopyalayabilirsiniz</string>
 </resources>

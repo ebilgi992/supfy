@@ -2,6 +2,7 @@ package com.supfy.app.web
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.view.ViewGroup
 import android.webkit.CookieManager
 import android.webkit.WebSettings
 import android.webkit.WebView
@@ -12,13 +13,26 @@ import com.supfy.app.R
 
 object WebViewFactory {
 
-    @SuppressLint("SetJavaScriptEnabled") // Spotify Web Player JavaScript olmadan çalışmaz.
+    /** Authentication has no protected playback. Avoid GPU-layer composition for this document only. */
+    fun configureDocumentRendering(webView:WebView,url:String?,normalAuthenticationRendering:Boolean=false) {
+        val layer=if(AuthenticationPolicy.isAuthenticationUrl(url) && !normalAuthenticationRendering) android.view.View.LAYER_TYPE_SOFTWARE
+            else android.view.View.LAYER_TYPE_NONE
+        if(webView.layerType!=layer) {
+            webView.setLayerType(layer,null)
+            webView.requestLayout();webView.postInvalidateOnAnimation()
+        }
+    }
+
+    @SuppressLint("SetJavaScriptEnabled", "ClickableViewAccessibility") // Spotify Web Player JavaScript olmadan çalışmaz.
     fun create(
         context: Context,
         desktopMode: Boolean,
         webViewClient: SupfyWebViewClient,
         chromeClient: SupfyChromeClient,
     ): WebView = WebView(context).apply {
+        // Compose otherwise supplies WRAP_CONTENT. Chromium uses that flag to force
+        // CSS layout height to zero even when the native view is measured full-size.
+        layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
         settings.apply {
             // Gerekli olanlar
             javaScriptEnabled = true
@@ -30,8 +44,9 @@ object WebViewFactory {
             allowContentAccess = false
             setGeolocationEnabled(false)
             javaScriptCanOpenWindowsAutomatically = false
-            // User initiated windows are resolved by SupfyChromeClient using the same session.
-            setSupportMultipleWindows(true)
+            // Android routes target=_blank/window.open into this same top-level view.
+            // Do not construct a second WebView/Dialog for the sign-in document.
+            setSupportMultipleWindows(false)
             mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
             builtInZoomControls = false
             displayZoomControls = false
@@ -47,6 +62,12 @@ object WebViewFactory {
         setBackgroundColor(ContextCompat.getColor(context, R.color.supfy_bg))
         this.webViewClient = webViewClient
         this.webChromeClient = chromeClient
+        webViewClient.attach(this)
+        // Observe without consuming: WebView keeps its own touch/accessibility behavior.
+        setOnTouchListener { _,event->
+            if(event.actionMasked==android.view.MotionEvent.ACTION_UP)webViewClient.userInteraction(this)
+            false
+        }
         // Not: addJavascriptInterface kullanılmaz; sayfa ile uygulama arasında köprü yoktur.
     }
 

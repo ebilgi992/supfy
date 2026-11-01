@@ -2,6 +2,8 @@ package com.supfy.app
 
 import android.content.ActivityNotFoundException
 import android.content.Intent
+import android.content.ClipboardManager
+import android.content.ClipData
 import android.net.Uri
 import android.os.Bundle
 import android.os.Parcel
@@ -60,7 +62,6 @@ import com.supfy.app.web.WebViewFactory
 import com.supfy.app.protection.ProtectionEngine
 import com.supfy.app.protection.ProtectionOptions
 import com.supfy.app.protection.ProtectionWebController
-import com.supfy.app.ui.AuthenticationWindow
 import com.supfy.app.web.PlayerNavigation
 
 class MainActivity : ComponentActivity() {
@@ -74,7 +75,9 @@ class MainActivity : ComponentActivity() {
     private var updateCheckRunning = false
     private val protectionEngine = ProtectionEngine()
     private lateinit var protection: ProtectionWebController
-    private var authenticationWindow: WebView? by mutableStateOf(null)
+    private lateinit var playback:com.supfy.app.playback.PlaybackWebController
+    private lateinit var account:com.supfy.app.account.AccountController
+    private var providerUri:Uri? by mutableStateOf<Uri?>(null)
     private var mainChrome: SupfyChromeClient? = null
     private var mainClient: SupfyWebViewClient? = null
 
@@ -87,13 +90,17 @@ class MainActivity : ComponentActivity() {
         protection = ProtectionWebController(applicationContext, protectionEngine, ::recoverAudio)
         protection.configure(appSettings.protectionOptions)
 
+        playback=com.supfy.app.playback.PlaybackWebController(applicationContext) {message->Toast.makeText(this,message,Toast.LENGTH_SHORT).show()}
+        playback.setEnabled(appSettings.backgroundPlayback.value)
+        account=com.supfy.app.account.AccountController(applicationContext)
         WebViewFactory.hardenServiceWorkers()
         protection.installServiceWorkerFilter()
         val wv = buildWebView()
         webView = wv
         // Süreç sistem tarafından kapatıldıysa kaldığı sayfaya döner.
         val restored = savedInstanceState?.let { wv.restoreState(it) } != null
-        if (!restored) wv.loadUrl(UrlPolicy.HOME_URL)
+        if (!restored) mainClient?.loadUrl(wv,UrlPolicy.HOME_URL)
+        else mainClient?.trackRestoredPage(wv)
 
         val webViewVersion = WebViewCompat.getCurrentWebViewPackage(this)?.versionName
         val support = DeviceSupport(
@@ -127,6 +134,8 @@ class MainActivity : ComponentActivity() {
                 val background by appSettings.backgroundPlayback.collectAsStateWithLifecycle()
                 val desktop by appSettings.desktopMode.collectAsStateWithLifecycle()
                 val engineState by protectionEngine.state.collectAsStateWithLifecycle()
+                val accountState by account.state.collectAsStateWithLifecycle()
+                LaunchedEffect(background){playback.setEnabled(background)}
                 var showSettings by rememberSaveable { mutableStateOf(false) }
                 var showProtection by rememberSaveable { mutableStateOf(false) }
 
@@ -154,6 +163,8 @@ class MainActivity : ComponentActivity() {
                         onRetry = ::retry,
                         onOpenSettings = { showSettings = true },
                         onOpenProtection = { showProtection = true },
+                        onCopyLoginDiagnostics = ::copyLoginDiagnostics,
+                        onRetryLoginRendering = {webView?.let {mainClient?.retryLoginRendering(it)}},
                     )
 
                     AnimatedVisibility(
@@ -173,6 +184,19 @@ class MainActivity : ComponentActivity() {
                             onCheckUpdates = { checkForUpdates(manual = true) },
                             onClearData = ::clearSiteData,
                             onClose = { showSettings = false },
+                            account = accountState,
+                            onAccountLogin = {showSettings=false;openLogin()},
+                            onAccountSignUp = {showSettings=false;webView?.let {mainClient?.loadUrl(it,PlayerNavigation.SIGNUP_URL)}},
+                            onAccountMenu = {
+                                showSettings=false
+                                fun fallback(){webView?.let {mainClient?.loadUrl(it,com.supfy.app.account.AccountController.ACCOUNT_URL)}}
+                                if(!account.openAccountMenu(::fallback))fallback()
+                            },
+                            onAccountLogout = {
+                                showSettings=false;account.markUnknown()
+                                webView?.let {mainClient?.loadUrl(it,com.supfy.app.account.AccountController.LOGOUT_URL)}
+                            },
+                            onAccountRefresh = account::refresh,
                         )
                     }
 
@@ -195,6 +219,13 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
+                providerUri?.let {uri->
+                    AlertDialog(onDismissRequest={providerUri=null},
+                        title={Text("Sağlayıcı ile giriş")},
+                        text={Text("Bu giriş sağlayıcısı tarayıcı kullanır. Tarayıcı oturumu Supfy oynatıcısına aktarılmaz. Supfy içinde Spotify e-posta veya kod girişini kullanabilirsiniz.")},
+                        confirmButton={TextButton(onClick={providerUri=null;launchExternal(uri)}){Text("Tarayıcıda devam et")}},
+                        dismissButton={TextButton(onClick={providerUri=null;openLogin()}){Text("E-posta ile giriş")}})
+                }
                 pendingUpdate?.let { update ->
                     AlertDialog(
                         onDismissRequest = { snooze(update) },
@@ -222,11 +253,6 @@ class MainActivity : ComponentActivity() {
                     )
                 }
 
-                authenticationWindow?.let { popup ->
-                    val chrome=mainChrome?:return@let
-                    AuthenticationWindow(popup,chrome.authenticationState,chrome::retryAuthentication) {chrome.closePopup()}
-                }
-
                 // Sonra tanımlanan BackHandler önceliklidir: önce ayarlar kapanır, sonra sayfa geri gider.
                 BackHandler(enabled = !showSettings && !showProtection && uiState.canGoBack) { webView?.goBack() }
                 BackHandler(enabled = showSettings) { showSettings = false }
@@ -236,22 +262,52 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun buildWebView(): WebView {
-        val chrome=SupfyChromeClient(uiState, { authenticationWindow=it }, ::openExternally)
+        val chrome=SupfyChromeClient(uiState)
         mainChrome=chrome
-        val client=SupfyWebViewClient(uiState, ::openExternally, ::onRendererGone, protection) {url->
-            webView?.let {chrome.openAuthentication(it,url)}?:false
-        }
+        val client=SupfyWebViewClient(uiState, ::openExternally, ::onRendererGone, protection)
         mainClient=client
         return WebViewFactory.create(
         context = this,
         desktopMode = appSettings.desktopMode.value,
         webViewClient = client,
         chromeClient = chrome,
-    ).also(protection::attach)
+    ).also {protection.attach(it);playback.attach(it);account.attach(it)}
     }
 
     private fun openLogin() {
-        webView?.let {mainChrome?.openAuthentication(it,PlayerNavigation.LOGIN_URL)}
+        // Keep the view, window, history and CookieManager already used by the player.
+        // WebView handles subsequent redirects and form POSTs without replaying them.
+        webView?.let {mainClient?.loadUrl(it,PlayerNavigation.LOGIN_URL)}
+    }
+
+    private fun copyLoginDiagnostics() {
+        val web=webView?:return
+        fun b(value:Boolean)=if(value)1 else 0
+        val origin=when(com.supfy.app.web.LoginDiagnostics.host(web.url)) {
+            com.supfy.app.web.LoginDiagnostics.Host.ACCOUNTS->1
+            com.supfy.app.web.LoginDiagnostics.Host.PLAYER->2
+            else->3
+        }
+        val visibleRect=android.graphics.Rect()
+        val visible=web.getGlobalVisibleRect(visibleRect)
+        val native=mapOf("version" to BuildConfig.VERSION_CODE,"sdk" to android.os.Build.VERSION.SDK_INT,
+            "stage" to uiState.pageStage.ordinal,"error" to (uiState.error?.kind?.ordinal?:-1),
+            "nativeOrigin" to origin,"nativeRoute" to com.supfy.app.web.LoginDiagnostics.route(web.url),"width" to web.width,"height" to web.height,
+            "attached" to b(web.isAttachedToWindow),"visibility" to web.visibility,
+            "javascript" to b(web.settings.javaScriptEnabled),"domStorage" to b(web.settings.domStorageEnabled),
+            "thirdPartyCookies" to b(CookieManager.getInstance().acceptThirdPartyCookies(web)),
+            "desktop" to b(appSettings.desktopMode.value),"layer" to web.layerType,
+            "earlySupported" to b(mainClient?.earlyProbeInstalled==true),"cacheMode" to web.settings.cacheMode,
+            "probePending" to b(uiState.loginProbePending),"renderRetry" to b(uiState.loginRenderingRetried),
+            "wrapContentHeight" to b(web.layoutParams?.height==ViewGroup.LayoutParams.WRAP_CONTENT),
+            "shown" to b(web.isShown),"windowVisibility" to web.windowVisibility,
+            "windowFocus" to b(web.hasWindowFocus()),"hardwareAccelerated" to b(web.isHardwareAccelerated),
+            "nativeVisibleWidth" to if(visible)visibleRect.width() else 0,
+            "nativeVisibleHeight" to if(visible)visibleRect.height() else 0,
+            "alpha1000" to (web.alpha*1000).toInt())
+        val report=uiState.loginDiagnostics.report(native,WebViewCompat.getCurrentWebViewPackage(this)?.versionName)
+        getSystemService(ClipboardManager::class.java).setPrimaryClip(ClipData.newPlainText("Supfy giriş tanılaması",report))
+        Toast.makeText(this,R.string.login_diagnostics_copied,Toast.LENGTH_LONG).show()
     }
 
     private fun setProtectionOptions(options: ProtectionOptions) {
@@ -272,7 +328,7 @@ class MainActivity : ComponentActivity() {
         uiState.error = null
         val wv = webView ?: return
         if (failing != null && UrlPolicy.decide(failing) == UrlPolicy.Decision.LOAD_IN_APP) {
-            wv.loadUrl(failing)
+            mainClient?.loadUrl(wv,failing)
         } else {
             wv.reload()
         }
@@ -289,6 +345,11 @@ class MainActivity : ComponentActivity() {
     /** Yalnızca HTTPS bağlantılar dışarıda açılır. */
     private fun openExternally(uri: Uri) {
         if (uri.scheme?.lowercase() != "https") return
+        if(uiState.authenticating && com.supfy.app.web.AuthRedirectGate.isProvider(uri.toString())) {providerUri=uri;return}
+        launchExternal(uri)
+    }
+    private fun launchExternal(uri:Uri) {
+        if(uri.scheme?.lowercase()!="https")return
         val intent = Intent(Intent.ACTION_VIEW, uri).addCategory(Intent.CATEGORY_BROWSABLE)
         try {
             startActivity(intent)
@@ -395,8 +456,9 @@ class MainActivity : ComponentActivity() {
 
     private fun destroyWebView(wv: WebView, rendererGone: Boolean = false) {
         mainClient?.close()
+        playback.detach();account.detach()
         protection.detach()
-        mainChrome?.close(rendererGone)
+        mainChrome?.close()
         (wv.parent as? ViewGroup)?.removeView(wv)
         if (!rendererGone) wv.stopLoading()
         wv.destroy()
@@ -410,10 +472,16 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         webView?.onResume()
+        mainClient?.setForeground(true)
+        if(::playback.isInitialized)playback.setForeground(true)
+        if(::account.isInitialized)account.setForeground(true)
         if (::protection.isInitialized) protection.setForeground(true)
     }
 
     override fun onPause() {
+        if(!appSettings.backgroundPlayback.value)playback.command(com.supfy.app.playback.PlaybackCommand.PAUSE)
+        playback.setForeground(false);account.setForeground(false)
+        mainClient?.setForeground(false)
         protection.setForeground(false)
         CookieManager.getInstance().flush()
         if (!appSettings.backgroundPlayback.value) webView?.onPause()
@@ -454,6 +522,8 @@ class MainActivity : ComponentActivity() {
         webView?.let { destroyWebView(it) }
         webView = null
         if (::protection.isInitialized) protection.close()
+        if(::playback.isInitialized)playback.close()
+        if(::account.isInitialized)account.close()
         super.onDestroy()
     }
 }

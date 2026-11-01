@@ -1,0 +1,16 @@
+const {test}=require('node:test');const assert=require('node:assert/strict');const fs=require('fs');const {JSDOM}=require('jsdom');
+const sourceFile=__dirname+'/../app/src/main/assets/account_probe.js';
+function probe(html,url='https://open.spotify.com/') {const d=new JSDOM('<html><body>'+html+'</body></html>',{url,runScripts:'outside-only'});d.window.HTMLElement.prototype.getBoundingClientRect=function(){return{left:0,top:0,right:50,bottom:30,width:50,height:30}};try{return JSON.parse(d.window.eval(fs.readFileSync(sourceFile,'utf8')))}finally{d.window.close()}}
+test('guest controls identify signed out account',()=>{assert.equal(probe('<button data-testid="login-button">Log in</button><a href="https://www.spotify.com/signup/">Sign up</a>').status,1)});
+test('profile widget and avatar establish login and bounded visible name',()=>{const x=probe('<button data-testid="user-widget-link" aria-label="Deniz"><img alt=""></button>');assert.equal(x.status,2);assert.equal(x.name,'Deniz');assert.ok(x.signals>=2)});
+test('generic profile label is not a fabricated name',()=>{const x=probe('<button data-testid="user-widget-link" aria-label="Your profile"><img alt=""></button>');assert.equal(x.status,2);assert.equal(x.name,'')});
+test('contradictory guest and user controls remain unknown',()=>{assert.equal(probe('<button data-testid="login-button">Log in</button><button data-testid="user-widget-link" aria-label="Deniz"><img></button>').status,0)});
+test('hidden guest controls do not erase authenticated public user widget',()=>{assert.equal(probe('<button hidden data-testid="login-button">Log in</button><button data-testid="user-widget-link" aria-label="Deniz"><img></button>').status,2)});
+test('mobile profile and logout menu identify session without inventing name',()=>{const x=probe('<a href="/user/abcd">Profil</a><button data-testid="user-widget-dropdown-logout">Oturumu Kapat</button>');assert.equal(x.status,2);assert.equal(x.name,'')});
+test('song titles inputs and email-looking labels are not account metadata',()=>{const x=probe('<h1>PRIVATE_SONG_TITLE</h1><input value="PRIVATE_PASSWORD"><button data-testid="user-widget-link" aria-label="PRIVATE_EMAIL@example.com"><img></button>');assert.equal(x.name,'');assert.ok(!JSON.stringify(x).includes('PRIVATE_'))});
+test('other origins never produce an account identity',()=>{assert.equal(probe('<button data-testid="user-widget-link" aria-label="Deniz"><img></button>','https://accounts.spotify.com/login').status,0)});
+test('missing public identity markers never claim login',()=>{assert.equal(probe('<h1>Deniz</h1><audio></audio>').status,0)});
+
+test('generic widget aria label is not independent login proof',()=>{const x=probe('<button data-testid="user-widget-link" aria-label="Hesabını aç"></button>');assert.equal(x.status,0);assert.equal(x.name,'')});
+
+test('another public user profile heading is never used as the signed in account name',()=>{const x=probe('<main><h1>OtherListener</h1></main><a href="/user/other">Profil</a><button data-testid="user-widget-dropdown-logout">Oturumu Kapat</button>','https://open.spotify.com/user/other');assert.equal(x.status,2);assert.equal(x.name,'');assert.ok(!JSON.stringify(x).includes('OtherListener'))});

@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.key
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.res.stringResource
@@ -28,8 +29,12 @@ fun AuthenticationWindow(web: WebView, state: WebUiState, onRetry: () -> Unit, o
             })
         }) { padding ->
             Box(Modifier.padding(padding).imePadding().fillMaxSize()) {
-                AndroidView(factory = { (web.parent as? ViewGroup)?.removeView(web); web },
-                    modifier = Modifier.fillMaxSize())
+                // Popup replacement can be coalesced into one Compose frame. Never retain
+                // the old AndroidView after its native WebView has been destroyed.
+                key(web) {
+                    AndroidView(factory = { (web.parent as? ViewGroup)?.removeView(web); web },
+                        modifier = Modifier.fillMaxSize())
+                }
                 if(state.loading && state.error==null)PageLoadingNotice(Modifier.align(Alignment.Center))
                 state.error?.let {ErrorOverlay(it,onRetry)}
             }

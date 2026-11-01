@@ -7,6 +7,7 @@
   let observer=null, pending=null, watchdog=null, heartbeat=0, adSince=0, awaitingRoot=false;
   let phase='idle', inAd=false, failed=false, playing=false, ready=false, awaitingMusic=false;
   let audioError=false, visualError=false, mediaAvailable=false, evidence=0;
+  let leaseSuspended=false, suspendedAd=false, reason=0;
   const mediaSaved=new Map(), hidden=new Map();
   const totals={detected:0, muted:0, banners:0, promos:0, restored:0, errors:0, resumed:0};
   const widgets='[data-testid="now-playing-widget"], [data-testid="now-playing-bar"]';
@@ -53,7 +54,15 @@
     ['play','pause','ended','error'].forEach(name=>document.removeEventListener(name,schedule,true));
     restoreAudio();restoreHidden();inAd=false;adSince=0;ready=false;awaitingMusic=false;
   }
-  function fail() {failed=true;options.enabled=false;phase='error';totals.errors++;cleanup();}
+  function fail(code=3) {failed=true;options.enabled=false;phase='error';reason=code;totals.errors++;cleanup();}
+  function suspendForLease() {
+    if(leaseSuspended)return;
+    suspendedAd=inAd;cleanup();leaseSuspended=true;phase='idle';reason=1;
+  }
+  function resumeLease() {
+    if(!leaseSuspended)return;
+    leaseSuspended=false;inAd=suspendedAd;suspendedAd=false;adSince=inAd?clock():0;reason=0;
+  }
   function hide(selector,kind) {
     document.querySelectorAll(selector).forEach(el=>{
       if(hidden.has(el)||!visible(el))return;
@@ -79,7 +88,9 @@
       const playbackEvidence=mediaAvailable||(options.nativeAudio&&pauseControl);
       evidence=Number(marker)+Number(playbackEvidence)+Number(!normalTrack);
       const ad=marker&&playbackEvidence&&!normalTrack;
-      playing=media.some(m=>!m.paused&&!m.ended)||(options.nativeAudio&&pauseControl);
+      let mediaPlaying=false;
+      try {mediaPlaying=media.some(m=>!m.paused&&!m.ended);}catch(_){audioFault();restoreAudio();}
+      playing=mediaPlaying||(options.nativeAudio&&pauseControl);
       if(ad&&!inAd){totals.detected++;adSince=clock();}
       if(inAd&&!ad)awaitingMusic=true;
       if(awaitingMusic&&!ad&&normalTrack&&playing){totals.resumed++;awaitingMusic=false;}
@@ -117,7 +128,8 @@
         attributeFilter:['data-testid','aria-hidden','hidden','style','class','data-state','src','href','aria-label']});
       ['play','pause','ended','error'].forEach(name=>document.addEventListener(name,schedule,true));
       watchdog=setInterval(()=>{
-        if(clock()-heartbeat>20000||(inAd&&clock()-adSince>120000))fail();
+        if(clock()-heartbeat>20000)suspendForLease();
+        else if(inAd&&clock()-adSince>120000)fail(2);
       },5000);
     }
     ready=true;scan();
@@ -128,16 +140,18 @@
       if(failed)return;
       options={enabled:true,muteAds:next.muteAds===true,hideBanners:next.hideBanners===true,
         hidePromos:next.hidePromos===true,nativeAudio:next.nativeAudio===true};
-      heartbeat=clock();if(!awaitingRoot)start();
+      heartbeat=clock();resumeLease();if(!awaitingRoot)start();
     },
     snapshot(){
       heartbeat=clock();
+      if(options.enabled&&leaseSuspended&&!failed){resumeLease();start();}
       if(options.enabled&&ready&&!failed)scan();
       return {...totals,version:2,enabled:options.enabled,ready,phase,playing,evidence,
-        audioError,visualError,audioReady:ready&&!audioError&&(mediaAvailable||options.nativeAudio),
+        reason,audioError,visualError,audioReady:ready&&!audioError&&(mediaAvailable||options.nativeAudio),
         eme:typeof navigator.requestMediaKeySystemAccess==='function'};
     },
-    stop(){options.enabled=false;cleanup();phase='idle';failed=false;audioError=visualError=false;playing=false;}
+    suspend(){if(options.enabled&&!failed)suspendForLease();},
+    stop(){options.enabled=false;cleanup();phase='idle';failed=false;audioError=visualError=false;playing=false;leaseSuspended=suspendedAd=false;reason=0;}
   };
   Object.defineProperty(window,'__supfyProtection',{value:api,configurable:false});
   window.addEventListener('pagehide',()=>api.stop());

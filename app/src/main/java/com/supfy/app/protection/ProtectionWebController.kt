@@ -21,6 +21,8 @@ class ProtectionWebController(context: Context, val engine: ProtectionEngine,
     private var generation = 0
     private var foreground = true
     private var pending = false
+    private var requestTimeout:Runnable?=null
+    private var temporaryFailures=0
     private var workerInstalled = false
     private var needsApply = true
     private var options = ProtectionOptions()
@@ -89,7 +91,7 @@ class ProtectionWebController(context: Context, val engine: ProtectionEngine,
         }
     }
     fun configure(next: ProtectionOptions) {
-        generation++; pending = false; handler.removeCallbacksAndMessages(null)
+        generation++; pending = false; handler.removeCallbacksAndMessages(null);requestTimeout=null;temporaryFailures=0
         restoreScheduled=false
         options = next
         if (!next.enabled) {
@@ -103,14 +105,20 @@ class ProtectionWebController(context: Context, val engine: ProtectionEngine,
         synchronizePage()
     }
     fun pageStarted(url: String?) {
-        generation++; pending = false; needsApply = true
+        generation++; pending = false; needsApply = true;temporaryFailures=0;requestTimeout=null
         handler.removeCallbacksAndMessages(null)
         restoreScheduled=false; restoreNative()
         engine.pageStarted(url)
     }
     fun pageFinished() { synchronizePage() }
     fun setForeground(value: Boolean) {
+        if(foreground!=value && pending) {
+            generation++;pending=false;needsApply=true
+            requestTimeout?.let(handler::removeCallbacks);requestTimeout=null
+            restoreNative()
+        }
         foreground = value
+        if(value)temporaryFailures=0
         handler.removeCallbacks(poll)
         synchronizePage()
     }
@@ -123,12 +131,15 @@ class ProtectionWebController(context: Context, val engine: ProtectionEngine,
         val code = if (apply) "$script\n;" else ""
         val configure = if (apply) "p.configure(${config(active)});" else ""
         pending = true
-        val timeout = Runnable { if (token == generation && pending) { pending = false; failOpen(wv) } }
+        val timeout = Runnable {if(token==generation && pending && view===wv)deferSynchronization(wv)}
+        requestTimeout=timeout
         handler.postDelayed(timeout,8_000)
         wv.evaluateJavascript("$code(function(){const p=window.__supfyProtection;if(!p)return null;${configure}return JSON.stringify(p.snapshot());})();") { raw ->
             handler.removeCallbacks(timeout)
             if (token != generation || view !== wv || !UrlPolicy.isTrustedPlayerOrigin(wv.url)) return@evaluateJavascript
-            pending = false; needsApply = false
+            pending = false; needsApply = false;requestTimeout=null
+            if(active && raw=="null") {deferSynchronization(wv);return@evaluateJavascript}
+            temporaryFailures=0
             if (active) {
                 runCatching { decodeSnapshot(raw) }.onSuccess { snapshot ->
                     engine.acceptSnapshot(snapshot)
@@ -159,7 +170,7 @@ class ProtectionWebController(context: Context, val engine: ProtectionEngine,
             phase=json.getString("phase"),eme=json.getBoolean("eme"),playing=json.getBoolean("playing"),
             ready=json.getBoolean("ready"),audioReady=json.getBoolean("audioReady"),
             audioError=json.getBoolean("audioError"),visualError=json.getBoolean("visualError"),
-            evidence=json.getInt("evidence"),resumed=json.getInt("resumed"))
+            evidence=json.getInt("evidence"),resumed=json.getInt("resumed"),reason=json.optInt("reason",0))
     }
     private fun handleAudioResult(result: AudioResult, retry: Boolean = true) {
         when (result) {
@@ -183,6 +194,19 @@ class ProtectionWebController(context: Context, val engine: ProtectionEngine,
     private fun restoreNative(retry: Boolean = true) {
         handleAudioResult(nativeAudio?.apply(false) ?: AudioResult.NONE,retry)
     }
+    /** A renderer can throttle JS callbacks while background audio is allowed. */
+    private fun deferSynchronization(wv:WebView) {
+        generation++;pending=false;needsApply=true;temporaryFailures++
+        requestTimeout?.let(handler::removeCallbacks);requestTimeout=null
+        restoreNative()
+        if(UrlPolicy.isTrustedPlayerOrigin(wv.url))wv.evaluateJavascript("(function(){var p=window.__supfyProtection;if(p){if(p.suspend)p.suspend();else p.stop();}})();",null)
+        if(foreground && temporaryFailures>=3) {failOpen(wv);return}
+        engine.pageTemporarilyUnavailable()
+        handler.removeCallbacks(poll)
+        if(options.enabled && engine.state.value.status!=EngineStatus.ERROR)
+            handler.postDelayed(poll,if(foreground)2_000 else 10_000)
+    }
+
     private fun failOpen(wv: WebView) {
         engine.fail(); handler.removeCallbacksAndMessages(null);restoreScheduled=false;restoreNative()
         removeDocumentScript()
@@ -198,14 +222,14 @@ class ProtectionWebController(context: Context, val engine: ProtectionEngine,
         engine.requestBlocked();return response
     }
     fun detach() {
-        generation++;pending=false;handler.removeCallbacksAndMessages(null)
+        generation++;pending=false;handler.removeCallbacksAndMessages(null);requestTimeout=null;temporaryFailures=0
         restoreScheduled=false;restoreNative(false);nativeAudio=null
         removeDocumentScript()
         view?.let(::stopScript);view=null;restoreOwner=null;engine.pageStarted(null)
     }
     /** Renderer is already gone: discard ownership, never call JS/audio APIs on that WebView. */
     fun rendererGone() {
-        generation++;pending=false;handler.removeCallbacksAndMessages(null)
+        generation++;pending=false;handler.removeCallbacksAndMessages(null);requestTimeout=null;temporaryFailures=0
         nativeAudio=null;documentScript=null;view=null;restoreOwner=null;restoreScheduled=false
         engine.pageStarted(null)
         engine.rendererFailed()

@@ -45,6 +45,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -61,8 +62,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.supfy.app.R
+import com.supfy.app.BuildConfig
 import com.supfy.app.web.PageError
 import com.supfy.app.web.PageErrorKind
+import com.supfy.app.web.PageStage
 import com.supfy.app.web.WebUiState
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -77,7 +80,12 @@ fun SupfyScreen(
     onRetry: () -> Unit,
     onOpenSettings: () -> Unit,
     onOpenProtection: () -> Unit,
+    onCopyLoginDiagnostics: () -> Unit = {},
+    onRetryLoginRendering: () -> Unit = {},
 ) {
+    val recoveryVisible=state.authenticating && state.error==null &&
+        (state.pageStage in setOf(PageStage.INTERACTION,PageStage.DRAWING) || state.loginRenderingRetried)
+    val footerHeight=if(recoveryVisible)112.dp else 56.dp
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
@@ -106,7 +114,7 @@ fun SupfyScreen(
                             (webView.parent as? ViewGroup)?.removeView(webView)
                             webView
                         },
-                        modifier = Modifier.fillMaxSize(),
+                        modifier = Modifier.fillMaxSize().padding(bottom=if(state.authenticating)footerHeight else 0.dp),
                     )
                 }
             }
@@ -145,6 +153,33 @@ fun SupfyScreen(
                 exit = fadeOut(),
             ) {
                 state.error?.let { ErrorOverlay(it, onRetry) }
+            }
+            if(state.authenticating) {
+                val stage=if(state.error!=null)R.string.login_stage_failed else when(state.pageStage) {
+                    PageStage.IDLE,PageStage.REQUESTED->R.string.login_stage_requested
+                    PageStage.STARTED->R.string.login_stage_loading
+                    PageStage.COMMITTED,PageStage.CHECKING->R.string.login_stage_checking
+                    PageStage.DRAWING->R.string.login_stage_drawing
+                    PageStage.READY->R.string.login_stage_responding
+                    PageStage.INTERACTION->R.string.login_stage_interaction
+                    PageStage.FAILED->R.string.login_stage_failed
+                }
+                Column(modifier=Modifier.align(Alignment.BottomCenter).fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.surface)) {
+                  Row(modifier=Modifier.fillMaxWidth().height(56.dp).padding(horizontal=12.dp),
+                    verticalAlignment=Alignment.CenterVertically) {
+                    Text(stringResource(R.string.login_stage_status,BuildConfig.VERSION_CODE,stringResource(stage)),
+                        style=MaterialTheme.typography.bodySmall,maxLines=2,
+                        overflow=androidx.compose.ui.text.style.TextOverflow.Ellipsis,modifier=Modifier.weight(1f))
+                    TextButton(onClick=onCopyLoginDiagnostics) {Text(stringResource(R.string.copy_login_diagnostics))}
+                  }
+                  if(recoveryVisible) {
+                    TextButton(onClick=onRetryLoginRendering,enabled=!state.loginRenderingRetried,
+                        modifier=Modifier.fillMaxWidth().height(56.dp)) {
+                        Text(stringResource(if(state.loginRenderingRetried)R.string.login_rendering_tried else R.string.login_rendering_retry))
+                    }
+                  }
+                }
             }
         }
     }

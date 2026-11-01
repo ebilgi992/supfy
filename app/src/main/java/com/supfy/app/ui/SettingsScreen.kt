@@ -61,6 +61,12 @@ fun SettingsScreen(
     onCheckUpdates: () -> Unit,
     onClearData: () -> Unit,
     onClose: () -> Unit,
+    account:com.supfy.app.account.AccountSnapshot = com.supfy.app.account.AccountSnapshot(),
+    onAccountLogin:()->Unit = {},
+    onAccountSignUp:()->Unit = {},
+    onAccountMenu:()->Unit = {},
+    onAccountLogout:()->Unit = {},
+    onAccountRefresh:()->Unit = {},
 ) {
     var confirmClear by remember { mutableStateOf(false) }
 
@@ -91,6 +97,7 @@ fun SettingsScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(16.dp),
         ) {
+            com.supfy.app.account.AccountCard(account,onAccountLogin,onAccountSignUp,onAccountMenu,onAccountLogout,onAccountRefresh)
             SectionCard(stringResource(R.string.section_playback)) {
                 SwitchRow(
                     title = stringResource(R.string.pref_background_title),

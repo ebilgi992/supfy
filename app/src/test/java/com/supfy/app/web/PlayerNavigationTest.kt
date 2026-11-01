@@ -10,6 +10,10 @@ class PlayerNavigationTest {
         assertNull(PlayerNavigation.webUrl("spotify:login:0123456789ABCDEFGHIJKL"))
         assertNull(PlayerNavigation.webUrl("intent://evil/#Intent;scheme=javascript;end"))
     }
+    @Test fun signupDeepLinksUseTheOfficialPublicPage() {
+        assertEquals("https://www.spotify.com/signup/",PlayerNavigation.webUrl("spotify:signup"))
+        assertNull(PlayerNavigation.webUrl("spotify:signup:other"))
+    }
     @Test fun loginUsesOfficialHttpsAndReturnsToPlayer() {
         assertEquals(UrlPolicy.Decision.LOAD_IN_APP, UrlPolicy.decide(PlayerNavigation.LOGIN_URL))
         assertTrue(PlayerNavigation.LOGIN_URL.startsWith("https://accounts.spotify.com/login?"))

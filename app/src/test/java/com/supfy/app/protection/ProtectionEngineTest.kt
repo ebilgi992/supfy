@@ -31,6 +31,22 @@ class ProtectionEngineTest {
         assertEquals(ComponentStatus.READY, e.state.value.visualStatus)
         assertTrue(e.shouldBlock("https://doubleclick.net/ad", "GET", false))
     }
+    @Test fun temporaryPageDelayKeepsRulesAvailableAndAllowsAutomaticRecovery() {
+        val e=active();e.pageTemporarilyUnavailable()
+        assertEquals(EngineStatus.STARTING,e.state.value.status)
+        assertEquals(0L,e.state.value.errors)
+        assertTrue(e.shouldBlock("https://doubleclick.net/ad","GET",false))
+        e.acceptSnapshot(PageSnapshot(phase="music"))
+        assertEquals(EngineStatus.ACTIVE,e.state.value.status)
+        assertNull(e.state.value.lastError)
+    }
+    @Test fun anAdTimeoutAndDomFailureHaveDistinctSafeDiagnostics() {
+        val timed=active();timed.acceptSnapshot(PageSnapshot(phase="error",errors=1,reason=2))
+        val dom=active();dom.acceptSnapshot(PageSnapshot(phase="error",errors=1,reason=3))
+        assertNotEquals(timed.state.value.lastError,dom.state.value.lastError)
+        assertEquals(EngineStatus.ERROR,timed.state.value.status)
+        assertFalse(timed.shouldBlock("https://doubleclick.net/ad","GET",false))
+    }
     private fun active(): ProtectionEngine = ProtectionEngine().apply {
         configure(ProtectionOptions(enabled = true))
         pageStarted("https://open.spotify.com/")

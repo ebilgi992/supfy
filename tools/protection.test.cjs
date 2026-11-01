@@ -226,6 +226,40 @@ test('missing host heartbeat restores audio after lease timeout',()=>{
   let clock=100; let watchdog; Object.defineProperty(d.window.performance,'now',{value:()=>clock,configurable:true});
   d.window.setInterval=(fn)=>{watchdog=fn;return 1;};
   const a=api(d); assert.equal(doc.querySelector('audio').muted,true);
-  clock=31000; watchdog(); assert.equal(doc.querySelector('audio').muted,false); assert.equal(a.snapshot().phase,'error');
+  clock=31000; watchdog(); assert.equal(doc.querySelector('audio').muted,false); assert.equal(a.snapshot().phase,'ad'); assert.equal(a.snapshot().errors,0);
  } finally {d.window.close();}
+});
+
+test('a throttled host lease suspends safely and recovers without a new ad count',()=>{
+ const d=page(player()+'<div data-testid="ad-banner">Ad</div>');try{
+  const doc=d.window.document;doc.querySelector('[data-testid="now-playing-widget"]').innerHTML='<i data-testid="track-info-advertiser"></i>';
+  let now=100,watchdog;Object.defineProperty(d.window.performance,'now',{value:()=>now,configurable:true});d.window.setInterval=fn=>{watchdog=fn;return 1};
+  const a=api(d),media=doc.querySelector('audio');assert.equal(media.muted,true);
+  now=31000;watchdog();assert.equal(media.muted,false);assert.equal(doc.querySelector('[data-testid="ad-banner"]').style.display,'');
+  const resumed=a.snapshot();assert.notEqual(resumed.phase,'error');assert.equal(resumed.errors,0);assert.equal(resumed.detected,1);assert.equal(media.muted,true);
+ }finally{d.window.close()}
+});
+
+test('a failing playback-state getter disables audio only, preserving visual protection',()=>{
+ const d=page(player()+'<div data-testid="ad-banner">Ad</div>');try{
+  Object.defineProperty(d.window.document.querySelector('audio'),'paused',{get:()=>{throw new Error('media getter failure')}});
+  const s=api(d).snapshot();assert.notEqual(s.phase,'error');assert.equal(s.audioError,true);assert.equal(s.banners,1);assert.equal(s.reason,0);
+ }finally{d.window.close()}
+});
+
+test('persistent ad timeout has a distinct bounded reason and restores sound',()=>{
+ const d=page(player());try{
+  const doc=d.window.document;doc.querySelector('[data-testid="now-playing-widget"]').innerHTML='<i data-testid="track-info-advertiser"></i>';
+  let now=100,watchdog;Object.defineProperty(d.window.performance,'now',{value:()=>now,configurable:true});d.window.setInterval=fn=>{watchdog=fn;return 1};
+  const a=api(d);now=119000;a.snapshot();now=125000;watchdog();const s=a.snapshot();
+  assert.equal(s.phase,'error');assert.equal(s.reason,2);assert.equal(doc.querySelector('audio').muted,false);
+ }finally{d.window.close()}
+});
+
+test('repeated native suspension preserves an ongoing ad identity',()=>{
+ const d=page(player());try{
+  const doc=d.window.document;doc.querySelector('[data-testid="now-playing-widget"]').innerHTML='<i data-testid="track-info-advertiser"></i>';
+  const a=api(d),media=doc.querySelector('audio');a.suspend();a.suspend();assert.equal(media.muted,false);
+  a.configure(options);assert.equal(a.snapshot().detected,1);assert.equal(media.muted,true);assert.equal(a.snapshot().errors,0);
+ }finally{d.window.close()}
 });

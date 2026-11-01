@@ -23,7 +23,7 @@ data class PageSnapshot(
     val phase: String = "idle", val eme: Boolean = false, val playing: Boolean = false,
     val ready: Boolean = true, val audioReady: Boolean = true,
     val audioError: Boolean = false, val visualError: Boolean = false,
-    val evidence: Int = 3, val resumed: Int = 0,
+    val evidence: Int = 3, val resumed: Int = 0, val reason: Int = 0,
 )
 
 data class EngineState(
@@ -72,11 +72,12 @@ class ProtectionEngine {
     val state: StateFlow<EngineState> = mutableState.asStateFlow()
     private var onPlayer = false
     private var fault = false
+    private var transientPageWait = false
     private var previous = PageSnapshot()
     private val adHosts = setOf("doubleclick.net", "pagead2.googlesyndication.com", "moatads.com")
 
     @Synchronized fun configure(options: ProtectionOptions) {
-        if (!options.enabled) fault = false
+        if (!options.enabled) {fault = false;transientPageWait=false}
         val status = when {
             !options.enabled -> EngineStatus.DISABLED
             fault -> EngineStatus.ERROR
@@ -96,7 +97,7 @@ class ProtectionEngine {
 
     @Synchronized fun pageStarted(url: String?) {
         onPlayer = UrlPolicy.isTrustedPlayerOrigin(url)
-        previous = PageSnapshot()
+        previous = PageSnapshot();transientPageWait=false
         val status = when {
             !mutableState.value.options.enabled -> EngineStatus.DISABLED
             fault -> EngineStatus.ERROR
@@ -126,7 +127,7 @@ class ProtectionEngine {
         val current = counts(report)
         val old = counts(previous)
         if (current.any { it !in 0..1_000_000 } || current.zip(old).any { (a,b) -> a < b } ||
-            report.evidence !in 0..3 || report.phase !in setOf("idle", "music", "ad", "error")) { fail(); return }
+            report.evidence !in 0..3 || report.reason !in 0..3 || report.phase !in setOf("idle", "music", "ad", "error")) { fail(); return }
         val s = mutableState.value
         mutableState.value = s.copy(
             status = if (report.ready) EngineStatus.ACTIVE else EngineStatus.STARTING,
@@ -142,21 +143,34 @@ class ProtectionEngine {
             lastError = when {
                 report.audioError -> "Medya öğesi susturulamadı; ses bileşeni geri alındı."
                 report.visualError -> "Görsel filtre hatası; sayfa stilleri geri alındı."
+                transientPageWait -> null
                 else -> s.lastError
             },
         )
         if (report.detected > previous.detected) log("Açık reklam işareti algılandı.")
         if (report.muted > previous.muted) log("Reklam medya sesi susturuldu.")
         if (report.restored > previous.restored) log("Medya sessiz durumu geri yüklendi.")
-        previous = report
+        previous = report;transientPageWait=false
         // Counters include historical errors acknowledged after an explicit off/on.
         // Only the current failure phase disables a healthy page again.
         if (report.phase == "error") {
             fault = true
             mutableState.value = mutableState.value.copy(status = EngineStatus.ERROR, playing = false,
-                lastError = "Reklam algılama hatası; ses ve sayfa müdahaleleri geri alındı.")
+                lastError = when(report.reason) {
+                    2 -> "Reklam işareti uzun süre değişmedi; normal oynatmayı korumak için müdahaleler geri alındı."
+                    3 -> "Sayfa yapısı okunamadı; ses ve sayfa müdahaleleri geri alındı."
+                    else -> "Reklam algılama hatası; ses ve sayfa müdahaleleri geri alındı."
+                })
             log("Sayfa koruması durduruldu; kapatıp açarak yeniden deneyin.")
         }
+    }
+
+    @Synchronized fun pageTemporarilyUnavailable() {
+        if(!onPlayer || fault || !mutableState.value.options.enabled)return
+        val first=!transientPageWait;transientPageWait=true
+        mutableState.value=mutableState.value.copy(status=EngineStatus.STARTING,phase="idle",playing=false,audioReady=false,
+            lastError="Sayfa yanıtı bekleniyor; ses müdahalesi geri alındı.")
+        if(first)log("Sayfa yanıtı gecikti; koruma güvenli biçimde yeniden denenecek.")
     }
 
     @Synchronized fun fail() {

@@ -1,11 +1,12 @@
 package com.supfy.app
 
-import android.os.Handler
-import android.os.Looper
-import android.os.Message
 import android.webkit.RenderProcessGoneDetail
 import android.webkit.WebView
 import android.webkit.WebResourceRequest
+import android.webkit.WebViewClient
+import android.webkit.WebResourceResponse
+import android.webkit.WebResourceError
+import android.webkit.SslErrorHandler
 import android.net.Uri
 import androidx.test.core.app.ActivityScenario
 import com.supfy.app.testing.WebViewTestActivity
@@ -26,33 +27,223 @@ import org.junit.runner.RunWith
 /** Real Android WebView with local synthetic HTML. Not a Spotify account/ad/DRM test. */
 @RunWith(AndroidJUnit4::class)
 class WebViewProtectionTest {
-    @Test(timeout=90000) fun mobileAuthenticationFixtureRendersAndAcceptsInteraction() {
-        var popup: WebView?=null
-        val auth=ui {SupfyChromeClient(state,{popup=it})}
-        try {
-            val target=ui {
-                auth.openAuthentication(web,PlayerNavigation.LOGIN_URL)
-                requireNotNull(popup).also {
-                    it.stopLoading()
-                    activity.container.addView(it,android.widget.FrameLayout.LayoutParams(-1,-1))
-                    it.loadDataWithBaseURL("https://accounts.spotify.com/supfy-local-fixture", """
-                        <html><head><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-                        <body data-fixture="ready"><h1>Sentetik giriş</h1><label>E-posta<input type="email"></label>
-                        <button id="next" onclick="document.body.dataset.step='next'">Devam</button></body></html>
-                    """.trimIndent(),"text/html","UTF-8","https://accounts.spotify.com/supfy-local-fixture")
+    @Test fun loginRenderingCompatibilityPreservesSecurityAndRestoresPlayerRendering() {
+        ui {
+            val agent=web.settings.userAgentString
+            web.webViewClient.onPageStarted(web,PlayerNavigation.LOGIN_URL,null)
+            assertEquals("Login must use its isolated rendering compatibility path",android.view.View.LAYER_TYPE_SOFTWARE,web.layerType)
+            assertTrue(web.settings.safeBrowsingEnabled)
+            assertFalse(web.settings.allowFileAccess)
+            assertFalse(web.settings.allowContentAccess)
+            assertFalse(android.webkit.CookieManager.getInstance().acceptThirdPartyCookies(web))
+            assertEquals(android.webkit.WebSettings.MIXED_CONTENT_NEVER_ALLOW,web.settings.mixedContentMode)
+            assertEquals(agent,web.settings.userAgentString)
+            web.webViewClient.onPageStarted(web,UrlPolicy.HOME_URL,null)
+            assertEquals("Spotify media must regain normal rendering",android.view.View.LAYER_TYPE_NONE,web.layerType)
+            assertEquals(agent,web.settings.userAgentString)
+        }
+    }
+    @Test(timeout=90000) fun targetBlankLoginLinkNavigatesInTheExistingView() {
+        loginNavigationFixture("<a id='login' target='_blank' href='https://accounts.spotify.com/supfy-local-login'>Oturum aç</a>")
+    }
+    @Test(timeout=90000) fun userGestureWindowOpenLoginNavigatesInTheExistingView() {
+        loginNavigationFixture("<button id='login' onclick=\"window.open('https://accounts.spotify.com/supfy-local-login','_blank')\">Oturum aç</button>")
+    }
+
+    /** Both documents are local synthetic responses. No Spotify network/account request is made. */
+    private fun loginNavigationFixture(control: String) {
+        val source="https://open.spotify.com/supfy-local-navigation"
+        val target="https://accounts.spotify.com/supfy-local-login"
+        val first=CountDownLatch(1)
+        val login=CountDownLatch(1)
+        ui {
+            val delegate=web.webViewClient
+            web.webViewClient=object: WebViewClient() {
+                override fun shouldInterceptRequest(v:WebView,r:WebResourceRequest):WebResourceResponse? {
+                    delegate.shouldInterceptRequest(v,r)?.let {return it}
+                    val html=when(r.url.toString()) {
+                        source->"<html><head><meta name='viewport' content='width=device-width,initial-scale=1'></head><body>$control</body></html>"
+                        target->"<html><body><label>E-posta<input type='email'></label><button>Devam</button></body></html>"
+                        else->return null
+                    }
+                    return WebResourceResponse("text/html","UTF-8",java.io.ByteArrayInputStream(html.toByteArray(Charsets.UTF_8)))
                 }
+                override fun shouldOverrideUrlLoading(v:WebView,r:WebResourceRequest)=delegate.shouldOverrideUrlLoading(v,r)
+                override fun onPageStarted(v:WebView,url:String?,icon:android.graphics.Bitmap?)=delegate.onPageStarted(v,url,icon)
+                override fun onPageFinished(v:WebView,url:String?)=delegate.onPageFinished(v,url)
+                override fun onPageCommitVisible(v:WebView,url:String?) {
+                    delegate.onPageCommitVisible(v,url)
+                    when(url) {source->first.countDown();target->login.countDown()}
+                }
+                override fun onReceivedError(v:WebView,r:WebResourceRequest,e:WebResourceError)=delegate.onReceivedError(v,r,e)
+                override fun onReceivedHttpError(v:WebView,r:WebResourceRequest,e:WebResourceResponse)=delegate.onReceivedHttpError(v,r,e)
+                override fun onReceivedSslError(v:WebView,h:SslErrorHandler,e:android.net.http.SslError)=delegate.onReceivedSslError(v,h,e)
+                override fun onRenderProcessGone(v:WebView,d:RenderProcessGoneDetail)=delegate.onRenderProcessGone(v,d)
             }
-            var ready=false
-            for(attempt in 0 until 30) {
-                if(evaluate("document.body && document.body.dataset.fixture",target)=="\"ready\"") {ready=true;break}
-                Thread.sleep(100)
+            web.loadUrl(source)
+        }
+        awaitCommit(first)
+        val point=org.json.JSONArray(evaluate("(function(){var r=document.getElementById('login').getBoundingClientRect();return [r.left+r.width/2,r.top+r.height/2,window.innerWidth]})()"))
+        // Native touch supplies a real user gesture; evaluateJavascript(...click()) does not.
+        ui {
+            val scale=web.width.toFloat()/point.getDouble(2).toFloat()
+            val x=point.getDouble(0).toFloat()*scale
+            val y=point.getDouble(1).toFloat()*scale
+            val now=android.os.SystemClock.uptimeMillis()
+            val down=android.view.MotionEvent.obtain(now,now,android.view.MotionEvent.ACTION_DOWN,x,y,0)
+            val up=android.view.MotionEvent.obtain(now,now+50,android.view.MotionEvent.ACTION_UP,x,y,0)
+            try {web.dispatchTouchEvent(down);web.dispatchTouchEvent(up)}
+            finally {down.recycle();up.recycle()}
+        }
+        awaitCommit(login)
+        assertEquals(target,ui{web.url})
+        assertSame(web,ui{activity.container.getChildAt(0)})
+        assertEquals(1,ui{activity.container.childCount})
+        assertEquals("true",evaluate("!!document.querySelector('input[type=email]')"))
+    }
+
+    private fun awaitCommit(committed: CountDownLatch) {
+        val deadline=System.nanoTime()+TimeUnit.SECONDS.toNanos(60)
+        while(!committed.await(100,TimeUnit.MILLISECONDS)) {
+            check(!rendererLost) {"Renderer exited before the local form committed"}
+            check(System.nanoTime()<deadline) {"Local form did not commit"}
+        }
+    }
+
+    @Test(timeout=90000) fun mobileAuthenticationFixtureRendersAndAcceptsInteraction() { authenticationFixture() }
+
+    @Test(timeout=90000) fun authenticationThatTurnsBlackAfterReadinessShowsAnError() {
+        authenticationFixture()
+        evaluate("document.body.innerHTML='';true")
+        awaitEmptyError()
+        evaluate("document.body.innerHTML='<label>E-posta<input type=email></label><button>Devam</button>';true")
+        val deadline=System.nanoTime()+TimeUnit.SECONDS.toNanos(8)
+        while(ui{state.error}!=null && System.nanoTime()<deadline)Thread.sleep(100)
+        assertNull("A late form must recover without a reload or a replayed POST",ui{state.error})
+    }
+    @Test(timeout=90000) fun aBrokenJavascriptProbeIsNotReportedAsAnEmptyDocument() {
+        authenticationFixture()
+        evaluate("document.querySelectorAll=function(){throw new Error('synthetic diagnostic failure')};true")
+        val deadline=System.nanoTime()+TimeUnit.SECONDS.toNanos(16)
+        while(ui{state.error}==null && System.nanoTime()<deadline)Thread.sleep(100)
+        assertEquals("A script failure is different from a confirmed empty document",PageErrorKind.GENERIC,ui{state.error?.kind})
+    }
+
+    @Test(timeout=90000) fun singlePageLoginNavigationRearmsTheBlankPageGuard() {
+        authenticationFixture("https://open.spotify.com/supfy-home")
+        evaluate("history.pushState({},'', '/login');document.body.innerHTML='';true")
+        val navigationDeadline=System.nanoTime()+TimeUnit.SECONDS.toNanos(5)
+        while(!ui{state.authenticating} && System.nanoTime()<navigationDeadline)Thread.sleep(100)
+        assertTrue("A same-document login must re-arm authentication checks",ui{state.authenticating})
+        assertEquals("/login",Uri.parse(ui{state.currentUrl}).path)
+        // A new authentication navigation gets the normal 30-second initial load budget.
+        awaitEmptyError(36)
+    }
+
+    @Test(timeout=90000) fun opaquePageOverlaysArePreservedWithoutCallingTheDocumentEmpty() {
+        authenticationFixture()
+        evaluate("var cover=document.createElement('div');cover.style='position:fixed;top:0;right:0;bottom:0;left:0;background:#121212;z-index:2147483647';document.body.appendChild(cover);true")
+        assertEquals("The overlay fixture must cover the viewport even on older WebView", "true",evaluate("cover.getBoundingClientRect().height>=innerHeight && cover.getBoundingClientRect().width>=innerWidth"))
+        Thread.sleep(14_000)
+        assertNull("Existing form/challenge content must not be covered by a native empty-page error",ui{state.error})
+        assertFalse(ui{state.loading})
+        assertNotEquals("Occluded controls are not proven interactive",PageStage.READY,ui{state.pageStage})
+        assertEquals("true",evaluate("document.body.contains(cover) && getComputedStyle(cover).pointerEvents==='auto'"))
+    }
+
+    @Test(timeout=90000) fun visibleControlsWithDifferentHitTargetsAreNotAnEmptyDocument() {
+        authenticationFixture()
+        // Remove the associated label: a real label is intentionally accepted as a forwarding target.
+        evaluate("var input=document.querySelector('input');input.parentElement.replaceWith(input);document.querySelectorAll('input,button').forEach(function(e){e.style.pointerEvents='none'});true")
+        Thread.sleep(14_000)
+        assertNull("Hit-test failure cannot mean the form disappeared",ui{state.error})
+        assertFalse("The native loading card must leave existing content accessible",ui{state.loading})
+        assertNotEquals(PageStage.READY,ui{state.pageStage})
+    }
+
+    @Test(timeout=90000) fun aRenderingRetrySurvivesAuthStepsAndCannotClearTerminalErrors() {
+        authenticationFixture()
+        evaluate("window.__supfyLocalSentinel=17;var cover=document.createElement('div');cover.style='position:fixed;top:0;left:0;right:0;bottom:0;background:transparent;z-index:9999';document.body.appendChild(cover);true")
+        val deadline=System.nanoTime()+TimeUnit.SECONDS.toNanos(10)
+        while(ui{state.pageStage}!=PageStage.INTERACTION && System.nanoTime()<deadline)Thread.sleep(100)
+        assertTrue(ui{client.retryLoginRendering(web)})
+        assertEquals("true",evaluate("window.__supfyLocalSentinel===17 && document.body.contains(cover)"))
+        ui {
+            assertEquals(android.view.View.LAYER_TYPE_NONE,web.layerType)
+            assertTrue(state.loginRenderingRetried)
+            assertFalse(client.retryLoginRendering(web))
+            client.onPageStarted(web,web.url,null)
+            assertEquals("An accounts redirect must retain the selected path",android.view.View.LAYER_TYPE_NONE,web.layerType)
+            client.onReceivedHttpError(web,request(web.url!!,"GET"),WebResourceResponse("text/plain","UTF-8",503,"Unavailable",emptyMap(),java.io.ByteArrayInputStream(ByteArray(0))))
+            assertFalse(client.retryLoginRendering(web))
+            assertEquals(PageErrorKind.HTTP,state.error?.kind)
+            assertTrue(web.settings.safeBrowsingEnabled)
+            assertFalse(android.webkit.CookieManager.getInstance().acceptThirdPartyCookies(web))
+            client.onPageStarted(web,UrlPolicy.HOME_URL,null)
+            assertFalse(state.loginRenderingRetried)
+            assertFalse(client.retryLoginRendering(web))
+            client.onPageStarted(web,PlayerNavigation.LOGIN_URL,null)
+            assertEquals(android.view.View.LAYER_TYPE_SOFTWARE,web.layerType)
+        }
+    }
+
+    private fun awaitEmptyError(seconds:Long=16) {
+        val deadline=System.nanoTime()+TimeUnit.SECONDS.toNanos(seconds)
+        while(ui{state.error}==null && System.nanoTime()<deadline)Thread.sleep(100)
+        assertEquals("Persistent blank authentication must become a visible error",PageErrorKind.EMPTY,ui{state.error?.kind})
+    }
+
+    private fun authenticationFixture(url:String="https://accounts.spotify.com/supfy-local-fixture") {
+        val committed=CountDownLatch(1)
+        ui {
+            val delegate=web.webViewClient
+            web.webViewClient=object: WebViewClient() {
+                override fun shouldInterceptRequest(v:WebView,r:WebResourceRequest)=delegate.shouldInterceptRequest(v,r)
+                override fun shouldOverrideUrlLoading(v:WebView,r:WebResourceRequest)=delegate.shouldOverrideUrlLoading(v,r)
+                override fun onPageStarted(v:WebView,url:String?,icon:android.graphics.Bitmap?)=delegate.onPageStarted(v,url,icon)
+                override fun onPageFinished(v:WebView,url:String?)=delegate.onPageFinished(v,url)
+                override fun doUpdateVisitedHistory(v:WebView,url:String?,reload:Boolean)=delegate.doUpdateVisitedHistory(v,url,reload)
+                override fun onPageCommitVisible(v:WebView,url:String?) {
+                    delegate.onPageCommitVisible(v,url)
+                    committed.countDown()
+                }
+                override fun onReceivedError(v:WebView,r:WebResourceRequest,e:WebResourceError)=delegate.onReceivedError(v,r,e)
+                override fun onReceivedHttpError(v:WebView,r:WebResourceRequest,e:WebResourceResponse)=delegate.onReceivedHttpError(v,r,e)
+                override fun onReceivedSslError(v:WebView,h:SslErrorHandler,e:android.net.http.SslError)=delegate.onReceivedSslError(v,h,e)
+                override fun onRenderProcessGone(v:WebView,d:RenderProcessGoneDetail)=delegate.onRenderProcessGone(v,d)
             }
-            assertTrue("Local authentication document must render",ready)
-            assertEquals("\"next\"",evaluate("document.getElementById('next').click();document.body.dataset.step",target))
-            repeat(30) {if(ui{auth.authenticationState.loading})Thread.sleep(100)}
-            assertFalse(ui{auth.authenticationState.loading})
-            assertNull(ui{auth.authenticationState.error})
-        } finally {ui {auth.close()}}
+            web.loadDataWithBaseURL(url, """
+                <html><head><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+                <body data-fixture="ready"><h1>Sentetik giriş</h1><label>E-posta<input type="email"></label>
+                <button id="next" onclick="document.body.dataset.step='next'">Devam</button></body></html>
+            """.trimIndent(),"text/html","UTF-8",url)
+        }
+        // Evaluating during navigation can lose the callback when the old JS context goes away.
+        // Wait for the real new-document commit instead of treating an early JS timeout as proof.
+        awaitCommit(committed)
+        var ready=false
+        for(attempt in 0 until 30) {
+            if(evaluate("document.body && document.body.dataset.fixture")=="\"ready\"") {ready=true;break}
+            Thread.sleep(100)
+        }
+        assertTrue("Local authentication document must render",ready)
+        assertEquals("\"next\"",evaluate("document.getElementById('next').click();document.body.dataset.step"))
+        repeat(30) {if(ui{state.loading})Thread.sleep(100)}
+        assertFalse(ui{state.loading})
+        assertNull(ui{state.error})
+    }
+    @Test fun authenticationStaysInTheExistingWindowAndShowsMainDocumentErrors() {
+        ui {
+            assertFalse(web.settings.supportMultipleWindows())
+            assertFalse(web.webViewClient.shouldOverrideUrlLoading(web,request(PlayerNavigation.LOGIN_URL,"GET")))
+            web.webViewClient.onPageStarted(web,PlayerNavigation.LOGIN_URL,null)
+            web.webViewClient.onReceivedHttpError(web,request(PlayerNavigation.LOGIN_URL,"GET"),
+                android.webkit.WebResourceResponse("text/plain","UTF-8",503,"Unavailable",emptyMap(),
+                    java.io.ByteArrayInputStream(ByteArray(0))))
+            assertEquals(PageErrorKind.HTTP,state.error?.kind)
+            assertEquals(503,state.error?.httpStatus)
+            assertFalse(state.loading)
+        }
     }
     @Test fun aClosedGuardCannotCoverANewLoginWindowWithAnOldError() {
         ui {
@@ -69,62 +260,6 @@ class WebViewProtectionTest {
             } finally {old.close();current.close()}
         }
     }
-    @Test fun aClosedPopupCannotOverwriteItsReplacementThroughLateCallbacks() {
-        var popup: WebView?=null
-        val auth=ui {SupfyChromeClient(state,{popup=it})}
-        try {
-            ui {
-                auth.openAuthentication(web,PlayerNavigation.LOGIN_URL)
-                val old=requireNotNull(popup)
-                val oldClient=old.webViewClient
-                auth.openAuthentication(web,PlayerNavigation.LOGIN_URL)
-                val current=requireNotNull(popup)
-                current.webViewClient.onPageStarted(current,PlayerNavigation.LOGIN_URL,null)
-                oldClient.onPageStarted(old,PlayerNavigation.LOGIN_URL,null)
-                oldClient.onReceivedHttpError(old,request(PlayerNavigation.LOGIN_URL,"GET"),
-                    android.webkit.WebResourceResponse("text/plain","UTF-8",503,"Unavailable",emptyMap(),
-                        java.io.ByteArrayInputStream(ByteArray(0))))
-                assertSame(current,popup)
-                assertNull(auth.authenticationState.error)
-            }
-        } finally {ui {auth.close()}}
-    }
-    @Test fun separateAuthenticationWindowUsesMobileSettingsAndShowsMainDocumentHttpErrors() {
-        var popup: WebView?=null
-        val auth=ui {SupfyChromeClient(state,{popup=it})}
-        try {
-            ui {
-                WebViewFactory.applyDesktopMode(web,true)
-                assertTrue(auth.openAuthentication(web,PlayerNavigation.LOGIN_URL))
-                val target=requireNotNull(popup)
-                assertNotSame(web,target)
-                assertTrue(target.settings.javaScriptEnabled)
-                assertTrue(target.settings.domStorageEnabled)
-                assertTrue(target.settings.userAgentString.contains("Android"))
-                assertFalse(target.settings.useWideViewPort)
-                assertFalse(target.settings.allowFileAccess)
-                target.webViewClient.onPageStarted(target,PlayerNavigation.LOGIN_URL,null)
-                target.webViewClient.onReceivedHttpError(target,request(PlayerNavigation.LOGIN_URL,"GET"),
-                    android.webkit.WebResourceResponse("text/plain","UTF-8",503,"Unavailable",emptyMap(),
-                        java.io.ByteArrayInputStream(ByteArray(0))))
-                assertEquals(PageErrorKind.HTTP,auth.authenticationState.error?.kind)
-                assertEquals(503,auth.authenticationState.error?.httpStatus)
-                assertFalse(auth.authenticationState.loading)
-            }
-        } finally {ui{auth.close()}}
-    }
-    @Test fun playerLoginIntermediatePageDoesNotPrematurelyCloseAuthentication() {
-        var popup: WebView?=null
-        val auth=ui {SupfyChromeClient(state,{popup=it})}
-        try {
-            ui {
-                assertTrue(auth.openAuthentication(web,"https://open.spotify.com/login"))
-                val target=requireNotNull(popup)
-                target.webViewClient.onPageFinished(target,"https://open.spotify.com/login")
-                assertSame(target,popup)
-            }
-        } finally {ui{auth.close()}}
-    }
     @Test fun mobileDefaultDoesNotOverwriteAnExplicitDesktopPreference() {
         val testContext=instrumentation.context
         val fixture=testContext.getSharedPreferences("mobile-fixture-${System.nanoTime()}",android.content.Context.MODE_PRIVATE)
@@ -140,6 +275,7 @@ class WebViewProtectionTest {
     private lateinit var web: WebView
     private lateinit var controller: ProtectionWebController
     private lateinit var chrome: SupfyChromeClient
+    private lateinit var client: SupfyWebViewClient
     private lateinit var engine: ProtectionEngine
     private lateinit var scenario: ActivityScenario<WebViewTestActivity>
     private lateinit var activity: WebViewTestActivity
@@ -159,8 +295,8 @@ class WebViewProtectionTest {
         controller = ProtectionWebController(instrumentation.targetContext, engine)
         state = WebUiState()
         chrome = SupfyChromeClient(state)
-        web = WebViewFactory.create(activity, false,
-            SupfyWebViewClient(state, {}, { rendererLost=true;controller.rendererGone() }, controller), chrome)
+        client=SupfyWebViewClient(state, {}, { rendererLost=true;controller.rendererGone() }, controller)
+        web = WebViewFactory.create(activity, false, client, chrome)
         controller.attach(web)
         activity.container.addView(web, android.widget.FrameLayout.LayoutParams(-1,-1))
         web.onResume()
@@ -168,6 +304,7 @@ class WebViewProtectionTest {
     }
     @After fun tearDown() {
       ui {
+        if (::client.isInitialized) client.close()
         if (::controller.isInitialized) controller.close()
         if (::chrome.isInitialized) chrome.close()
         if (::web.isInitialized) { activity.container.removeView(web); if(!rendererLost)web.stopLoading(); web.destroy() }
@@ -198,24 +335,6 @@ class WebViewProtectionTest {
             Thread.sleep(100)
         }
         error("Synthetic fixture did not load")
-    }
-    @Test(timeout = 120000) fun popupKeepsJavaScriptAndDomStorageForAuthentication() {
-        fixture()
-        val target = ui {
-            val transport = web.WebViewTransport()
-            val message = Message.obtain(Handler(Looper.getMainLooper())).apply { obj = transport }
-            check(chrome.onCreateWindow(web, false, true, message))
-            requireNotNull(transport.webView)
-        }
-        assertTrue(ui { target.settings.javaScriptEnabled })
-        assertTrue(ui { target.settings.domStorageEnabled })
-        assertFalse(ui { target.settings.allowFileAccess })
-        assertFalse(ui { target.settings.allowContentAccess })
-        val handled = ui { target.webViewClient.onRenderProcessGone(target, object : RenderProcessGoneDetail() {
-            override fun didCrash() = true
-            override fun rendererPriorityAtExit() = WebView.RENDERER_PRIORITY_IMPORTANT
-        }) }
-        assertTrue(handled)
     }
     @Test(timeout = 120000) fun realWebViewMutesFixtureAndRestoresOnDisable() {
         fixture(ad = true)
@@ -259,20 +378,6 @@ class WebViewProtectionTest {
         override fun getMethod()=methodName
         override fun getRequestHeaders(): Map<String,String> = emptyMap()
     }
-    @Test(timeout=120000) fun popupPostIsAllowedOnlyOnTrustedOrigins() {
-        fixture()
-        val target=ui {
-            val transport=web.WebViewTransport()
-            val message=Message.obtain(Handler(Looper.getMainLooper())).apply {obj=transport}
-            check(chrome.onCreateWindow(web,false,true,message))
-            requireNotNull(transport.webView)
-        }
-        val client=ui {target.webViewClient}
-        assertNull(client.shouldInterceptRequest(target,request("https://accounts.spotify.com/login","POST")))
-        val response=client.shouldInterceptRequest(target,request("https://example.org/untrusted","POST"))
-        assertNotNull("Foreign POST must be refused before network access",response)
-        assertEquals(403,response!!.statusCode)
-    }
     @Test(timeout=120000) fun networkFilterReceivesAnActualWebViewFetch() {
         fixture()
         ui {controller.configure(ProtectionOptions(enabled=true))}
@@ -283,28 +388,6 @@ class WebViewProtectionTest {
         assertEquals(1L,engine.state.value.blockedRequests)
         java.io.File(instrumentation.targetContext.cacheDir,"supfy-v11-network-evidence.json")
             .writeText(JSONObject().put("synthetic",true).put("blockedRequests",engine.state.value.blockedRequests).toString())
-    }
-    @Test(timeout=120000) fun actualPopupFormCannotNavigateToAnUntrustedOrigin() {
-        fixture()
-        val target=ui {
-            val transport=web.WebViewTransport()
-            val message=Message.obtain(Handler(Looper.getMainLooper())).apply {obj=transport}
-            check(chrome.onCreateWindow(web,false,true,message))
-            requireNotNull(transport.webView).also {
-                activity.container.addView(it,android.widget.FrameLayout.LayoutParams(-1,-1))
-                it.loadDataWithBaseURL("https://accounts.spotify.com/", """
-                    <html><body><form method="post" action="https://example.org/supfy-fixture">
-                    <input name="fixture" value="synthetic"></form></body></html>
-                """.trimIndent(),"text/html","UTF-8","https://accounts.spotify.com/")
-            }
-        }
-        repeat(30) {
-            if(evaluate("document.forms.length",target)=="1")return@repeat
-            Thread.sleep(100)
-        }
-        ui {target.evaluateJavascript("document.forms[0].submit();",null)}
-        repeat(60) {if(state.stats.blockedNavigations==0)Thread.sleep(100)}
-        assertTrue("External popup POST must be blocked",state.stats.blockedNavigations>0)
     }
     @Test(timeout=120000) fun plainWebViewRendersWithoutAnyAdEngineClient() {
         ui {

@@ -16,11 +16,12 @@ class PageLoadTracker {
         ticket++;waiting=true;sawEmpty=false;committed=false;problem=null
         return ticket
     }
-    val canProbe: Boolean get()=waiting && committed
+    val canProbe: Boolean get()=committed && (problem==null || problem==PageLoadProblem.EMPTY)
     fun committed(document: Long) {if(document==ticket && waiting)committed=true}
     fun observed(document: Long, visible: Boolean) {
         if(document!=ticket || !canProbe)return
-        if(visible)waiting=false else sawEmpty=true
+        if(visible) {waiting=false;problem=null}
+        else if(problem==null) {waiting=true;sawEmpty=true}
     }
     fun timeout(document: Long) {
         if(document==ticket && waiting)failed(document,if(sawEmpty)PageLoadProblem.EMPTY else PageLoadProblem.TIMEOUT)
@@ -29,5 +30,5 @@ class PageLoadTracker {
         if(document!=ticket)return
         waiting=false;problem=failure
     }
-    fun cancel() {ticket++;waiting=false}
+    fun cancel() {ticket++;waiting=false;committed=false}
 }
