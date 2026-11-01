@@ -23,6 +23,30 @@
     }
     return true;
   }
+  function usableControl(node) {
+    if(node.disabled||node.getAttribute('aria-disabled')==='true'||!visible(node))return false;
+    for(let el=node;el&&el.nodeType===1;el=el.parentElement) {
+      if(el.inert||el.hasAttribute('inert'))return false;
+    }
+    return true;
+  }
+  function hasPauseControl() {
+    const pause=/^(pause|duraklat)$/i;
+    const exact=document.querySelectorAll('[data-testid="control-button-playpause"]');
+    for(let i=0;i<Math.min(exact.length,16);i++) {
+      if(usableControl(exact[i]))return pause.test((exact[i].getAttribute('aria-label')||'').trim());
+    }
+    // Responsive players can retain hidden desktop controls. Only public, scoped
+    // player buttons corroborate native audio; unrelated page controls never do.
+    const regions=document.querySelectorAll('[data-testid="now-playing-view"], [data-testid="fullscreen-player"], [data-testid="mobile-player"], [data-testid="player-controls"], [data-testid="now-playing-bar"]');
+    for(let i=0;i<Math.min(regions.length,16);i++) {
+      const buttons=regions[i].querySelectorAll('button[aria-label]');
+      for(let j=0;j<Math.min(buttons.length,64);j++) {
+        if(pause.test((buttons[j].getAttribute('aria-label')||'').trim())&&usableControl(buttons[j]))return true;
+      }
+    }
+    return false;
+  }
   function audioFault() {if(!audioError){audioError=true;totals.errors++;}}
   function visualFault() {if(!visualError){visualError=true;totals.errors++;}}
   function restoreAudio() {
@@ -83,8 +107,7 @@
         Array.from(document.querySelectorAll('[data-testid="video-player-ad-overlay"]')).some(visible);
       const normalTrack=players.some(w=>Array.from(w.querySelectorAll('a[href]')).some(a=>
         visible(a)&&/\/(?:track|episode)\/[A-Za-z0-9]{22}(?:[?#]|$)/.test(a.getAttribute('href')||'')));
-      const pauseControl=Array.from(document.querySelectorAll('[data-testid="control-button-playpause"]')).some(b=>
-        visible(b)&&/^(pause|duraklat)$/i.test((b.getAttribute('aria-label')||'').trim()));
+      const pauseControl=hasPauseControl();
       const playbackEvidence=mediaAvailable||(options.nativeAudio&&pauseControl);
       evidence=Number(marker)+Number(playbackEvidence)+Number(!normalTrack);
       const ad=marker&&playbackEvidence&&!normalTrack;
@@ -129,7 +152,7 @@
     if(!observer) {
       observer=new MutationObserver(schedule);
       observer.observe(document.documentElement,{subtree:true,childList:true,attributes:true,
-        attributeFilter:['data-testid','aria-hidden','hidden','style','class','data-state','src','href','aria-label']});
+        attributeFilter:['data-testid','aria-hidden','hidden','style','class','data-state','src','href','aria-label','disabled','aria-disabled','inert']});
       ['play','pause','ended','error'].forEach(name=>document.addEventListener(name,schedule,true));
       watchdog=setInterval(()=>{
         if(clock()-heartbeat>20000)suspendForLease();

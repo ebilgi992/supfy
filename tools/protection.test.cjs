@@ -301,3 +301,50 @@ test('current muted DOM count clears after user unmutes without changing history
   assert.equal(s.phase,'ad');assert.equal(s.mutedDomCount,0);assert.equal(s.muted,1);
  }finally{d.window.close()}
 });
+
+const nativeAdWidget='<div data-testid="now-playing-widget"><i data-testid="track-info-advertiser"></i></div>';
+function nativeSnapshot(d){const a=api(d);a.configure({...options,nativeAudio:true});return a.snapshot();}
+
+test('native-only mobile pause control corroborates an explicit ad marker',()=>{
+ const d=page(nativeAdWidget+'<div data-testid="mobile-player"><button aria-label="Duraklat"></button></div>');try{
+  const s=nativeSnapshot(d);assert.equal(s.phase,'ad');assert.equal(s.evidence,3);assert.equal(s.playing,true);assert.equal(s.mutedDomCount,0);
+ }finally{d.window.close()}
+});
+
+test('hidden desktop exact control does not suppress a usable native mobile pause',()=>{
+ const d=page(nativeAdWidget+'<div hidden><button data-testid="control-button-playpause" aria-label="Pause"></button></div><div data-testid="mobile-player"><button aria-label="Pause"></button></div>');try{
+  const s=nativeSnapshot(d);assert.equal(s.phase,'ad');assert.equal(s.evidence,3);
+ }finally{d.window.close()}
+});
+
+test('all bounded player regions are searched after an unusable mobile region',()=>{
+ const d=page(nativeAdWidget+'<div hidden data-testid="mobile-player"><button aria-label="Pause"></button></div><div data-testid="fullscreen-player"><button aria-label="Duraklat"></button></div>');try{
+  assert.equal(nativeSnapshot(d).phase,'ad');
+ }finally{d.window.close()}
+});
+
+for(const attributes of ['disabled','aria-disabled="true"']) {
+ test(`disabled mobile pause cannot corroborate native audio: ${attributes}`,()=>{
+  const d=page(nativeAdWidget+`<div data-testid="mobile-player"><button aria-label="Duraklat" ${attributes}></button></div>`);try{
+   const s=nativeSnapshot(d);assert.notEqual(s.phase,'ad');assert.equal(s.detected,0);assert.equal(s.playing,false);
+  }finally{d.window.close()}
+ });
+}
+
+test('inert player region cannot supply native pause evidence',()=>{
+ const d=page(nativeAdWidget+'<div inert data-testid="mobile-player"><button aria-label="Pause"></button></div>');try{
+  assert.notEqual(nativeSnapshot(d).phase,'ad');
+ }finally{d.window.close()}
+});
+
+test('normal track link vetoes an explicit marker with native mobile playback',()=>{
+ const d=page('<div data-testid="now-playing-widget"><i data-testid="track-info-advertiser"></i><a href="/track/0123456789ABCDEFGHIJKL">Song</a></div><div data-testid="mobile-player"><button aria-label="Duraklat"></button></div>');try{
+  const s=nativeSnapshot(d);assert.notEqual(s.phase,'ad');assert.equal(s.detected,0);
+ }finally{d.window.close()}
+});
+
+test('unrelated global pause button cannot corroborate native ad audio',()=>{
+ const d=page(nativeAdWidget+'<main><button aria-label="Pause"></button></main>');try{
+  assert.notEqual(nativeSnapshot(d).phase,'ad');
+ }finally{d.window.close()}
+});
