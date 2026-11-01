@@ -48,7 +48,7 @@ class PlaybackWebControllerTest {
     posted=manager.activeNotifications.firstOrNull {it.id==PlaybackNotificationService.NOTIFICATION_ID && it.notification.extras.getCharSequence(Notification.EXTRA_TITLE)?.toString()=="Yerel test şarkısı"}?.notification
     if(posted==null)Thread.sleep(100)
    }
-   scenario.onActivity {java.io.File(it.cacheDir,"playback-test-state.txt").writeText(controller.state.value.toString())}
+   scenario.onActivity {java.io.File(it.cacheDir,"playback-test-state.txt").writeText(controller.health.value.toString()+PlaybackNotificationService.health.value.toString())}
    val notification=requireNotNull(posted){"Fresh local player notification must be posted"}
    assertTrue(notification.extras.getCharSequence(Notification.EXTRA_TITLE).toString().contains("Yerel test"))
    @Suppress("DEPRECATION") val token=notification.extras.getParcelable<MediaSession.Token>(Notification.EXTRA_MEDIA_SESSION)
