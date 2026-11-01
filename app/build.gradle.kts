@@ -5,8 +5,8 @@ plugins {
 }
 
 // Yerel giriş toparlama sürümü; CI `-PsupfyVersionCode=<2000 + çalışma no>` kullanır.
-val supfyVersionCode = (project.findProperty("supfyVersionCode") as String?)?.toIntOrNull() ?: 1027
-require(supfyVersionCode >= 1027) { "Sürüm kodu 1026 test kurulumundan büyük olmalıdır." }
+val supfyVersionCode = (project.findProperty("supfyVersionCode") as String?)?.toIntOrNull() ?: 1028
+require(supfyVersionCode >= 1028) { "Sürüm kodu 1027 test kurulumundan büyük olmalıdır." }
 
 // İmza: anahtar dosyası ve şifreler yalnızca ortam değişkenlerinden okunur (CI'da GitHub Secrets).
 // Depoda hiçbir anahtar veya şifre bulunmaz. Değişkenler yoksa Android'in debug anahtarı kullanılır.
@@ -22,7 +22,7 @@ android {
         minSdk = 26
         targetSdk = 35
         versionCode = supfyVersionCode
-        versionName = "0.7.0-media-account"
+        versionName = "0.8.0-quantum"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         // Uygulama içi güncelleme denetiminin sorguladığı depo (owner/repo).
