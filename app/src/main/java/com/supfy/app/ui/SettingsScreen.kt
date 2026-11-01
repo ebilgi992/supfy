@@ -67,6 +67,7 @@ fun SettingsScreen(
     onAccountMenu:()->Unit = {},
     onAccountLogout:()->Unit = {},
     onAccountRefresh:()->Unit = {},
+    onOpenDiagnostics:()->Unit = {},
 ) {
     var confirmClear by remember { mutableStateOf(false) }
 
@@ -144,6 +145,10 @@ fun SettingsScreen(
                 BodyText(stringResource(R.string.permissions_body))
             }
 
+            SectionCard("Oynatıcı ve ses denetimi") {
+                BodyText("Bildirimin ve ses müdahalesinin gerçek durumunu kontrol et.")
+                OutlinedButton(onClick=onOpenDiagnostics,modifier=Modifier.fillMaxWidth()){Text("Durumu kontrol et")}
+            }
             SectionCard(stringResource(R.string.section_device)) {
                 BodyText(stringResource(R.string.device_model, Build.MANUFACTURER, Build.MODEL))
                 BodyText(stringResource(R.string.device_android, Build.VERSION.RELEASE, Build.VERSION.SDK_INT))

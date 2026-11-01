@@ -14,6 +14,10 @@ class AppSettings(context: Context) {
 
     private val prefs = context.getSharedPreferences(FILE, Context.MODE_PRIVATE)
 
+    // Existing preferences are evidence of an upgrade, never evidence of a guest session.
+    val welcomeRequired = !prefs.getBoolean(KEY_WELCOME, prefs.all.isNotEmpty())
+    fun acknowledgeWelcome() { prefs.edit().putBoolean(KEY_WELCOME, true).apply() }
+
     val protectionOptions: ProtectionOptions
         get() = ProtectionOptions(
             enabled = prefs.getBoolean("koruma_acik", false),
@@ -74,6 +78,7 @@ class AppSettings(context: Context) {
         const val KEY_BACKGROUND = "arka_plan_oynatma"
         const val KEY_DESKTOP = "masaustu_modu"
         const val KEY_THEME = "tema"
+        const val KEY_WELCOME = "supfy_karsilama_goruldu"
         const val KEY_LAST_CHECK = "son_guncelleme_denetimi"
         const val KEY_SNOOZED_CODE = "ertelenen_surum"
         const val KEY_SNOOZED_UNTIL = "erteleme_bitisi"

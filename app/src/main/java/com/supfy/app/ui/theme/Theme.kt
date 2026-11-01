@@ -12,24 +12,24 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-// Supfy paleti: yeşil + siyah (müzik uygulamalarına özgü koyu tema).
-val SupfyGreen = Color(0xFF1DB954)
-val SupfyGreenBright = Color(0xFF1ED760)
-val SupfyBg = Color(0xFF121212)
-val SupfySurface = Color(0xFF181818)
-val SupfySurfaceHigh = Color(0xFF282828)
-val SupfyOnSurface = Color(0xFFFFFFFF)
-val SupfyMuted = Color(0xFFB3B3B3)
+// Supfy: ferah yeşil, kömür ve düşük yoğunluklu teal yüzeyler.
+val SupfyGreen = Color(0xFF83F3AE)
+val SupfyGreenBright = Color(0xFFA2F8C2)
+val SupfyBg = Color(0xFF0B1010)
+val SupfySurface = Color(0xFF141C1B)
+val SupfySurfaceHigh = Color(0xFF202D29)
+val SupfyOnSurface = Color(0xFFF4FAF6)
+val SupfyMuted = Color(0xFFB2C2BA)
 val SupfyError = Color(0xFFF15E6C)
 
 private val SupfyDarkColors = darkColorScheme(
     primary = SupfyGreen,
     onPrimary = Color(0xFF000000),
-    primaryContainer = Color(0xFF0D4A24),
-    onPrimaryContainer = Color(0xFFB9F6CA),
+    primaryContainer = Color(0xFF173C2B),
+    onPrimaryContainer = Color(0xFFC5F9D7),
     secondary = SupfyGreenBright,
     onSecondary = Color(0xFF000000),
-    tertiary = SupfyGreenBright,
+    tertiary = Color(0xFF79D8CF),
     onTertiary = Color(0xFF000000),
     background = SupfyBg,
     onBackground = SupfyOnSurface,
@@ -43,8 +43,8 @@ private val SupfyDarkColors = darkColorScheme(
     onError = Color(0xFF2A0006),
     errorContainer = Color(0xFF4D1219),
     onErrorContainer = Color(0xFFFFDADC),
-    outline = Color(0xFF3E3E3E),
-    outlineVariant = Color(0xFF2A2A2A),
+    outline = Color(0xFF52665B),
+    outlineVariant = Color(0xFF2E3C35),
 )
 
 // Açık tema: beyaz zeminde okunabilirlik için yeşil biraz koyulaştırıldı (WCAG kontrastı).

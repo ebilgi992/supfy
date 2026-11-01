@@ -23,6 +23,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.AlertDialog
@@ -62,6 +63,10 @@ import com.supfy.app.web.WebViewFactory
 import com.supfy.app.protection.ProtectionEngine
 import com.supfy.app.protection.ProtectionOptions
 import com.supfy.app.protection.ProtectionWebController
+import com.supfy.app.ui.quantum.*
+import com.supfy.app.playback.PlaybackCommand
+import com.supfy.app.playback.PlaybackNotificationService
+import com.supfy.app.account.AccountStatus
 import com.supfy.app.web.PlayerNavigation
 
 class MainActivity : ComponentActivity() {
@@ -135,9 +140,25 @@ class MainActivity : ComponentActivity() {
                 val desktop by appSettings.desktopMode.collectAsStateWithLifecycle()
                 val engineState by protectionEngine.state.collectAsStateWithLifecycle()
                 val accountState by account.state.collectAsStateWithLifecycle()
+                val mediaState by playback.state.collectAsStateWithLifecycle()
+                val mediaHealth by playback.health.collectAsStateWithLifecycle()
+                val serviceHealth by PlaybackNotificationService.health.collectAsStateWithLifecycle()
                 LaunchedEffect(background){playback.setEnabled(background)}
                 var showSettings by rememberSaveable { mutableStateOf(false) }
                 var showProtection by rememberSaveable { mutableStateOf(false) }
+                var showNowPlaying by rememberSaveable { mutableStateOf(false) }
+                var showDiagnostics by rememberSaveable { mutableStateOf(false) }
+                var showWelcome by rememberSaveable { mutableStateOf(appSettings.welcomeRequired) }
+                var welcomeDismissed by rememberSaveable { mutableStateOf(false) }
+                var destination by rememberSaveable { mutableStateOf(QuantumDestination.HOME) }
+                fun dismissWelcome() { showWelcome=false;welcomeDismissed=true;appSettings.acknowledgeWelcome() }
+                fun login() { dismissWelcome();openLogin() }
+                fun signUp() { dismissWelcome();webView?.let {mainClient?.loadUrl(it,PlayerNavigation.SIGNUP_URL)} }
+                fun togglePlayback() { playback.command(if(mediaState.playing)PlaybackCommand.PAUSE else PlaybackCommand.PLAY) }
+                LaunchedEffect(accountState.status,uiState.authenticating) {
+                    if(accountState.status==AccountStatus.AUTHENTICATED) {showWelcome=false;appSettings.acknowledgeWelcome()}
+                    else if(accountState.status==AccountStatus.GUEST && !uiState.authenticating && !welcomeDismissed)showWelcome=true
+                }
 
                 // Açılışta (en fazla 12 saatte bir) güncelleme denetimi; bağlantı yoksa beklenir.
                 LaunchedEffect(online) {
@@ -153,19 +174,38 @@ class MainActivity : ComponentActivity() {
                 }
 
                 Box(Modifier.fillMaxSize()) {
+                  Column(Modifier.fillMaxSize()) {
+                   Box(Modifier.weight(1f)) {
                     SupfyScreen(
                         webView = webView,
                         state = uiState,
                         online = online,
                         onRefresh = { webView?.reload() },
-                        onHome = { webView?.loadUrl(UrlPolicy.HOME_URL) },
-                        onLogin = ::openLogin,
+                        onHome = { webView?.let {mainClient?.loadUrl(it,UrlPolicy.HOME_URL)} },
+                        onLogin = ::login,
                         onRetry = ::retry,
                         onOpenSettings = { showSettings = true },
                         onOpenProtection = { showProtection = true },
                         onCopyLoginDiagnostics = ::copyLoginDiagnostics,
                         onRetryLoginRendering = {webView?.let {mainClient?.retryLoginRendering(it)}},
                     )
+                   }
+                   if(!uiState.authenticating && !showWelcome) {
+                    QuantumMiniPlayer(mediaState,onExpand={showNowPlaying=true},onPlayPause=::togglePlayback)
+                    QuantumBottomBar(destination) {selected->
+                        if(selected==QuantumDestination.SETTINGS)showSettings=true
+                        else {
+                            destination=selected
+                            val url=when(selected) {
+                                QuantumDestination.SEARCH->"https://open.spotify.com/search"
+                                QuantumDestination.LIBRARY->"https://open.spotify.com/collection"
+                                else->UrlPolicy.HOME_URL
+                            }
+                            webView?.let {mainClient?.loadUrl(it,url)}
+                        }
+                    }
+                   }
+                  }
 
                     AnimatedVisibility(
                         visible = showSettings,
@@ -185,18 +225,19 @@ class MainActivity : ComponentActivity() {
                             onClearData = ::clearSiteData,
                             onClose = { showSettings = false },
                             account = accountState,
-                            onAccountLogin = {showSettings=false;openLogin()},
-                            onAccountSignUp = {showSettings=false;webView?.let {mainClient?.loadUrl(it,PlayerNavigation.SIGNUP_URL)}},
+                            onAccountLogin = {showSettings=false;login()},
+                            onAccountSignUp = {showSettings=false;signUp()},
                             onAccountMenu = {
                                 showSettings=false
                                 fun fallback(){webView?.let {mainClient?.loadUrl(it,com.supfy.app.account.AccountController.ACCOUNT_URL)}}
                                 if(!account.openAccountMenu(::fallback))fallback()
                             },
                             onAccountLogout = {
-                                showSettings=false;account.markUnknown()
+                                showSettings=false;welcomeDismissed=false;account.markUnknown()
                                 webView?.let {mainClient?.loadUrl(it,com.supfy.app.account.AccountController.LOGOUT_URL)}
                             },
                             onAccountRefresh = account::refresh,
+                            onOpenDiagnostics = {showDiagnostics=true},
                         )
                     }
 
@@ -217,6 +258,26 @@ class MainActivity : ComponentActivity() {
                             onClose = { showProtection = false },
                         )
                     }
+                    if(showWelcome) QuantumLoginScreen(
+                        loading=false,error=if(!online)"Bağlantı yok. Giriş yapmak için internete bağlan." else null,
+                        onLogin=::login,onSignUp=::signUp,onContinue=::dismissWelcome)
+                    if(showNowPlaying) QuantumNowPlaying(mediaState,onClose={showNowPlaying=false},
+                        onPlayPause=::togglePlayback,onNext={playback.command(PlaybackCommand.NEXT)},
+                        onPrevious={playback.command(PlaybackCommand.PREVIOUS)},onQueue={
+                            showNowPlaying=false;webView?.let {mainClient?.loadUrl(it,"https://open.spotify.com/queue")}
+                        })
+                    if(showDiagnostics) RuntimeDiagnosticsScreen(mediaHealth,serviceHealth,engineState.audioDiagnostics,
+                        onClose={showDiagnostics=false},onCopy={report->
+                            getSystemService(ClipboardManager::class.java).setPrimaryClip(ClipData.newPlainText("Supfy durum tanısı",report))
+                            Toast.makeText(this@MainActivity,"Sayısal tanı kopyalandı.",Toast.LENGTH_SHORT).show()
+                        },onNotificationSettings={
+                            try {
+                                startActivity(Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                                    .putExtra(android.provider.Settings.EXTRA_APP_PACKAGE,packageName))
+                            } catch(_:ActivityNotFoundException) {
+                                Toast.makeText(this@MainActivity,"Android bildirim ayarları açılamadı.",Toast.LENGTH_SHORT).show()
+                            }
+                        })
                 }
 
                 providerUri?.let {uri->
@@ -254,9 +315,12 @@ class MainActivity : ComponentActivity() {
                 }
 
                 // Sonra tanımlanan BackHandler önceliklidir: önce ayarlar kapanır, sonra sayfa geri gider.
-                BackHandler(enabled = !showSettings && !showProtection && uiState.canGoBack) { webView?.goBack() }
+                BackHandler(enabled = !showSettings && !showProtection && !showNowPlaying && !showDiagnostics && !showWelcome && uiState.canGoBack) { webView?.goBack() }
                 BackHandler(enabled = showSettings) { showSettings = false }
                 BackHandler(enabled = showProtection) { showProtection = false }
+                BackHandler(enabled = showWelcome) { dismissWelcome() }
+                BackHandler(enabled = showNowPlaying) { showNowPlaying=false }
+                BackHandler(enabled = showDiagnostics) {showDiagnostics=false}
             }
         }
     }
@@ -385,7 +449,7 @@ class MainActivity : ComponentActivity() {
         uiState.error = null
         uiState.canGoBack = false
         uiState.progress = 0
-        webView = buildWebView().also { it.loadUrl(url) }
+        webView = buildWebView().also { mainClient?.loadUrl(it,url) }
     }
 
     /**
