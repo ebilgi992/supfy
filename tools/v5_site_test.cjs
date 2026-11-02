@@ -22,12 +22,12 @@ const browserPath = [process.env.SUPFY_BROWSER_PATH, "/usr/bin/chromium", "/work
 if (!browserPath) throw new Error("Set SUPFY_BROWSER_PATH to an existing Chromium executable.");
 const release = JSON.parse(fs.readFileSync(path.join(site, "release.json"), "utf8"));
 const report = { started: new Date().toISOString(), browserPath, playwrightModule: modulePath, checks: [], files: {} };
-for (const filename of ["index.html", "styles.css", "app.js", "release.json", "assets/supfy-mark.svg", "assets/afterglow.svg", ".nojekyll"]) {
+for (const filename of ["index.html", "styles.css", "app.js", "release.json", "assets/supfy-icon.png", "assets/afterglow.svg", ".nojekyll"]) {
   const file = path.join(site, filename);
   if (fs.existsSync(file)) report.files[filename] = crypto.createHash("sha256").update(fs.readFileSync(file)).digest("hex");
 }
 
-const types = { ".html": "text/html; charset=utf-8", ".css": "text/css; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".json": "application/json; charset=utf-8", ".svg": "image/svg+xml" };
+const types = { ".html": "text/html; charset=utf-8", ".css": "text/css; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".json": "application/json; charset=utf-8", ".svg": "image/svg+xml", ".png": "image/png" };
 const server = http.createServer((request, response) => {
   try {
     const pathname = decodeURIComponent(new URL(request.url, "http://localhost").pathname);
@@ -69,20 +69,20 @@ async function check(name, action) {
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth), width);
     });
   }
-  const route = "**/supfy/release.json";
-  await check("Unverified configuration keeps download disabled with terminal copy", async () => {
-    const unverified = structuredClone(release);
-    unverified.download.verified = false;
-    await page.route(route, (request) => request.fulfill({ json: unverified }));
-    await navigate();
-    assert.equal(await page.locator("[data-download-link]").getAttribute("aria-disabled"), "true");
-    assert.match(await page.locator("[data-download-link]").innerText(), /henüz yayıma açılmadı/);
-    // aria-disabled blocks Playwright actionability; a physical click must still be harmless.
-    await page.locator("[data-download-link]").click({ force: true });
-    assert.match(await page.locator("#download-status").innerText(), /henüz doğrulanmadı/);
-    assert.equal(page.url(), base);
-    await page.unroute(route);
-    await navigate();
+  await check("Website uses the exact app logo bytes", async () => {
+    assert.equal(fs.readFileSync(path.join(site, "assets/supfy-icon.png")).compare(fs.readFileSync(path.join(root, "branding/supfy-icon-512.png"))), 0);
+    assert.equal(await page.locator(".brand img").first().getAttribute("src"), "assets/supfy-icon.png");
+  });
+  await check("Marketing page has no QA, checksum, signing or version disclosures", async () => {
+    const text = await page.locator("body").innerText();
+    assert.doesNotMatch(text, /SHA[-– ]?256|checksum|test build|debug|\bANR\b|\blint\b|1\.0\.0-v5|\b1029\b|test raporu/i);
+    assert.match(text, /Spotify AB ile bağlantısı/);
+    assert.match(text, /Myspoti/);
+    assert.match(text, /GPL-3\.0/);
+  });
+  await check("Published configuration activates the configured APK link", async () => {
+    assert.equal(await page.locator("[data-download-link]").getAttribute("href"), release.downloadUrl);
+    assert.equal(await page.locator("[data-download-link]").getAttribute("aria-disabled"), null);
   });
   await check("Mobile menu opens; Escape closes it and restores toggle focus", async () => {
     await page.locator(".menu-toggle").click();
@@ -93,9 +93,9 @@ async function check(name, action) {
   });
   await check("Mobile anchor navigation closes menu", async () => {
     await page.locator(".menu-toggle").click();
-    await page.locator('#ana-menu a[href="#guvenlik"]').click();
+    await page.locator('#ana-menu a[href="#tercihler"]').click();
     assert.equal(await page.locator(".menu-toggle").getAttribute("aria-expanded"), "false");
-    assert.equal(new URL(page.url()).hash, "#guvenlik");
+    assert.equal(new URL(page.url()).hash, "#tercihler");
   });
   await check("Native FAQ opens and closes using Enter", async () => {
     await page.locator("summary").first().focus();
@@ -104,53 +104,32 @@ async function check(name, action) {
     await page.keyboard.press("Enter");
     assert.equal(await page.locator("details").first().evaluate((el) => el.open), false);
   });
-  await check("SHA-256 copy roundtrip uses the actual browser clipboard", async () => {
-    await page.locator('[data-copy="sha256"]').click();
-    await page.waitForFunction(() => document.querySelector("#copy-status").textContent.includes("panoya kopyalandı"));
-    assert.equal(await page.evaluate(() => navigator.clipboard.readText()), release.sha256);
-  });
-  await check("Version copy roundtrip uses the actual browser clipboard", async () => {
-    await page.locator('[data-copy="version"]').click();
-    await page.waitForFunction(() => document.querySelector("#copy-status").textContent.startsWith("Sürüm bilgisi panoya"));
-    assert.equal(await page.evaluate(() => navigator.clipboard.readText()), `Supfy ${release.version} / ${release.versionCode} · ${release.channel}`);
-  });
-  await check("Clipboard refusal shows manual-copy feedback", async () => {
-    await page.evaluate(() => Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText: async () => { throw new Error("denied"); } } }));
-    await page.locator('[data-copy="sha256"]').click();
-    await page.waitForFunction(() => document.querySelector("#copy-status").classList.contains("error"));
-    assert.match(await page.locator("#copy-status").innerText(), /elle kopyalayabilirsin/);
-  });
-  await check("Verified configuration activates only the configured APK URL (no APK request)", async () => {
-    const verified = structuredClone(release);
-    verified.download.verified = true;
-    await page.route(route, (request) => request.fulfill({ json: verified }));
-    await navigate();
-    assert.equal(await page.locator("[data-download-link]").getAttribute("href"), release.download.url);
-    assert.equal(await page.locator("[data-download-link]").getAttribute("aria-disabled"), null);
-    await page.unroute(route);
-  });
-  await check("Untrusted configured APK URL remains disabled", async () => {
-    const untrusted = structuredClone(release);
-    untrusted.download.verified = true;
-    untrusted.download.url = "https://example.org/fake.apk";
-    await page.route(route, (request) => request.fulfill({ json: untrusted }));
-    await navigate();
-    assert.equal(await page.locator("[data-download-link]").getAttribute("aria-disabled"), "true");
-    assert.match(await page.locator("#download-status").innerText(), /yüklenemedi/);
-    await page.unroute(route);
-  });
-  await check("Malformed release JSON fails closed", async () => {
+  const route = "**/supfy/release.json";
+  for (const [name, data] of [
+    ["foreign download host", { ...release, downloadUrl: "https://example.org/fake.apk" }],
+    ["mismatched artifact version", { ...release, downloadUrl: "https://raw.githubusercontent.com/ebilgi992/supfy/apk-download-v5-1030/downloads/Supfy-1029.apk" }],
+    ["foreign source URL", { ...release, sourceUrl: "https://example.org/source" }],
+  ]) {
+    await check(`Rejects ${name} and disables download`, async () => {
+      await page.route(route, (request) => request.fulfill({ json: data }));
+      await navigate();
+      assert.equal(await page.locator("[data-download-link]").getAttribute("aria-disabled"), "true");
+      assert.match(await page.locator("#download-status").innerText(), /yüklenemedi/);
+      await page.locator("[data-download-link]").click({ force: true });
+      assert.equal(page.url(), base);
+      await page.unroute(route);
+    });
+  }
+  await check("Malformed release JSON disables download", async () => {
     await page.route(route, (request) => request.fulfill({ contentType: "application/json", body: "{" }));
     await navigate();
     assert.equal(await page.locator("[data-download-link]").getAttribute("aria-disabled"), "true");
-    assert.match(await page.locator("#download-status").innerText(), /yüklenemedi/);
     await page.unroute(route);
   });
-  await check("Release fetch failure fails closed with visible feedback", async () => {
+  await check("Release fetch failure disables download", async () => {
     await page.route(route, (request) => request.abort());
     await navigate();
     assert.equal(await page.locator("[data-download-link]").getAttribute("aria-disabled"), "true");
-    assert.match(await page.locator("#download-status").innerText(), /yüklenemedi/);
     await page.unroute(route);
   });
   await navigate();

@@ -1,34 +1,4 @@
 {
-  "version": "1.0.0-v5",
-  "versionCode": 1029,
-  "channel": "TEST BUILD",
-  "minimumAndroid": "Android 10+",
-  "architectures": [
-    "ARM64",
-    "ARMv7",
-    "x86_64"
-  ],
-  "sizeLabel": "Yaklaşık 19 MB",
-  "signing": "Debug sertifikası · üretim anahtarı değil",
-  "sha256": "3eacb22f46667c700dc42fa5c2cdb3f055aa1fde41cd0ed721c03eff7c787b40",
-  "download": {
-    "url": "https://raw.githubusercontent.com/ebilgi992/supfy/apk-download-v5-1029/downloads/Supfy-V5-1029.apk",
-    "verified": true
-  },
-  "sourceUrl": "https://github.com/ebilgi992/supfy/tree/supfy/quantum-privacy-shield",
-  "reportUrl": "https://github.com/ebilgi992/supfy/blob/supfy/quantum-privacy-shield/docs/v5/TEST_RESULTS.md",
-  "verification": {
-    "jvmPassed": 958,
-    "auditFindings": 0,
-    "negativeFixtures": 12,
-    "deviceTotal": 19,
-    "devicePassed": 15,
-    "deviceFailed": 0,
-    "deviceNote": "Son koşuda ilk 15 test geçti. Türkçe izin penceresi testi bir giriş odağı ANR’siyle kesildi; sonraki üç test çalışmadı. Bu üç senaryo önceki koşularda geçmişti.",
-    "latestDeviceRun": "Cihaz uyanık ve kilitsizken de izin penceresi ANR’si tekrarlandı; sorun açık. Yerel sesle medya bildirimi, sistem kontrolleri ve arka plan tercihi testi geçti. Canlı Spotify/DRM ve donanım testleri yapılmadı.",
-    "lintFindings": 1236,
-    "lintTranslationGaps": 1095,
-    "deviceInterrupted": 1,
-    "deviceNotRun": 3
-  }
+  "downloadUrl": "https://raw.githubusercontent.com/ebilgi992/supfy/apk-download-v5-1030/downloads/Supfy-1030.apk",
+  "sourceUrl": "https://github.com/ebilgi992/supfy/tree/supfy/quantum-privacy-shield"
 }
