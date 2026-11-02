@@ -1,114 +1,119 @@
-# Supfy V5 test results
+# Supfy V5 verification — 2026-11-02
 
-Evidence date: 2026-11-02. Canonical project: `base/`, package `com.supfy.app`,
-version `1.0.0-v5` / `1029`. Results from earlier Supfy builds are not counted as V5
-results. This is a debug-certificate-signed **test build**, not a production release.
+**Delivery status: TEST BUILD. The acceptance criteria are not all satisfied.**
+The public APK installs and displays the native Turkish Supfy welcome/login entry.
+The consent UI test still ends in ANR, including an awake/unlocked repeat. Successful
+Spotify authentication and live licensed playback are not verified. Full lint fails.
 
-## Build and automated checks
+## Current evidence
 
-| Check | Result | Scope |
+| Check | Result | Exact scope |
 |---|---|---|
-| Gradle compilation, debug APK, Android test APK, optimized test APK | PASS | `v5-build-service-fix.log`: BUILD SUCCESSFUL in 7m52s; three ABIs ARM64, ARMv7 and x86_64 |
-| JVM tests | PASS | 958 tests, zero failures/skips: api-spotify 181, extensions 206, host-android 64, app 507. Eight new foreground-service lifecycle cases executed in the corrected build |
-| Source + packaged APK regression audit | PASS | Zero specified-rule findings; 12 negative fixtures. This is not a general security certification |
-| Turkish resource audit | PASS | 1,260 default/Turkish entries; zero missing entries or format mismatches |
-| Release-vital lint | PASS | Scoped Gradle release task only |
-| Full Android lint | FAIL | First full run: 1,236 errors, including 1,095 other-language MissingTranslation findings. Other inherited Compose/API debts remain; later correctness fixes do not establish a full lint pass |
-| APK cryptographic verification | PASS | Android SDK apksigner verified v2 signature; signer SHA-256 below |
-| REA 6.8.0 APK inspection | EXECUTED | Supported Node 24.22.1; static APK signer/package inspection. Full analysis-provider doctor is unhealthy; see REA_ANALYSIS.md |
+| Production-source build | PASS | `v5-build-service-fix.log`, BUILD SUCCESSFUL7m52s; debug, test and optimized APKs; ARM64/ARMv7/x86_64 |
+| Frozen-source debug consistency build | PASS |42s; final pending-notification scrub verified in bytecode. Later debug-only harness build1m35s and diagnostic test-package build28s also passed |
+| JVM tests | PASS |958, no failures/errors/skips: api-spotify181, extensions206, host-android64, app507. Eight service-lifetime regressions included |
+| Turkish resource audit | PASS |1260 default/Turkish entries, no missing/format errors. Does not imply every screen was rendered |
+| Bounded source/APK audit | PASS |948 production inputs, zero specified-rule findings,12 negative fixtures; not a general security certification |
+| Release-vital lint | PASS | Scoped Gradle release checks only |
+| Full lint | FAIL | First complete local run1236 errors, including1095 other-language translation gaps; other Compose/API debt remains. Later fixes do not establish a full pass |
+| Final Android instrumentation | **INCOMPLETE** |15PASS,1 interrupted by input-focus ANR,3NOTRUN. No skips. See below |
+| Actual public APK installation | PASS | Same-signed1029 debug → optimized test APK installed on disposable API30/Android11 AVD. Installed `base.apk` SHA-256 equals the public/local artifact |
+| Native welcome/login entry | PASS | Actual optimized APK shows Supfy, Turkish copy and “Spotify ile giriş yap”; [real screenshot](evidence/primary-welcome.png) |
+| Provider login page | **NOT VERIFIED** | Tapping the button reached the Turkish “Giriş tamamlanmadı” / provider-page-load error. Root cause not established; this is not a successful official-page or login test |
+| Cold-start timing | INCONCLUSIVE | `am start -W` reported timeout/11708ms; the subsequent UI hierarchy and screenshot show the native screen rendered. No startup/performance pass is inferred |
+| APK signature | PASS | SDK apksigner verifies v2 signature; local debug certificate, not production key |
+| Public download integrity | PASS | Unauthenticated full HTTPS download and byte-for-byte comparison; matching SHA-256 |
+| Website | PASS |19 local real-browser checks,320–1440px; public Pages HTTPS200 and deployed-file byte checks. [Website scope](WEBSITE_TEST_RESULTS.md) |
+| REA6.8.0 static APK inspection | EXECUTED | Node24.22.1; final artifact digest matches. Full provider doctor unhealthy; not a full reverse-engineering environment pass |
 
-Source audit inputs and exact final artifact hashes are recorded with the release.
-Passing the scanner means its listed contracts passed; it cannot establish that all
-possible leaks, crashes, dependency vulnerabilities or provider-side processing are absent.
+Machine-readable public evidence: [JVM](evidence/unit-tests.json),
+[Android](evidence/android-final.json), [source/APK guards](evidence/security-audit.json),
+[apksigner](evidence/apksigner.txt), [REA](evidence/rea-apk-signature.json).
+Private runtime logs and provider payloads are not distributed.
 
-## Actual Android evidence
+## Artifact identities
 
-A disposable clone of the existing API 30 / Android 11 AVD was used; the original AVD
-and original Supfy checkout were retained. Software CPU emulation has no KVM and
-severe frame delays. The API 36 image repeatedly hit Android system-watchdog reboots;
-it is retained and stopped, not counted as a compatibility pass.
+| Artifact | SHA-256 |
+|---|---|
+| Public optimized test APK | `3eacb22f46667c700dc42fa5c2cdb3f055aa1fde41cd0ed721c03eff7c787b40` |
+| Current local debug APK | `2d8bfe08cfb0c5b0c187e3128ea04cefe9cbe15ebc34360cbc7c47b2eec093e2` |
+| Current local instrumentation APK | `9616de4a2bc5dcf5567ca7abc651460c156475a54460a6fcd279cbff46185e44` |
 
-- An actual same-signed 1028 → 1029 debug upgrade installed successfully.
-- The native welcome screen displayed **Supfy**, Turkish text and a login entry button.
-  This verifies the native entry screen, not successful provider authentication.
-- A synthetic user-file canary survived; the real legacy background preference file's
-  before/after SHA-256 matched. No app-data clearing/uninstall was used.
-- Device tests exercised inert diagnostics, cleanup canaries, explicit optional-provider
-  consent, update defaults and rejected package/version cases, stored locale/theme
-  preferences, Media3 consent data sources, owned PCM/FLAC transcoding and offline crypto.
-- Actual local PCM playback and an Android media notification were observed together
-  before the media control test subsequently crashed. Notification presence alone is
-  not a pass for pause/play, background lifecycle or full MediaSession compatibility.
+Production app source: commit5a64963. Later changes are debug-only test hosting,
+instrumentation, website and documentation; they do not alter the public optimized
+APK. Final source audit digest:
+`a71296832fe4867c3c9636d21ffdd4fc746f61aec1ef8797dcc4b8f9e4aafed9`.
 
-### Failed and interrupted runs — retained
+Signer SHA-256:
+`f0e5840358d25473a5aac702d6e93046121555a2bb88bc4cb4cdc79fda705640`.
+It matches local1023–1028; original1018 used a different signer. Never uninstall
+user data to bypass signature mismatch. CI builds use an ephemeral signer.
 
-| Run | Observation | Action / status |
+## Real Android scope
+
+The isolated API30 AVD is a copy of the earlier test device; the original AVD and
+original checkout were not changed. Software CPU emulation has no KVM. API36
+repeatedly hit system-watchdog reboots and is retained/stopped, not counted as a pass.
+
+A real1028 →1029 debug upgrade preserved a synthetic file canary and the real legacy
+background preference bytes (matching before/after SHA-256). No app-data clear or
+uninstall was used. Preserved bytes do not prove a provider session remains valid.
+
+The final `android-awake-final.log` executed:
+
+- Two diagnostic-disabled checks; locale-migration phase-order check; five V5
+  identity/resource/consent/update-default/theme/background preference checks.
+- Two real updater package/version rejection cases without an installer session.
+- Two PCM/FLAC-to-AAC codec checks and two offline-crypto/player checks.
+- **Owned local PCM playback, media-session notification/token, system pause/play,
+  next/previous, advancing playback after Home when enabled, and pausing after Home
+  when disabled: PASS.** This is not live Spotify/DRM or long-duration/Doze evidence.
+- Consent disclosure in Immersive: input-focus ANR during composition/measurement;
+  decline/allow and Classic coverage were not established. The final three Media3
+  consent-range cases did not execute in this interrupted run; all three passed in
+  earlier separately identified complete runs.
+
+The device was explicitly awake/unlocked, with temporary stay-on enabled, during
+the last repeat. A prior ANR snapshot also showed sleep/keyguard, but correcting
+that precondition did not eliminate the ANR. Bounded test-only main-thread samples
+progress through AlertDialog creation, accessibility IPC, composition, font resolution
+and text measurement. They establish neither a stationary lock nor its root cause.
+An app defect and emulator scheduling/performance are both not ruled out. No ANR-free
+claim is made. Test-only diagnostics are absent from the production APK.
+
+## Failures and corrective attempts — retained
+
+| Evidence log | Observation | Change / outcome |
 |---|---|---|
-| Initial suite | 9 passed, then process killed when a test changed REQUEST_INSTALL_PACKAGES | Android's permission-change kill confirmed. Driver now grants/restores outside instrumentation |
-| Next suite | 14 passed, then focus/ANR interruption | Locale fixture had polluted cold AppCompat restoration. Fixture restores the stored choice; media setup waits for resumed/focused activity |
-| Media diagnostic | Uncaught PLAYER_ORIGIN_REQUIRED on an error-page injection | Production document boundary now checks trusted committed main-frame URL and failure state. Typed rejected-document errors handled; unexpected errors/cancellation propagate. Five focused JVM regressions passed |
-| Full suite `android-final-all.log` | **17 passed, 2 failed**, all 19 executed | Media focus and consent-dialog visibility failed. Android System UI ANR overlay was captured; only its known Wait button was dismissed |
-| Follow-up `android-final-clean.log` | First 14 passed, then media process crash; suite incomplete | Owned PCM and notification were observed, then foreground-service startup obligation failed. This remains an open high-priority runtime issue until a corrected build and rerun establish a pass |
+| `android-instrumentation-all.log` |9PASS, then process killed by REQUEST_INSTALL_PACKAGES permission change | Driver grants/restores outside instrumentation |
+| `android-instrumentation-fixed.log` |14PASS, then focus/ANR interruption | Locale teardown now restores stored app choice; media waits for resumed/focused Activity |
+| `android-media-diagnostic.log` | PLAYER_ORIGIN_REQUIRED runtime crash | Trusted committed-document/epoch guards and typed error handling, commit9bd0aed; five JVM regressions PASS |
+| `android-final-all.log` |17/19PASS; media focus and consent visibility FAIL | Captured System UI ANR overlay; only its known Wait button dismissed |
+| `android-final-clean.log` |14PASS, then foreground-service crash after PCM + notification | Early bootstrap promotion, pending-start deduplication and deferred stop, commit5a64963; eight JVM regressions PASS |
+| `android-service-fixed-all.log` |18/19PASS; media case PASS; consent FAIL | Application-context English vs Activity Turkish query corrected; not sufficient to close UI verification |
+| Debug bytecode inspection | Last small source edit overlapped debug compilation | Frozen-source rebuild; final pending-notification scrub confirmed in both debug and optimized APK bytecode |
+| `android-final-consistent.log` |17/19PASS; focus/consent FAIL; System UI overlay captured | Known OS dialog dismissed; previous run remains FAIL |
+| `android-final-targeted.log` |2FAIL: transient bootstrap lacks session token; consent not visible | Test now waits for real MediaSession notification; shared consent UI uses isolated unexported debug-only Activity |
+| `android-harness-final-all.log` |15PASS; consent input-focus ANR; final3NOTRUN | Sleep/keyguard found in ANR snapshot; wake/unlock/stay-on fixture added |
+| `android-awake-final.log` |15PASS; consent input-focus ANR persists; final3NOTRUN | **BLOCKED/OPEN**; method-stack evidence collected, no unsupported root-cause or pass claim |
 
-No failing test was deleted or recounted as successful. Test-only bounded method-stack
-samples contain no account payload and are not application logging/export features.
-Raw runtime logs remain outside the public source tree because framework/provider output
-can contain sensitive data. The public report records conclusions and generic error types.
-
-## Not verified
-
-- Controlled Spotify successful/failed login, session refresh, logout/account switching,
-  live catalogue/DRM/Canvas/video playback: no controlled account was supplied.
-- Bluetooth, physical headset and Android Auto behavior: no corresponding hardware/host.
-- Release performance, ANR-free use, battery consumption or general device compatibility.
-- Network loss/reconnect and screen-lock playback on a physical device.
-- Full hostile IPC/subframe/runtime penetration testing and independent security audit.
-- Guaranteed migration of a live provider session; preserved files do not prove its validity.
-
-Signer SHA-256: `f0e5840358d25473a5aac702d6e93046121555a2bb88bc4cb4cdc79fda705640`.
-This local debug signer matches 1023–1028. Original 1018 used a different signer;
-never uninstall a user's application to work around signature mismatch.
-
-## Foreground-service correction
-
-`5a64963` moves required promotion before cold MediaSession construction, deduplicates
-pending foreground starts and defers logout/task-removal destruction until the required
-start is delivered. Account metadata/artwork/locks are cleared immediately. Bound-only
-Android Auto browsing does not itself promote the service. Eight pure lifecycle tests
-passed; this evidence alone does not verify Android callback timing. Corrected-device
-results will be recorded below.
+No failing case was deleted or hidden. Raw evidence stays outside public source because
+framework/provider logs can contain private data. The public JSON contains names and
+statuses only.
 
 ## Independent GitHub CI
 
-[Run41421673954](https://github.com/ebilgi992/supfy/actions/runs/41421673954)
-ran against pre-service-fix commit4ade24a. SDK setup, source guards, JVM tests,
-debug/instrumentation APK compilation, APK upload and complete GPL source archive
-upload passed. Android lint failed; the overall job is FAIL. The earlier Android
-SDK bootstrap failure was corrected by using the pinned Ubuntu24.04 runner SDK.
-CI uses an ephemeral signing key; its APK is not an upgrade guarantee for local
-same-signed installations. The service-fix build/test evidence is recorded separately.
+[Run41421673954](https://github.com/ebilgi992/supfy/actions/runs/41421673954) at
+pre-service-fix commit4ade24a passed SDK setup, source guards, JVM tests, APK compilation,
+APK upload and complete GPL source archive upload. Full lint failed; overall job FAIL.
+The earlier SDK bootstrap failure was corrected using the pinned Ubuntu24.04 SDK.
+Subsequent local service-fix evidence is separate from that remote run.
 
-## Subsequent device run and artifact consistency
+## Not verified / acceptance still open
 
-`android-service-fixed-all.log` executed all19 cases: **18PASS,1FAIL**, no skips.
-Owned PCM, media notification/session token, pause/play, next/previous, continuing
-position while background playback is enabled, and pausing when disabled all passed.
-The remaining consent UI test queried application-context English resources while
-AppCompat localized the Activity to Turkish on API30. The test now queries Activity
-resources and asserts the actual Activity language is Turkish; this is not yet a UI
-pass until the corrected test executes.
-
-A bytecode check also found the debug compilation had raced the last small pending-
-shutdown notification-scrub source edit. The optimized APK was built after that edit;
-its mapping includes the final branch. A frozen-source debug/test rebuild then passed
-in42s; apkanalyzer verified the debug `requestEnd()V` now calls `promoteForStart()`
-when a start is pending. The current debug APK/test package hashes below replace
-that intermediate debug candidate. Final device repetition is pending.
-
-- Optimized test APK: `3eacb22f46667c700dc42fa5c2cdb3f055aa1fde41cd0ed721c03eff7c787b40`.
-- Final debug APK: `0f3316bff01b5b7738c1f63267689ea11e4b2866f24cd1e1684c77afdcc1fbd3`.
-- Final test package: `dbccab70add6ea5a12ee05c1a3674be43d6f2f9bc11330ac310ba3c38cd13768`.
-
-The public optimized APK was fetched without authentication from the published raw
-GitHub download URL and compared byte-for-byte with the local artifact; SHA-256
-matches. This verifies delivery integrity, not the unexecuted runtime cases.
+Controlled Spotify successful/failed account login, session renewal/logout/account
+switch, live licensed catalogue/DRM/Canvas/video, Bluetooth/headset/Android Auto,
+network-loss/reconnect, screen-lock/Doze/long battery behavior, physical-device
+performance, full navigation/font scaling/TalkBack and runtime hostile-IPC/security
+penetration scenarios remain unverified. There is no claim of blanket OWASP compliance,
+trouble-free operation, all-device compatibility or100% security.

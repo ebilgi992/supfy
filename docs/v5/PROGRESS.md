@@ -1,21 +1,17 @@
-# V5 execution ledger — 2026-11-02
+# V5 delivery ledger — 2026-11-02
 
-- Source branch: `supfy/quantum-privacy-shield`; main/original checkout/AVD retained.
-- Pinned Myspoti import `fbde08a`; V5 core `13838e6`; checks `8c5b3f1`;
-  rejected-document runtime fix `9bd0aed`.
-- Latest successful app build: `v5-build-bridge-fix.log`; 950 JVM tests pass.
-- Three-ABI debug and optimized test APKs exist; signer is a local debug certificate.
-- Scoped source/APK audit: zero findings, 12 negative fixtures. Turkish resources:
-  1,260 entries, zero audit errors. Full lint remains FAIL (1,236 first-run errors).
-- Actual disposable API30 upgrade preserves file canary and legacy preference bytes;
-  native Supfy Turkish welcome and login entry displayed.
-- Full device run:17/19 pass; focus/consent visibility failures recorded. Follow-up
-  after dismissing a captured System UI overlay reached PCM + media notification,
-  then crashed on the foreground-service startup obligation. Fix/retest in progress.
-- Public GitHub Pages website is being prepared with truthful test-build disclosures,
-  Myspoti/GPL credits, no Spotify affiliation and gated verified-APK download.
-- No controlled account: provider authentication, live licensed playback, Bluetooth
-  and Android Auto remain unverified. Do not describe the app as trouble-free/100% safe.
-
-Detailed results: TEST_RESULTS.md. Actual final artifact hashes and publication URLs:
-RELEASE_NOTES.md once delivery has been frozen and checked.
+- Public site live: https://ebilgi992.github.io/supfy/ . APK download is byte-verified.
+- Public optimized test APK SHA-256:3eacb22f46667c700dc42fa5c2cdb3f055aa1fde41cd0ed721c03eff7c787b40.
+- Version1.0.0-v5/1029, com.supfy.app, three ABIs, local debug signer.
+- Actual public APK installed on cloned API30; installed checksum matches and native
+  Turkish Supfy welcome/login entry rendered. Provider page load failed with native
+  Turkish error. Startup wait timed out; no performance or successful login claim.
+- 958 JVM tests PASS;1260 Turkish keys complete; bounded source/APK audit PASS,
+  zero rule findings/12 negative fixtures; scoped vital lint PASS; full lint FAIL.
+- Latest device run15PASS, consent UI ANR interruption,3NOTRUN. Native owned PCM,
+  session notification, system controls and background preference PASS. Consent UI
+  verification remains OPEN even after wake/unlock and isolated debug test hosting.
+- All failed/interrupted runs retained; original checkout/AVD/main and user data
+  preserved. No controlled-account login/DRM, Bluetooth or Android Auto verification.
+- Complete source and Myspoti/GPL credits are public on supfy/quantum-privacy-shield.
+- Details and evidence links: TEST_RESULTS.md, RELEASE_NOTES.md, WEBSITE_TEST_RESULTS.md.

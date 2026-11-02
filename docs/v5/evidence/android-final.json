@@ -1,0 +1,92 @@
+{
+  "status": "FAIL",
+  "expected": 19,
+  "passed": 15,
+  "skipped": 0,
+  "cases": [
+    {
+      "class": "com.music.spotui.data.DiagnosticsPrivacyTest",
+      "test": "disabledExportCannotReadStorageOrCreateAReport",
+      "status": "PASS"
+    },
+    {
+      "class": "com.music.spotui.data.DiagnosticsPrivacyTest",
+      "test": "disabledCollectionDoesNotInstallCrashHandlerOrReadLogcat",
+      "status": "PASS"
+    },
+    {
+      "class": "com.music.spotui.data.LocaleMigrationDeviceTest",
+      "test": "firstMigrationWaitsForAppCompatRestorationBeforePersistingLocale",
+      "status": "PASS"
+    },
+    {
+      "class": "com.music.spotui.data.V5PrivacyDeviceTest",
+      "test": "packagedIdentityAndTurkishPrivacyResourcesArePresent",
+      "status": "PASS"
+    },
+    {
+      "class": "com.music.spotui.data.V5PrivacyDeviceTest",
+      "test": "automaticUpdatesDefaultOffAndTheChoicePersists",
+      "status": "PASS"
+    },
+    {
+      "class": "com.music.spotui.data.V5PrivacyDeviceTest",
+      "test": "immersiveFallbackAndClassicSelectionSurvivePreferenceReload",
+      "status": "PASS"
+    },
+    {
+      "class": "com.music.spotui.data.V5PrivacyDeviceTest",
+      "test": "legacyBackgroundChoiceIsReadWithoutChangingLegacyData",
+      "status": "PASS"
+    },
+    {
+      "class": "com.music.spotui.data.V5PrivacyDeviceTest",
+      "test": "optionalServiceIsDeniedUntilDisclosureIsAcceptedAndRevocationStopsNewWork",
+      "status": "PASS"
+    },
+    {
+      "class": "com.music.spotui.data.api.AppUpdaterTest",
+      "test": "installedApkCannotBeReinstalledAsANewerUpdate",
+      "status": "PASS"
+    },
+    {
+      "class": "com.music.spotui.data.api.AppUpdaterTest",
+      "test": "foreignReleaseIsRefusedWithoutAnInstallerSession",
+      "status": "PASS"
+    },
+    {
+      "class": "com.music.spotui.data.offline.AacTranscoderTest",
+      "test": "cdFlacBecomesAac",
+      "status": "PASS"
+    },
+    {
+      "class": "com.music.spotui.data.offline.AacTranscoderTest",
+      "test": "hiResFlacBecomesAac",
+      "status": "PASS"
+    },
+    {
+      "class": "com.music.spotui.data.offline.OfflineCryptoTest",
+      "test": "encryptsAndReadsBackFromAnyPosition",
+      "status": "PASS"
+    },
+    {
+      "class": "com.music.spotui.data.offline.OfflineCryptoTest",
+      "test": "playerReadsEncryptedFlac",
+      "status": "PASS"
+    },
+    {
+      "class": "com.music.spotui.di.LocalPlaybackDeviceTest",
+      "test": "localPcmHasNotificationSystemControlsAndCorrectBackgroundPreference",
+      "status": "PASS"
+    },
+    {
+      "class": "com.music.spotui.ui.PrivacyConsentUiTest",
+      "test": "bothLooksShowDisclosureAndHonorRealDeclineAndAllowButtons",
+      "status": "INTERRUPTED"
+    }
+  ],
+  "artifactDebugSHA256": "2d8bfe08cfb0c5b0c187e3128ea04cefe9cbe15ebc34360cbc7c47b2eec093e2",
+  "testSHA256": "9616de4a2bc5dcf5567ca7abc651460c156475a54460a6fcd279cbff46185e44",
+  "notRun": 3,
+  "reason": "Input dispatching timed out in consent test Activity, including awake/unlocked repeat. Native owned-media case passed. Not a full suite pass."
+}

@@ -15,6 +15,17 @@ koduyla **GPL-3.0** altında sunulur; [LICENSE](LICENSE),
 V5 kaynakları `base/` altındadır. Kökteki eski `app/`, önceki Supfy sürümünün
 kurtarma kaynağıdır; V5 APK'sını üretmez. Kökteki Gradle wrapper V5'e yönlendirir.
 
+## Web sitesi ve test APK’sı
+
+[Supfy web sitesi](https://ebilgi992.github.io/supfy/) ·
+[V5 /1029 test APK’sını indir](https://raw.githubusercontent.com/ebilgi992/supfy/apk-download-v5-1029/downloads/Supfy-V5-1029.apk).
+Bu yapı debug sertifikasıyla imzalanmıştır; üretim sürümü veya tüm cihazlarda
+sorunsuz çalışma garantisi değildir. İndirme dosyası kamuya açık URL’den alınarak
+birebir doğrulandı. SHA-256:
+`3eacb22f46667c700dc42fa5c2cdb3f055aa1fde41cd0ed721c03eff7c787b40`.
+İzin penceresi testinde ANR sürüyor; sağlayıcı giriş sayfası bu emülatörde yüklenmedi.
+Tam lint başarısız. Güncel test kapsamı ve kalan sınırlamalar aşağıdaki raporlardadır.
+
 ## Derleme
 
 JDK 17, Android SDK platform `android-37.0`, build-tools 36.0.0 ve internet bağlantısı gerekir.

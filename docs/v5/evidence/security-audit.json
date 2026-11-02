@@ -1,0 +1,62 @@
+{
+  "scope": "/workspace/supfy-v5/base",
+  "source_files": 948,
+  "source_sha256": "a71296832fe4867c3c9636d21ffdd4fc746f61aec1ef8797dcc4b8f9e4aafed9",
+  "source_status": "PASS",
+  "findings": [],
+  "apk_status": "PASS",
+  "runtime_status": "NOT TESTED",
+  "negative_fixture_tests": [
+    {
+      "case": "Android logging",
+      "status": "PASS"
+    },
+    {
+      "case": "debug enabled",
+      "status": "PASS"
+    },
+    {
+      "case": "legacy JS bridge",
+      "status": "PASS"
+    },
+    {
+      "case": "full history",
+      "status": "PASS"
+    },
+    {
+      "case": "search history",
+      "status": "PASS"
+    },
+    {
+      "case": "raw install failure",
+      "status": "PASS"
+    },
+    {
+      "case": "raw relay capture",
+      "status": "PASS"
+    },
+    {
+      "case": "extension diagnostic storage",
+      "status": "PASS"
+    },
+    {
+      "case": "wrong update repository",
+      "status": "PASS",
+      "detail": "requires actual fixed repository literal before mutation"
+    },
+    {
+      "case": "unexpected export",
+      "status": "PASS"
+    },
+    {
+      "case": "legacy alias target",
+      "status": "PASS"
+    },
+    {
+      "case": "comment false positive",
+      "status": "PASS"
+    }
+  ],
+  "apk_sha256": "3eacb22f46667c700dc42fa5c2cdb3f055aa1fde41cd0ed721c03eff7c787b40",
+  "apk_findings": []
+}

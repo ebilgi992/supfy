@@ -1,0 +1,95 @@
+{
+  "started": "2026-11-02T10:42:37.209Z",
+  "browserPath": "/usr/bin/chromium",
+  "playwrightModule": "/workspace/quantum-research/runner/node_modules/playwright-core/index.js",
+  "checks": [
+    {
+      "name": "Responsive 1440px: no horizontal overflow",
+      "result": "PASS"
+    },
+    {
+      "name": "Responsive 1024px: no horizontal overflow",
+      "result": "PASS"
+    },
+    {
+      "name": "Responsive 768px: no horizontal overflow",
+      "result": "PASS"
+    },
+    {
+      "name": "Responsive 390px: no horizontal overflow",
+      "result": "PASS"
+    },
+    {
+      "name": "Responsive 320px: no horizontal overflow",
+      "result": "PASS"
+    },
+    {
+      "name": "Unverified configuration keeps download disabled with terminal copy",
+      "result": "PASS"
+    },
+    {
+      "name": "Mobile menu opens; Escape closes it and restores toggle focus",
+      "result": "PASS"
+    },
+    {
+      "name": "Mobile anchor navigation closes menu",
+      "result": "PASS"
+    },
+    {
+      "name": "Native FAQ opens and closes using Enter",
+      "result": "PASS"
+    },
+    {
+      "name": "SHA-256 copy roundtrip uses the actual browser clipboard",
+      "result": "PASS"
+    },
+    {
+      "name": "Version copy roundtrip uses the actual browser clipboard",
+      "result": "PASS"
+    },
+    {
+      "name": "Clipboard refusal shows manual-copy feedback",
+      "result": "PASS"
+    },
+    {
+      "name": "Verified configuration activates only the configured APK URL (no APK request)",
+      "result": "PASS"
+    },
+    {
+      "name": "Untrusted configured APK URL remains disabled",
+      "result": "PASS"
+    },
+    {
+      "name": "Malformed release JSON fails closed",
+      "result": "PASS"
+    },
+    {
+      "name": "Release fetch failure fails closed with visible feedback",
+      "result": "PASS"
+    },
+    {
+      "name": "Internal anchors resolve and page IDs are unique",
+      "result": "PASS"
+    },
+    {
+      "name": "Reduced-motion preference disables smooth scrolling",
+      "result": "PASS"
+    },
+    {
+      "name": "No page exceptions, external requests or HTTP failures",
+      "result": "PASS"
+    }
+  ],
+  "files": {
+    "index.html": "f62f974f6894ad2b441fffdab1c10328f680fed18f6febd5935a5a7f6c355cc8",
+    "styles.css": "b5b32f3c1bd6431c7ccbdde6c0845ede8b1416d09f83f35e80d8bfcf6d7296ff",
+    "app.js": "0980cd16585ccb646cc9104a15341f98eb7eae7bb52a8be670ccd6a8915e819e",
+    "release.json": "771ce6f2c928c4716c1ac4b7e4460110d8a71bf2e1c03885c811a89e8ac03623",
+    "assets/supfy-mark.svg": "3ad3240f6d93567ce4405bf0b7252fa7b0eadedff32ee8b2fcba36e3885834be",
+    "assets/afterglow.svg": "78560c2fde7ec89064347eb0df21edc3e88918971792f80de0b5a6b98a9e4bd0",
+    ".nojekyll": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "browserVersion": "154.0.8037.57",
+  "result": "PASS",
+  "finished": "2026-11-02T10:42:51.376Z"
+}

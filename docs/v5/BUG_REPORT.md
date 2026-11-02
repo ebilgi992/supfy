@@ -36,3 +36,22 @@ control/background acceptance remains OPEN because V5-FGS-15 interrupted the tes
 Latest completed device suite:18/19PASS; the owned-media control/background case
 passed without the prior foreground-service exception. The sole UI fixture failure
 is retained in the test report. This does not establish live account playback.
+
+## Delivery acceptance update
+
+- V5-FGS-15: FIXED and native owned-PCM behavior VERIFIED; MediaSession controls and
+  enabled/disabled Home-background preference passed repeatedly after the fix.
+  Live Spotify background playback remains unverified.
+- V5-UI-16: **HIGH / OPEN-BLOCKED**. Application-vs-Activity locale queries and isolated
+  test hosting were corrected; consent input-focus ANR persists even awake/unlocked.
+  Main-thread snapshots show progressing dialog composition/font/measure work, not a
+  proven root cause. Neither app fault nor emulation performance is ruled out.
+- V5-AUTH-09: native Supfy Turkish welcome/login entry VERIFIED on the actual public
+  optimized APK. Button reaches a localized provider-page-load error in this AVD;
+  successful official login/session remains BLOCKED/NOT VERIFIED.
+- Cold start: `am start -W` timed out11708ms; later screenshot/XML proves native screen
+  rendered. No startup performance acceptance pass.
+
+Final device result15PASS/1ANR-interrupted/3NOTRUN is retained, along with all earlier
+complete-run failures. Full lint still fails. The app is a test delivery, not a
+successful completed/stable release.

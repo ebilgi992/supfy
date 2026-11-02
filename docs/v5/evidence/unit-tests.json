@@ -1,0 +1,32 @@
+{
+  "result": "PASS",
+  "total": 958,
+  "modules": {
+    "api-spotify": {
+      "tests": 181,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "extensions": {
+      "tests": 206,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "host-android": {
+      "tests": 64,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "app": {
+      "tests": 507,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    }
+  },
+  "releaseAppSource": "5a64963",
+  "scope": "JVM reports from final production-source build plus frozen-source debug rebuild; no live account/hardware claim"
+}

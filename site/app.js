@@ -51,8 +51,8 @@
       /^[a-f0-9]{64}$/i.test(data.sha256) && Array.isArray(data.architectures) && data.architectures.every((item) => typeof item === "string") &&
       data.download && typeof data.download.verified === "boolean" && trustedDownload(data.download.url) &&
       projectLink(data.sourceUrl) && projectLink(data.reportUrl) && facts &&
-      ["jvmPassed", "auditFindings", "negativeFixtures", "deviceTotal", "devicePassed", "deviceFailed", "lintFindings", "lintTranslationGaps"].every((key) => Number.isInteger(facts[key]) && facts[key] >= 0) &&
-      facts.devicePassed + facts.deviceFailed === facts.deviceTotal && typeof facts.deviceNote === "string" && typeof facts.latestDeviceRun === "string";
+      ["jvmPassed", "auditFindings", "negativeFixtures", "deviceTotal", "devicePassed", "deviceFailed", "deviceInterrupted", "deviceNotRun", "lintFindings", "lintTranslationGaps"].every((key) => Number.isInteger(facts[key]) && facts[key] >= 0) &&
+      facts.devicePassed + facts.deviceFailed + facts.deviceInterrupted + facts.deviceNotRun === facts.deviceTotal && typeof facts.deviceNote === "string" && typeof facts.latestDeviceRun === "string";
   };
 
   fetch("release.json", { cache: "no-store", credentials: "omit" })

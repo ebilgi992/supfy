@@ -139,3 +139,14 @@ was repeated against that configuration: **19/19PASS**, from 2026-11-02T10:04:05
 2026-11-02T10:04:19.902Z. Both unverified and verified link behavior are exercised with
 explicit fixtures, so the test also works after actual publication. This check does
 not treat link-integrity verification as Android runtime success.
+
+## Delivery website configuration
+
+Final local browser check:19/19PASS, 2026-11-02T10:42:37.209Z to 2026-11-02T10:42:51.376Z. The website now distinguishes15 passed device cases,1 ANR interruption and3 not-run cases; it does not count unexecuted cases as failures or passes. Public APK link integrity remains verified; this does not imply the app acceptance gates are met.
+
+Current file SHA-256 values:
+
+- `index.html`: `f62f974f6894ad2b441fffdab1c10328f680fed18f6febd5935a5a7f6c355cc8`
+- `styles.css`: `b5b32f3c1bd6431c7ccbdde6c0845ede8b1416d09f83f35e80d8bfcf6d7296ff`
+- `app.js`: `0980cd16585ccb646cc9104a15341f98eb7eae7bb52a8be670ccd6a8915e819e`
+- `release.json`: `771ce6f2c928c4716c1ac4b7e4460110d8a71bf2e1c03885c811a89e8ac03623`
