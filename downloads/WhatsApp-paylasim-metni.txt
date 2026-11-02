@@ -1,9 +1,10 @@
 Yeni geliştirdiğim uygulama Supfy 🎵
 
-Klasik ve Sürükleyici görünüm, şarkı sözleri ve kişisel dinleme tercihleri.
+Klasik ve Sürükleyici görünüm, şarkı sözleri ve kişiselleştirilebilir dinleme deneyimi.
+Özellikler, hesabına ve desteklenen içerik kaynaklarına bağlıdır.
 
+Android için: https://ebilgi992.github.io/supfy/
 Geliştirici Instagram: https://www.instagram.com/smt.ozdemr/
-İndir: https://ebilgi992.github.io/supfy/
 
 Tedbir amaçlı ana hesabın yerine yedek hesabınla giriş yap.
-Supfy, Spotify ile resmî olarak bağlantılı değildir. Özellikler hesabına ve içerik sağlayıcısına bağlıdır.
+Supfy’nin Spotify ile resmî bağlantısı yoktur.
