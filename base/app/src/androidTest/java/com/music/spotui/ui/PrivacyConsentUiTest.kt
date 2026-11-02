@@ -7,7 +7,7 @@ import androidx.activity.compose.setContent
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.os.LocaleListCompat
 import androidx.test.platform.app.InstrumentationRegistry
-import app.myspoti.MainActivity
+import app.myspoti.V5ConsentTestActivity
 import app.myspoti.engine.R
 import com.music.spotui.data.preferences.Look
 import com.music.spotui.data.preferences.LookPref
@@ -31,7 +31,7 @@ class PrivacyConsentUiTest {
         val savedLook = LookPref.look
         val locale = AppCompatDelegate.getApplicationLocales()
         instrumentation.runOnMainSync { AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags("tr-TR")) }
-        val activity = instrumentation.startActivitySync(Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) as MainActivity
+        val activity = instrumentation.startActivitySync(Intent(context, V5ConsentTestActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) as V5ConsentTestActivity
         fun waitFor(message: String, condition: () -> Boolean) {
             val deadline = android.os.SystemClock.elapsedRealtime() + 45_000
             while (!condition()) { if (android.os.SystemClock.elapsedRealtime() >= deadline) fail(message); Thread.sleep(150) }
@@ -48,6 +48,11 @@ class PrivacyConsentUiTest {
             fail("No clickable parent: $text")
         }
         try {
+            waitFor("Consent test Activity did not become focused") {
+                var focused = false
+                instrumentation.runOnMainSync { focused = !activity.isFinishing && activity.hasWindowFocus() }
+                focused
+            }
             // AppCompat localizes the Activity on API <33; application resources can
             // still follow the English emulator locale. Assert the actual UI locale
             // and query the visible Activity's Turkish resources.

@@ -78,7 +78,14 @@ class LocalPlaybackDeviceTest {
             checkpoint("start_pcm")
             main { SupfyDefaults.setBackgroundAllowed(true); SongPlayer.attachEngine(Graph.currentSongState); LocalPlayer.play(tracks, 0) }
             waitFor("Owned PCM did not play") { read { LocalPlayer.isPlaying() && LocalPlayer.position() > 500 } }
-            waitFor("No media notification") { notifications.activeNotifications.any { it.id == 1 } }
+            // Android requires a lightweight foreground notification before a cold
+            // MediaSession exists. Wait for the actual session-bearing notification,
+            // not the transient bootstrap with the same notification id.
+            @Suppress("DEPRECATION")
+            fun hasMediaSession() = notifications.activeNotifications.any {
+                it.id == 1 && it.notification.extras.getParcelable<MediaSession.Token>(Notification.EXTRA_MEDIA_SESSION) != null
+            }
+            waitFor("No media-session notification") { hasMediaSession() }
             checkpoint("pcm_playing_notification_present")
             assertTrue(PlaybackService.isRunning)
             val notification = notifications.activeNotifications.first { it.id == 1 }.notification
