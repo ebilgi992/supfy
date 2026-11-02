@@ -33,7 +33,18 @@ object MyspotiRuntime {
         AudioModeWatch.install(context.applicationContext)
         spotify = SpotifyApi(host, scope, language = Locale.getDefault().language, ops = updater.load(), deviceId = clientDeviceId(context), userAgent = host.userAgent)
         spotify.bridge.logger = { line -> Logbook.log(line) }
-        host.onPageLoaded = { scope.launch { spotify.onPageLoaded() } }
+        host.onPageLoaded = {
+            val document = host.documentEpoch
+            scope.launch {
+                injectPlayerPage(
+                    invalidate = {
+                        // A navigation already invalidated its old bridge; do not clear a newer one.
+                        if (host.documentEpoch == document) spotify.onPageStarting()
+                    },
+                    inject = spotify::onPageLoaded,
+                )
+            }
+        }
         host.onPageStarting = { spotify.onPageStarting() }
         spotify.player.reloadHost = { host.reload() }
         // Repairs wait while Spotify limits playback, and while a Spotify sign-in page is open:

@@ -43,42 +43,80 @@ class LocalPlaybackDeviceTest {
             val deadline = android.os.SystemClock.elapsedRealtime() + 45_000
             while (!condition()) { if (android.os.SystemClock.elapsedRealtime() >= deadline) fail(message); Thread.sleep(150) }
         }
-        fun foreground() { context.startActivity(Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)); Thread.sleep(1500) }
+        fun foreground() {
+            context.startActivity(Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            waitFor("MainActivity did not become resumed and focused") {
+                read {
+                    androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry.getInstance()
+                        .getActivitiesInStage(androidx.test.runner.lifecycle.Stage.RESUMED)
+                        .filterIsInstance<MainActivity>()
+                        .any { !it.isFinishing && !it.isChangingConfigurations && it.hasWindowFocus() }
+                }
+            }
+        }
+        val stage = java.util.concurrent.atomic.AtomicReference("foreground")
+        fun checkpoint(value: String) {
+            stage.set(value)
+            instrumentation.sendStatus(2, android.os.Bundle().apply { putString("v5_media_step", value) })
+        }
+        // Bounded, test-only method stacks; no user values or application diagnostic export.
+        val watch = java.util.concurrent.Executors.newSingleThreadScheduledExecutor()
+        val samplesTaken = java.util.concurrent.atomic.AtomicInteger()
+        watch.scheduleAtFixedRate({
+            if (samplesTaken.incrementAndGet() <= 20) {
+                val frames = android.os.Looper.getMainLooper().thread.stackTrace
+                if (frames.none { it.methodName == "nativePollOnce" })
+                    instrumentation.sendStatus(2, android.os.Bundle().apply {
+                        putString("v5_main_stage", stage.get())
+                        putString("v5_main_methods", frames.take(18).joinToString("\n"))
+                    })
+            }
+        }, 2, 2, java.util.concurrent.TimeUnit.SECONDS)
         val notifications = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         try {
             foreground()
+            checkpoint("start_pcm")
             main { SupfyDefaults.setBackgroundAllowed(true); SongPlayer.attachEngine(Graph.currentSongState); LocalPlayer.play(tracks, 0) }
             waitFor("Owned PCM did not play") { read { LocalPlayer.isPlaying() && LocalPlayer.position() > 500 } }
             waitFor("No media notification") { notifications.activeNotifications.any { it.id == 1 } }
+            checkpoint("pcm_playing_notification_present")
             assertTrue(PlaybackService.isRunning)
             val notification = notifications.activeNotifications.first { it.id == 1 }.notification
             @Suppress("DEPRECATION")
             val token = notification.extras.getParcelable<MediaSession.Token>(Notification.EXTRA_MEDIA_SESSION)
             assertNotNull(token)
             val controller = MediaController(context, token!!)
+            checkpoint("system_pause")
             controller.transportControls.pause()
             waitFor("System pause did not reach LocalPlayer") { read { !LocalPlayer.isPlaying() } }
             controller.transportControls.play()
             waitFor("System play did not reach LocalPlayer") { read { LocalPlayer.isPlaying() } }
+            checkpoint("system_next")
             controller.transportControls.skipToNext()
             waitFor("System next did not change the queue") { read { LocalPlayer.current()?.id == tracks[1].id } }
             controller.transportControls.pause()
             waitFor("Pause after next failed") { read { !LocalPlayer.isPlaying() } }
             controller.transportControls.seekTo(0)
+            checkpoint("system_previous")
             controller.transportControls.skipToPrevious()
             waitFor("System previous did not change the queue") { read { LocalPlayer.current()?.id == tracks[0].id } }
             controller.transportControls.play()
             waitFor("Resume failed") { read { LocalPlayer.isPlaying() } }
+            checkpoint("background_allowed_home")
             val before = read { LocalPlayer.position() }
             assertTrue(instrumentation.uiAutomation.performGlobalAction(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_HOME))
             waitFor("PCM stopped advancing in background") { read { LocalPlayer.isPlaying() && LocalPlayer.position() > before + 1000 } }
             assertTrue(notifications.activeNotifications.any { it.id == 1 })
+            checkpoint("foreground_for_background_disabled")
             foreground()
             main { SupfyDefaults.setBackgroundAllowed(false) }
+            checkpoint("background_disabled_home")
             assertTrue(instrumentation.uiAutomation.performGlobalAction(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_HOME))
             waitFor("Disabled background preference did not pause PCM") { read { !LocalPlayer.isPlaying() } }
             assertFalse(File(context.filesDir, "listen_history.jsonl").exists())
+            checkpoint("passed")
         } finally {
+            watch.shutdownNow()
             main { LocalPlayer.stop(); PlaybackService.end(); SupfyDefaults.setBackgroundAllowed(oldBackground) }
             file.delete()
         }

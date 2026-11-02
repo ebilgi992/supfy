@@ -90,7 +90,8 @@ class WebPlayerHost(private val context: Context) : BridgeHost {
     val capabilityError: StateFlow<String?> = _capabilityError
 
     private var providerFlow = false
-    private var sessionEpoch = 0L
+    @Volatile private var sessionEpoch = 0L
+    internal val documentEpoch: Long get() = sessionEpoch
     private val pendingEvaluations = mutableSetOf<CompletableDeferred<String?>>()
 
     /** Fires after each Web Player page load; the API injects the bridge then. */
@@ -355,6 +356,8 @@ class WebPlayerHost(private val context: Context) : BridgeHost {
             }
 
             override fun onPageFinished(view: WebView, url: String) {
+                // Old callbacks can arrive after a replacement/navigation or a WebView error page.
+                if (view !== this@WebPlayerHost.view || url != view.url) return
                 Logbook.log("page finished ${Logbook.noQuery(url).take(120)}")
                 main.removeCallbacks(loadTimeout)
                 if (WebPlayerSecurityPolicy.isTrustedPlayer(url) && !mainFrameFailed) { pageFailures = 0; main.removeCallbacks(retryPlayerPage) }
@@ -366,7 +369,7 @@ class WebPlayerHost(private val context: Context) : BridgeHost {
                     main.removeCallbacks(loginProbe)
                     main.postDelayed(loginProbe, LoginLoad.FIRST_PROBE_MS)
                 }
-                if (WebPlayerSecurityPolicy.isTrustedPlayer(url) && _capabilityError.value == null) {
+                if (PageInjectionBoundary.finishedDocument(url, view.url, view === this@WebPlayerHost.view, mainFrameFailed, _capabilityError.value)) {
                     onPageLoaded?.invoke()
                     if (!drmAsked) { main.removeCallbacks(drmWatch); main.postDelayed(drmWatch, DRM_WATCH_MS) }
                 }
@@ -677,11 +680,12 @@ class WebPlayerHost(private val context: Context) : BridgeHost {
     }
 
     override suspend fun evaluate(script: String) {
+        val requestedEpoch = sessionEpoch
         val done = CompletableDeferred<Unit>()
         main.post {
-            val error = _capabilityError.value
-            if (error != null || !WebPlayerSecurityPolicy.isTrustedPlayer(view.url)) {
-                done.completeExceptionally(app.myspoti.spotify.bridge.BridgeException(error ?: "PLAYER_ORIGIN_REQUIRED"))
+            val error = PageInjectionBoundary.evaluationError(requestedEpoch, sessionEpoch, view.url, _capabilityError.value, mainFrameFailed)
+            if (error != null) {
+                done.completeExceptionally(app.myspoti.spotify.bridge.BridgeException(error))
             } else {
                 runCatching { view.evaluateJavascript(script, null) }
                     .onSuccess { done.complete(Unit) }
@@ -693,14 +697,14 @@ class WebPlayerHost(private val context: Context) : BridgeHost {
 
     /** Callback results belong only to the document that was evaluated. */
     override suspend fun evaluateValue(script: String): String? {
+        val epoch = sessionEpoch
         val done = CompletableDeferred<String?>()
         main.post {
-            val error = _capabilityError.value
-            if (error != null || !WebPlayerSecurityPolicy.isTrustedPlayer(view.url)) {
-                done.completeExceptionally(app.myspoti.spotify.bridge.BridgeException(error ?: "PLAYER_ORIGIN_REQUIRED"))
+            val error = PageInjectionBoundary.evaluationError(epoch, sessionEpoch, view.url, _capabilityError.value, mainFrameFailed)
+            if (error != null) {
+                done.completeExceptionally(app.myspoti.spotify.bridge.BridgeException(error))
                 return@post
             }
-            val epoch = sessionEpoch
             pendingEvaluations.add(done)
             runCatching {
                 view.evaluateJavascript(script) { value ->

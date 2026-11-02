@@ -1,10 +1,10 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
     <string name="welcome_lead">Müziğin,</string>
-    <string name="welcome_rotate_ads">reklamsız.</string>
-    <string name="welcome_rotate_lyrics">kelime kelime şarkı sözleriyle.</string>
-    <string name="welcome_rotate_clips">resmî videolarla.</string>
-    <string name="welcome_rotate_offline">eklentilerle çevrimdışı.</string>
+    <string name="welcome_rotate_ads">kendi ritminde.</string>
+    <string name="welcome_rotate_lyrics">şarkı sözleriyle.</string>
+    <string name="welcome_rotate_clips">isteğe bağlı videolarla.</string>
+    <string name="welcome_rotate_offline">yerel dosyalarınla.</string>
     <string name="welcome_login">Spotify ile giriş yap</string>
     <string name="welcome_privacy">Spotify’ın kendi sayfasında giriş yaparsın. Supfy parolanı hiçbir zaman görmez.</string>
     <string name="remove_from_liked">Beğenilen Şarkılardan kaldır</string>
@@ -103,7 +103,7 @@
     <string name="download_kept_by_list">İndirilen bir çalma listesi kullandığı için indirilmiş olarak tutuluyor</string>
     <string name="download_kept_by_named">“%1$s” listesi indirildiği ve bu şarkıyı içerdiği için tutuluyor</string>
     <string name="support_title">Myspoti’yi destekle</string>
-    <string name="support_body">Myspoti ücretsiz ve reklamsızdır, boş zamanlarda geliştirilir. Memnunsan küçük bir bağış projenin devamına yardımcı olur.</string>
+    <string name="support_body">Myspoti, Supfy’nin temel aldığı açık kaynak projedir. Orijinal geliştiriciyi destekleyebilirsin.</string>
     <string name="support_action">Ko-fi üzerinden destekle</string>
     <string name="support_decline">Hayır, teşekkürler</string>
     <string name="support_row_detail">Ko-fi veya GitHub Sponsors üzerinden küçük bir bağış uygulamanın devamına yardımcı olur</string>
@@ -132,7 +132,7 @@
     <string name="about_discord_detail">Haberler, yardım ve fikirler: topluluğa katıl</string>
     <string name="about_github">Kaynak kodu</string>
     <string name="about_github_detail">GitHub’da sürümler, sorunlar ve kod</string>
-    <string name="about_free">Ücretsiz, açık kaynaklı ve reklamsızdır. Spotify ile bağlantılı değildir.</string>
+    <string name="about_free">Bağımsız ve açık kaynak. Spotify ile resmî bir bağlantısı yoktur.</string>
     <string name="library_reorder_hint">Bir çalma listesini basılı tut, ardından taşımak için sürükle</string>
     <string name="library_reorder_reset">Spotify sıralamasına dön</string>
     <string name="song_radio_failed">Bu şarkının radyosu açılamadı</string>
@@ -216,8 +216,8 @@
     <string name="setup_continue">Devam et</string>
     <string name="setup_intro_title">Supfy nasıl çalışır?</string>
     <string name="setup_intro_subtitle">Başlamadan önce bilmen gereken üç şey.</string>
-    <string name="setup_intro_spotify_title">Spotify, reklamsız</string>
-    <string name="setup_intro_spotify_detail">Hesabın, çalma listelerin ve beğenilerin Spotify’ın web oynatıcısıyla çalınır. Ücretsiz hesaplar da kullanılabilir.</string>
+    <string name="setup_intro_spotify_title">Spotify oturumun</string>
+    <string name="setup_intro_spotify_detail">Spotify oturumunu, çalma listelerini ve beğenilerini web oynatıcısıyla kullan. Kullanılabilir özellikler hesabına ve hizmetin sunduklarına bağlıdır.</string>
     <string name="setup_intro_more_title">Resmî uygulamadan daha fazlası</string>
     <string name="setup_intro_more_detail">Kelime kelime şarkı sözleri, resmî videolar, dinleme istatistikleri ve seçebileceğin iki görünüm.</string>
     <string name="setup_intro_ext_title">İstersen eklentiler</string>

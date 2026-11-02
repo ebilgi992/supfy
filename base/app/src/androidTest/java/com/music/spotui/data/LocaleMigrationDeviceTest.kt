@@ -25,7 +25,11 @@ class LocaleMigrationDeviceTest {
                 return target.getSharedPreferences(prefix + name, mode)
             }
         }
-        val before = AppCompatDelegate.getApplicationLocales()
+        val savedTag = target.getSharedPreferences("supfy_v5_defaults", Context.MODE_PRIVATE).getString("locale_tag", null)
+        val storedAppCompat = target.getFileStreamPath("androidx.appcompat.app.AppCompatDelegate.application_locales_record_file")
+            .takeIf { it.isFile }?.readText()?.let { Regex("application_locales=\"([^\"]*)\"").find(it)?.groupValues?.get(1) }
+        // The getter alone cannot distinguish uninitialized process state from explicit system.
+        val before = LocaleListCompat.forLanguageTags(savedTag ?: storedAppCompat ?: "tr-TR")
         try {
             instrumentation.runOnMainSync {
                 try {

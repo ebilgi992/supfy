@@ -16,9 +16,8 @@ class AppUpdaterTest {
     @Test fun foreignReleaseIsRefusedWithoutAnInstallerSession() = runBlocking {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val context = instrumentation.targetContext
-        fun shell(command: String) = android.os.ParcelFileDescriptor.AutoCloseInputStream(
-            instrumentation.uiAutomation.executeShellCommand(command)).use { it.readBytes() }
-        shell("appops set --user ${android.os.Process.myUid() / 100000} ${context.packageName} REQUEST_INSTALL_PACKAGES allow")
+        // The external test driver grants this before instrumentation starts: Android
+        // kills this package when REQUEST_INSTALL_PACKAGES changes during a live test.
         try {
             assertTrue(AppUpdater.canInstall(context))
             val before = context.packageManager.packageInstaller.mySessions.map { it.sessionId }.toSet()
@@ -32,7 +31,6 @@ class AppUpdaterTest {
             assertEquals(before, context.packageManager.packageInstaller.mySessions.map { it.sessionId }.toSet())
             assertFalse(File(context.cacheDir, "updates/supfy-update.apk").exists())
         } finally {
-            shell("appops set --user ${android.os.Process.myUid() / 100000} ${context.packageName} REQUEST_INSTALL_PACKAGES default")
             AppUpdater.reset()
         }
     }

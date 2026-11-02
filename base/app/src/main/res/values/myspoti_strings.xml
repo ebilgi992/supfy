@@ -2,10 +2,10 @@
 <!-- Myspoti's own texts (English default, French, Italian). -->
 <resources>
     <string name="welcome_lead">Your music,</string>
-    <string name="welcome_rotate_ads">without ads.</string>
-    <string name="welcome_rotate_lyrics">with word-by-word lyrics.</string>
-    <string name="welcome_rotate_clips">with the official videos.</string>
-    <string name="welcome_rotate_offline">offline, through extensions.</string>
+    <string name="welcome_rotate_ads">your way.</string>
+    <string name="welcome_rotate_lyrics">with optional lyrics.</string>
+    <string name="welcome_rotate_clips">with optional videos.</string>
+    <string name="welcome_rotate_offline">with your local files.</string>
     <string name="welcome_login">Log in with Spotify</string>
     <string name="welcome_privacy">You sign in on Spotify\'s own page. Myspoti never sees your password.</string>
     <string name="remove_from_liked">Remove from Liked Songs</string>
@@ -104,7 +104,7 @@
     <string name="download_kept_by_list">Still downloaded: a downloaded playlist holds it</string>
     <string name="download_kept_by_named">Still downloaded: “%1$s” is downloaded and holds it</string>
     <string name="support_title">Support Myspoti</string>
-    <string name="support_body">Myspoti is free, without ads, and made in my spare time. If you enjoy it, a small donation helps keep it going.</string>
+    <string name="support_body">Myspoti is the open-source project Supfy builds on. You can support its original developer.</string>
     <string name="support_action">Support on Ko-fi</string>
     <string name="support_decline">No thanks</string>
     <string name="support_row_detail">A small donation on Ko-fi or GitHub Sponsors helps keep the app going</string>
@@ -133,7 +133,7 @@
     <string name="about_discord_detail">News, help and ideas: join the community</string>
     <string name="about_github">Source code</string>
     <string name="about_github_detail">Releases, issues and code on GitHub</string>
-    <string name="about_free">Free, open source and without ads. Not affiliated with Spotify.</string>
+    <string name="about_free">Independent and open source. Not affiliated with Spotify.</string>
     <string name="library_reorder_hint">Hold a playlist, then drag it to move it</string>
     <string name="library_reorder_reset">Back to Spotify\'s order</string>
     <string name="song_radio_failed">Couldn\'t open this song\'s radio</string>
@@ -217,8 +217,8 @@
     <string name="setup_continue">Continue</string>
     <string name="setup_intro_title">How Myspoti works</string>
     <string name="setup_intro_subtitle">Three things to know before you start.</string>
-    <string name="setup_intro_spotify_title">Spotify, without the ads</string>
-    <string name="setup_intro_spotify_detail">Your account, playlists and likes, played by Spotify\'s own web player. Free accounts work too.</string>
+    <string name="setup_intro_spotify_title">Your Spotify session</string>
+    <string name="setup_intro_spotify_detail">Use your Spotify session, playlists and likes through the web player. Available features depend on your account and the service.</string>
     <string name="setup_intro_more_title">More than the official app</string>
     <string name="setup_intro_more_detail">Word-by-word lyrics, official videos, listening stats, and two looks to choose from.</string>
     <string name="setup_intro_ext_title">Extensions, if you want them</string>

@@ -35,17 +35,18 @@ jobs:
           python3 tools/v5_security_audit.py --self-test
       - name: Core and application unit tests
         run: ./gradlew --no-daemon :api:test :api-spotify:test :extensions:test :host-android:testDebugUnitTest :app:testDebugUnitTest
-      - name: Android lint
-        run: ./gradlew --no-daemon :app:lintDebug
       - name: ARM debug APK and instrumentation package
         run: ./gradlew --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: supfy-v5-debug-apk
           path: |
             base/app/build/outputs/apk/debug/*.apk
             base/app/build/outputs/apk/androidTest/debug/*.apk
           if-no-files-found: error
+      - name: Android lint
+        run: ./gradlew --no-daemon :app:lintDebug
       - name: Complete GPL corresponding source
         run: git archive --format=tar.gz --output=supfy-v5-source.tar.gz HEAD
       - uses: actions/upload-artifact@v4
