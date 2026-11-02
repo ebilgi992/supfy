@@ -22,11 +22,13 @@
     "auditFindings": 0,
     "negativeFixtures": 12,
     "deviceTotal": 19,
-    "devicePassed": 18,
-    "deviceFailed": 1,
-    "deviceNote": "Medya bildirimi, sistem kontrolleri ve arka plan tercihi testi geçti. İzin penceresi testi, Activity yerine farklı dilde uygulama kaynaklarını arıyordu; testin dil bağlamı düzeltildi.",
-    "latestDeviceRun": "Son debug paketi ile izin penceresi ve tam cihaz testleri yeniden doğrulanıyor. Canlı Spotify oturumu, DRM, Bluetooth ve Android Auto test edilmedi.",
+    "devicePassed": 15,
+    "deviceFailed": 0,
+    "deviceNote": "Son koşuda ilk 15 test geçti. Türkçe izin penceresi testi bir giriş odağı ANR’siyle kesildi; sonraki üç test çalışmadı. Bu üç senaryo önceki koşularda geçmişti.",
+    "latestDeviceRun": "Cihaz uyanık ve kilitsizken de izin penceresi ANR’si tekrarlandı; sorun açık. Yerel sesle medya bildirimi, sistem kontrolleri ve arka plan tercihi testi geçti. Canlı Spotify/DRM ve donanım testleri yapılmadı.",
     "lintFindings": 1236,
-    "lintTranslationGaps": 1095
+    "lintTranslationGaps": 1095,
+    "deviceInterrupted": 1,
+    "deviceNotRun": 3
   }
 }
