@@ -1,0 +1,28 @@
+{
+  "version": "1.0.0-v5",
+  "versionCode": 1029,
+  "channel": "TEST BUILD",
+  "minimumAndroid": "Android 10+",
+  "architectures": ["ARM64", "ARMv7", "x86_64"],
+  "sizeLabel": "Yaklaşık 19 MB",
+  "signing": "Debug sertifikası · üretim anahtarı değil",
+  "sha256": "9a9b081ff224a8fa8af480c75dc20fe5b2660d367cb965494a68c36f77ee1cfe",
+  "download": {
+    "url": "https://raw.githubusercontent.com/ebilgi992/supfy/apk-download-v5-1029/downloads/Supfy-V5-1029.apk",
+    "verified": false
+  },
+  "sourceUrl": "https://github.com/ebilgi992/supfy/tree/supfy/quantum-privacy-shield",
+  "reportUrl": "https://github.com/ebilgi992/supfy/blob/supfy/quantum-privacy-shield/docs/v5/TEST_RESULTS.md",
+  "verification": {
+    "jvmPassed": 950,
+    "auditFindings": 0,
+    "negativeFixtures": 12,
+    "deviceTotal": 19,
+    "devicePassed": 17,
+    "deviceFailed": 2,
+    "deviceNote": "Medya ekranının odağa hazır olması ve izin penceresinin görünürlüğü testleri başarısız. Sistem katmanı etkileşimi araştırılıyor.",
+    "latestDeviceRun": "Son tekrar, ilk 14 test geçtikten sonra medya hizmetinin başlatılması sırasında oluşan hatayla kesildi. Medya testi başarılı sayılmadı; hata araştırılıyor.",
+    "lintFindings": 1236,
+    "lintTranslationGaps": 1095
+  }
+}
