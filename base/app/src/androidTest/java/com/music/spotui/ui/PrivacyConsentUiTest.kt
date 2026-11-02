@@ -48,6 +48,10 @@ class PrivacyConsentUiTest {
             fail("No clickable parent: $text")
         }
         try {
+            // AppCompat localizes the Activity on API <33; application resources can
+            // still follow the English emulator locale. Assert the actual UI locale
+            // and query the visible Activity's Turkish resources.
+            assertEquals("tr", activity.resources.configuration.locales[0].language)
             for (look in listOf(Look.IMMERSIVE, Look.CLASSIC)) {
                 instrumentation.runOnMainSync {
                     LookPref.set(context, look)
@@ -55,17 +59,17 @@ class PrivacyConsentUiTest {
                     ConsentPolicy.revoke(feature)
                     ConsentPolicy.requestConsent(feature)
                 }
-                waitFor("Turkish disclosure did not render in $look") { find(context.getString(R.string.v5_privacy_translation_disclosure)) != null }
+                waitFor("Turkish disclosure did not render in $look") { find(activity.getString(R.string.v5_privacy_translation_disclosure)) != null }
                 instrumentation.uiAutomation.takeScreenshot()?.let { bitmap ->
                     File(context.cacheDir, "v5-ui-${look.name.lowercase(java.util.Locale.ROOT)}.png").outputStream().use {
                         bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it)
                     }; bitmap.recycle()
                 }
-                click(context.getString(R.string.v5_privacy_decline))
+                click(activity.getString(R.string.v5_privacy_decline))
                 waitFor("Decline did not resolve $look") { ConsentPolicy.pending.value == null }
                 assertFalse(ConsentPolicy.isGranted(feature))
                 instrumentation.runOnMainSync { ConsentPolicy.requestConsent(feature) }
-                click(context.getString(R.string.v5_privacy_allow))
+                click(activity.getString(R.string.v5_privacy_allow))
                 waitFor("Allow did not persist $look") { ConsentPolicy.isGranted(feature) }
             }
         } finally {
