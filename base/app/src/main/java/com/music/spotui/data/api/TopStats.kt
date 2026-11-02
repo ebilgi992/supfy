@@ -3,8 +3,6 @@ package com.music.spotui.data.api
 import app.myspoti.api.TimeRange
 import app.myspoti.api.TopContent
 import app.myspoti.host.android.MyspotiRuntime
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 
 /**
  * The account's top artists and tracks as Spotify ranks them (`userTopContent`), per window,
@@ -15,19 +13,17 @@ object TopStats {
     const val LIMIT = 50
     private const val TTL_MS = 30 * 60_000L
 
-    private val lock = Mutex()
-    private val cache = java.util.concurrent.ConcurrentHashMap<TimeRange, Pair<Long, TopContent>>()
+    private val cache = SessionCache<TimeRange, TopContent>()
 
-    suspend fun get(range: TimeRange, force: Boolean = false): TopContent = lock.withLock {
-        val now = System.currentTimeMillis()
-        cache[range]?.takeIf { !force && now - it.first < TTL_MS }?.second
-            ?: MyspotiRuntime.api.users.top(range, LIMIT).also { cache[range] = now to it }
-    }
+    suspend fun get(range: TimeRange, force: Boolean = false): TopContent =
+        cache.get(range, System.currentTimeMillis(), TTL_MS, force) {
+            MyspotiRuntime.api.users.top(range, LIMIT)
+        }
 
     /** What is cached, without asking Spotify. */
-    fun cached(range: TimeRange): TopContent? = cache[range]?.second
+    fun cached(range: TimeRange): TopContent? = cache.cached(range)
 
-    /** Forgets every answer (sign-out: they belong to one account). */
+    /** Forgets answers and prevents in-flight requests from restoring the old account. */
     fun clear() = cache.clear()
 
     /**

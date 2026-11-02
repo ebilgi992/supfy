@@ -11,7 +11,7 @@ import com.music.spotui.ui.components.pressable
 import androidx.compose.ui.res.stringResource
 
 import android.os.Build
-import android.util.Log
+import app.myspoti.host.android.PrivacyLog as Log
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background

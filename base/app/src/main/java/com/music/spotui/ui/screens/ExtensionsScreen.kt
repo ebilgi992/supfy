@@ -455,11 +455,12 @@ private fun AreaSection(
     if (area == Area.AUDIO && list.size >= 2) Text(stringResource(R.string.sources_order_hint), color = AppMuted, fontSize = 12.sp,
         modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp))
     // Who did what here lately.
+    val observedRegistry by Extensions.registry.collectAsState()
     val recent = remember(activity, area) { activity.filter { it.area == area }.takeLast(3).asReversed() }
     if (recent.isNotEmpty()) {
         Text(stringResource(R.string.area_activity), color = AppMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 20.dp, top = 6.dp))
         recent.forEach { a ->
-            val on = Extensions.registry.value.find(a.extensionId)?.enabled == true
+            val on = observedRegistry.find(a.extensionId)?.enabled == true
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(start = 20.dp, end = 8.dp)) {
                 Text(a.text, color = AppMuted, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
                 Text(android.text.format.DateUtils.getRelativeTimeSpanString(a.at, System.currentTimeMillis(), android.text.format.DateUtils.MINUTE_IN_MILLIS).toString(),

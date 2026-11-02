@@ -52,9 +52,11 @@ object RawRequest {
     fun check(method: String, url: String): String {
         val m = method.uppercase()
         require(m in METHODS) { "method \"$method\" (${METHODS.joinToString()})" }
-        val uri = runCatching { java.net.URI(url) }.getOrNull() ?: throw IllegalArgumentException("not a URL: $url")
-        val host = uri.host?.lowercase() ?: throw IllegalArgumentException("no host in $url")
-        require(uri.scheme == "https") { "https only" }
+        val uri = runCatching { java.net.URI(url) }.getOrNull() ?: throw IllegalArgumentException("Invalid URL")
+        val host = uri.host?.lowercase() ?: throw IllegalArgumentException("Missing host")
+        require(uri.scheme == "https" && uri.userInfo == null) { "HTTPS required without URL credentials" }
+        val destination = (host + uri.path.orEmpty() + uri.query.orEmpty()).lowercase().filter { it.isLetterOrDigit() }
+        require(!listOf("accounts", "token", "oauth", "login", "credential", "cookie", "password").any { it in destination }) { "Credential endpoint denied" }
         require(isSpotifyHost(host)) { "$host is not a Spotify address (*.spotify.com, *.spotifycdn.com)" }
         return m
     }
@@ -76,8 +78,8 @@ object RawRequest {
     /** The answer as scripts get it: `{ status, headers, body }`. */
     fun response(status: Int, headers: Map<String, String>, body: String): JsonElement = JsonObject(mapOf(
         "status" to JsonPrimitive(status),
-        "headers" to JsonObject(headers.mapValues { JsonPrimitive(it.value) }),
-        "body" to JsonPrimitive(body),
+        "headers" to JsonObject(headers.filterKeys { !BridgePrivacy.sensitiveKey(it) }.mapValues { JsonPrimitive(it.value) }),
+        "body" to JsonPrimitive(BridgePrivacy.body(body)),
     ))
 
     fun isSpotifyHost(host: String): Boolean =

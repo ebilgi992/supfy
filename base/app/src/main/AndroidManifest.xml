@@ -17,11 +17,7 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
-    <uses-permission
-        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
-        android:maxSdkVersion="28" />
-
-    <application
+<application
         android:name="app.myspoti.MyspotiApplication"
         android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
@@ -49,7 +45,7 @@
                 android:resource="@xml/file_paths" />
         </provider>
         <!-- Lets the system profiler (Perfetto, Android Studio) trace release builds; no debugging. -->
-        <profileable android:shell="true" />
+
 
         <meta-data
             android:name="com.google.android.gms.car.application"
@@ -68,17 +64,7 @@
 
         <!-- Debug and beta builds only (cliEnabled, build.gradle.kts): tools/myspoti-cli drives the app over adb.
              DUMP is held by the adb shell, not by other apps. -->
-        <receiver
-            android:name="com.music.spotui.cli.CliReceiver"
-            android:enabled="${cliEnabled}"
-            android:exported="true"
-            android:permission="android.permission.DUMP">
-            <intent-filter>
-                <action android:name="${applicationId}.CLI" />
-            </intent-filter>
-        </receiver>
-
-        <activity
+<activity
             android:name="app.myspoti.MainActivity"
             android:exported="true"
             android:launchMode="singleTask"
@@ -194,6 +180,8 @@
             </intent-filter>
         </activity-alias>
         -->
+
+        <activity-alias android:name="com.supfy.app.MainActivity" android:targetActivity="app.myspoti.MainActivity" android:exported="true" />
 
         <!-- Spotify's account pages, in a browser that shares the app's sign-in. -->
         <activity

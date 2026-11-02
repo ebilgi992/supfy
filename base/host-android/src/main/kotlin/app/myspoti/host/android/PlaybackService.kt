@@ -194,7 +194,7 @@ class PlaybackService : MediaBrowserServiceCompat() {
         Logbook.log("media session: $name")
         if (wake) ensureStarted()
         val c = controls
-        if (c == null) android.util.Log.w("Myspoti", "media session: $name dropped, the player is not attached yet") else c.run()
+        if (c == null) app.myspoti.host.android.PrivacyLog.w("Myspoti", "media session: $name dropped, the player is not attached yet") else c.run()
     }
 
     /** A transport command from the system: on a podcast episode the earbuds skip 15 s (see [HeadsetButtons]). */
@@ -271,7 +271,7 @@ class PlaybackService : MediaBrowserServiceCompat() {
             }
             .build())
         runCatching { session.setMetadata(metadata(true)) }.onFailure {
-            android.util.Log.w("Myspoti", "session art rejected, metadata without it: $it")
+            app.myspoti.host.android.PrivacyLog.w("Myspoti", "session art rejected, metadata without it: $it")
             session.setMetadata(metadata(false))
         }
         val state = when {
@@ -307,13 +307,13 @@ class PlaybackService : MediaBrowserServiceCompat() {
                         cover = bitmap
                         current?.let { apply(it); show(it) }
                         val art = session.controller.metadata?.getBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART)
-                        android.util.Log.d("Myspoti", "cover $url -> ${bitmap.width}x${bitmap.height}, session art ${art?.width}x${art?.height}")
+                        app.myspoti.host.android.PrivacyLog.d("Myspoti", "cover $url -> ${bitmap.width}x${bitmap.height}, session art ${art?.width}x${art?.height}")
                     }
                     return@launch
                 }
                 delay(COVER_RETRY_MS.getOrNull(attempt++) ?: break)
             }
-            android.util.Log.w("Myspoti", "cover not loaded: $url")
+            app.myspoti.host.android.PrivacyLog.w("Myspoti", "cover not loaded: $url")
         }
     }
 
@@ -335,10 +335,10 @@ class PlaybackService : MediaBrowserServiceCompat() {
             val bytes = runCatching {
                 if (candidate.startsWith("http")) {
                     http.newCall(Request.Builder().url(candidate).build()).execute().use { r ->
-                        if (r.isSuccessful) r.body.bytes() else null.also { android.util.Log.w("Myspoti", "cover http ${r.code} $candidate") }
+                        if (r.isSuccessful) r.body.bytes() else null.also { app.myspoti.host.android.PrivacyLog.w("Myspoti", "cover http ${r.code} $candidate") }
                     }
                 } else contentResolver.openInputStream(Uri.parse(candidate))?.use { it.readBytes() }
-            }.onFailure { android.util.Log.w("Myspoti", "cover $candidate: $it") }.getOrNull() ?: continue
+            }.onFailure { app.myspoti.host.android.PrivacyLog.w("Myspoti", "cover $candidate: $it") }.getOrNull() ?: continue
             decode(bytes)?.let { return it }
         }
         return null
@@ -499,7 +499,7 @@ class PlaybackService : MediaBrowserServiceCompat() {
         if (clientPackageName != packageName && clientPackageName !in packages) return null
         if (clientPackageName != packageName) Logbook.log("media browser connected: $clientPackageName (browse: ${if (mayBrowse(clientPackageName)) "yes" else "no"})")
         if (!mayBrowse(clientPackageName)) {
-            android.util.Log.w("Myspoti", "media browser: empty root for $clientPackageName")
+            app.myspoti.host.android.PrivacyLog.w("Myspoti", "media browser: empty root for $clientPackageName")
             return BrowserRoot(EMPTY_ROOT_ID, null)
         }
         return BrowserRoot(ROOT_ID, Bundle().apply {
@@ -525,7 +525,7 @@ class PlaybackService : MediaBrowserServiceCompat() {
                 // up. MediaBrowserCompat has no error reply on API 26+ (sendError throws), so
                 // an empty list is the only answer: the log names the cause of a cold start
                 // that failed (#41), and the folder loads on the next browse.
-                android.util.Log.w("Myspoti", "browse $parentId: ${outcome.exceptionOrNull()?.message}")
+                app.myspoti.host.android.PrivacyLog.w("Myspoti", "browse $parentId: ${outcome.exceptionOrNull()?.message}")
             }
             result.sendResult(items ?: mutableListOf())
         }
@@ -538,7 +538,7 @@ class PlaybackService : MediaBrowserServiceCompat() {
         scope.launch {
             val outcome = runCatching { lib.search(query).toMutableList() }
             val items = outcome.getOrNull()
-            if (items == null) android.util.Log.w("Myspoti", "search: ${outcome.exceptionOrNull()?.message}")
+            if (items == null) app.myspoti.host.android.PrivacyLog.w("Myspoti", "search: ${outcome.exceptionOrNull()?.message}")
             result.sendResult(items ?: mutableListOf())
         }
     }

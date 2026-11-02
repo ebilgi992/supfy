@@ -156,7 +156,7 @@
     <string name="recap_minutes">%1$d minutes</string>
     <string name="recap_listens">%1$d listens</string>
     <string name="recap_sources">Spotify %1$d min • Downloads %2$d min • Local files %3$d min</string>
-    <string name="recap_empty">Listen for a while: your top tracks and artists will show up here.</string>
+    <string name="recap_empty">Listening history is not stored in Supfy.</string>
     <string name="recently_played_empty">What you play on this account shows up here.</string>
     <string name="recently_played_failed">Could not load the recently played list (%1$s)</string>
     <string name="recents_title">Recents</string>
@@ -175,7 +175,7 @@
     <string name="recap_top_tracks">Top tracks</string>
     <string name="recap_top_artists">Top artists</string>
     <string name="recap_top_albums">Top albums</string>
-    <string name="recap_private_note">Counts everything played in Myspoti (Spotify, downloads, local files). It stays on this phone and is never sent to Spotify.</string>
+    <string name="recap_private_note">Supfy does not collect local listening history or generate a listening recap. Your playback provider may keep its own history.</string>
     <string name="recap_detail">Your listening, downloads and local files included</string>
     <string name="track_credits">Credits</string>
     <string name="exclude_taste">Exclude from your taste profile</string>

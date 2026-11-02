@@ -262,7 +262,7 @@ object LibraryOutbox {
             ready = ready,
             account = account,
             pause = { kotlinx.coroutines.delay(it) },
-            log = { android.util.Log.i("LibraryOutbox", it); app.myspoti.host.android.Logbook.log(it) },
+            log = { app.myspoti.host.android.PrivacyLog.i("LibraryOutbox", it); app.myspoti.host.android.Logbook.log(it) },
             scope = scope,
         ).also { it.request() }
         val cm = c.getSystemService(ConnectivityManager::class.java) ?: return

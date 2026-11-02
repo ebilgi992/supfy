@@ -24,7 +24,14 @@ class ExtensionRegistryTest {
     ) = Manifest("io.github.test.ext", "Test", "1.$versionCode", versionCode = versionCode, author = "me", provides = provides, permissions = permissions)
 
     private fun installed(m: Manifest, granted: Set<String>) =
-        InstalledExtension(m.id, m.name, m.version, m.versionCode, m.author, "sha", granted)
+        InstalledExtension(m.id, m.name, m.version, m.versionCode, m.author, "sha", granted, enabled = true)
+
+    @Test fun newExtensionIsDisabledUntilExplicitEnablement() {
+        val m = manifest()
+        val extension = InstalledExtension(m.id, m.name, m.version, m.versionCode, m.author, "sha", base)
+        assertFalse(extension.enabled)
+        assertNull(extension.enableApprovalSha)
+    }
 
     // ── Grants ──
 
@@ -207,12 +214,13 @@ class ExtensionRegistryTest {
         dir.deleteRecursively()
     }
 
-    @Test fun theLogKeepsItsLastLines() {
+    @Test fun extensionLogsRetainNoTextAndWriteNoFile() {
         val dir = Files.createTempDirectory("ext").toFile()
         val log = ExtensionLog(java.io.File(dir, "log.txt"), maxLines = 3)
         (1..5).forEach { log.add("line $it") }
-        assertEquals(listOf("line 3", "line 4", "line 5"), log.lines())
-        assertEquals(listOf("line 3", "line 4", "line 5"), ExtensionLog(java.io.File(dir, "log.txt"), maxLines = 3).lines())
+        assertTrue(log.lines().isEmpty())
+        assertFalse(java.io.File(dir, "log.txt").exists())
+        assertTrue(ExtensionLog(java.io.File(dir, "log.txt"), maxLines = 3).lines().isEmpty())
         dir.deleteRecursively()
     }
 

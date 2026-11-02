@@ -26,17 +26,17 @@ class GitHubTest {
 
     // ── The update gate ──
 
-    @Test fun anUpdateAskingNothingNewIsApplied() {
+    @Test fun everyNewVersionWaitsForApproval() {
         val accepted = snap(manifest(1, lyrics, net))
-        assertEquals(UpdateGate.Decision.Apply, UpdateGate.decide(accepted, snap(manifest(2, lyrics, net))))
-        // Asking less is not a change either.
-        assertEquals(UpdateGate.Decision.Apply, UpdateGate.decide(accepted, snap(manifest(2, lyrics))))
+        assertEquals(listOf(Change.Kind.CODE), (UpdateGate.decide(accepted, snap(manifest(2, lyrics, net))) as UpdateGate.Decision.Ask).changes.map { it.kind })
+        // Dropping rights still changes the version and needs approval.
+        assertEquals(listOf(Change.Kind.CODE), (UpdateGate.decide(accepted, snap(manifest(2, lyrics))) as UpdateGate.Decision.Ask).changes.map { it.kind })
     }
 
     @Test fun everyNewRequestHoldsTheUpdateBack() {
         val accepted = snap(manifest(1, lyrics, net))
         fun changes(vararg a: ActionRequest, author: String = "me", repo: String? = "me/ext", replaces: List<String> = emptyList()) =
-            (UpdateGate.decide(accepted, snap(manifest(2, *a, author = author, replaces = replaces), repo)) as UpdateGate.Decision.Ask).changes
+            UpdateGate.diff(accepted, snap(manifest(2, *a, author = author, replaces = replaces), repo))
 
         changes(lyrics, net, req("home.sections", "Your top songs")).single().let { assertEquals(Change.Kind.ACTION, it.kind); assertFalse(it.critical) }
         changes(lyrics, net, req("library.write", "Saves the songs you like")).single().let { assertTrue(it.critical) }
@@ -52,32 +52,33 @@ class GitHubTest {
     }
 
     @Test fun aSourceIsNotAnExclusiveRole() {
-        // Sources are asked in the user's order now: an update keeping audio.source asks nothing new.
+        // Sources are ordered, not exclusive. A new version still needs approval.
         val m = manifest(1, req("audio.source", "Plays from my server"))
-        assertTrue(UpdateGate.decide(snap(m), snap(manifest(2, req("audio.source", "Plays from my server")))) is UpdateGate.Decision.Apply)
+        assertEquals(listOf(Change.Kind.CODE), (UpdateGate.decide(snap(m), snap(manifest(2, req("audio.source", "Plays from my server")))) as UpdateGate.Decision.Ask).changes.map { it.kind })
         // A new source action is listed once, as an action.
-        val fresh = (UpdateGate.decide(snap(manifest(1, lyrics)), snap(manifest(2, lyrics, req("audio.source", "x")))) as UpdateGate.Decision.Ask).changes
+        val fresh = UpdateGate.diff(snap(manifest(1, lyrics)), snap(manifest(2, lyrics, req("audio.source", "x"))))
         assertEquals(listOf(Change.Kind.ACTION), fresh.map { it.kind })
     }
 
     @Test fun theDiffIsAgainstTheAcceptedSnapshotNotThePreviousVersion() {
         val accepted = snap(manifest(1, lyrics, net))
-        // v2 drops network: applied by itself; the accepted snapshot stays the user's.
-        assertEquals(UpdateGate.Decision.Apply, UpdateGate.decide(accepted, snap(manifest(2, lyrics))))
+        // v2 drops network: version approval still required; compare rights with the accepted snapshot.
+        assertEquals(listOf(Change.Kind.CODE), (UpdateGate.decide(accepted, snap(manifest(2, lyrics))) as UpdateGate.Decision.Ask).changes.map { it.kind })
         // v3 brings it back with another reason and a new host: against v2 everything would look new,
         // against v1 only what the user never accepted is.
         val v3 = snap(manifest(3, lyrics, req("network", "Sends your plays to my server", listOf("lrclib.net", "tracker.example"))))
-        val c = (UpdateGate.decide(accepted, v3) as UpdateGate.Decision.Ask).changes
+        val c = UpdateGate.diff(accepted, v3)
         assertEquals(listOf(Change.Kind.WHY to "network", Change.Kind.HOST to "tracker.example"), c.map { it.kind to it.key })
-        // Back exactly as accepted: nothing to ask.
-        assertEquals(UpdateGate.Decision.Apply, UpdateGate.decide(accepted, snap(manifest(4, lyrics, net))))
+        // Same rights but a new version: still requires explicit approval.
+        assertEquals(listOf(Change.Kind.CODE), (UpdateGate.decide(accepted, snap(manifest(4, lyrics, net))) as UpdateGate.Decision.Ask).changes.map { it.kind })
     }
 
     @Test fun anOldManifestIsComparedThroughItsActions() {
         val old = Manifest("io.github.me.ext", "Ext", "1", 1, author = "me", provides = listOf("lyrics"),
             permissions = listOf(PermissionRequest("lyrics", why = "Synced lyrics from LRCLIB"), PermissionRequest("network", listOf("lrclib.net"), "Asks LRCLIB")))
         val accepted = snap(old)
-        assertEquals(UpdateGate.Decision.Apply, UpdateGate.decide(accepted, snap(manifest(2, lyrics, net, req("storage", "")))))
+        assertTrue(UpdateGate.diff(accepted, snap(manifest(2, lyrics, net, req("storage", "")))).isEmpty())
+        assertTrue(UpdateGate.decide(accepted, snap(manifest(2, lyrics, net, req("storage", "")))) is UpdateGate.Decision.Ask)
         assertEquals(accepted, Snapshot.of(old, "me/ext"))
         assertEquals(old.asks().map { it.key }, accepted.toManifest().asks().map { it.key })
     }
@@ -280,11 +281,11 @@ class GitHubTest {
         assertTrue(manifest(1, ActionRequest("spotify.raw", "x", writes = List(9) { "POST https://api.spotify.com/v1/x$it" })).problems().any { it.contains("8 writes") })
         assertTrue(manifest(1, ActionRequest("network", "x", listOf("a.org"), writes = listOf(events))).problems().any { it.contains("only spotify.raw takes writes") })
 
-        // An update that adds a write waits for the user; the same writes again apply by themselves.
+        // Compare write grants separately; every new version also needs approval.
         val accepted = snap(manifest(1, ActionRequest("spotify.raw", "Sends your listens to Spotify")))
-        val changes = (UpdateGate.decide(accepted, snap(manifest(2, raw))) as UpdateGate.Decision.Ask).changes
+        val changes = UpdateGate.diff(accepted, snap(manifest(2, raw)))
         assertEquals(listOf(Change.Kind.WRITE), changes.map { it.kind })
         assertTrue(changes.single().critical)
-        assertEquals(UpdateGate.Decision.Apply, UpdateGate.decide(snap(m), snap(manifest(2, raw))))
+        assertEquals(listOf(Change.Kind.CODE), (UpdateGate.decide(snap(m), snap(manifest(2, raw))) as UpdateGate.Decision.Ask).changes.map { it.kind })
     }
 }

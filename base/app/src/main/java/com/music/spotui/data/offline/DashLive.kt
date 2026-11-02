@@ -119,7 +119,7 @@ internal class DashLive(
                 val initBytes = init.get()
                 val segmentSizes = LongArray(sizes.size) { sizes[it].get() }
                 DashLive(initBytes + sidx(plan.timescale, plan.durations, segmentSizes), plan.segmentUrls, segmentSizes, fetched = { i, n, ms ->
-                    android.util.Log.d(LOG, "dash: segment ${i + 1}/${plan.segmentUrls.size} fetched, $n bytes in $ms ms")
+                    app.myspoti.host.android.PrivacyLog.d(LOG, "dash: segment ${i + 1}/${plan.segmentUrls.size} fetched, $n bytes in $ms ms")
                 }, fetch = get)
             } catch (e: java.util.concurrent.ExecutionException) {
                 throw (e.cause as? IOException) ?: IOException(e.cause)
@@ -127,7 +127,7 @@ internal class DashLive(
                 pool.shutdownNow()
             }
             synchronized(cache) { cache[manifestB64] = System.currentTimeMillis() to live }
-            android.util.Log.d(LOG, "dash: opened, ${live.length} bytes in ${plan.segmentUrls.size} segments")
+            app.myspoti.host.android.PrivacyLog.d(LOG, "dash: opened, ${live.length} bytes in ${plan.segmentUrls.size} segments")
             return live
         }
 

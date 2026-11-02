@@ -1,8 +1,6 @@
 package com.music.spotui.data.preferences
 
 import android.content.Context
-import org.json.JSONArray
-import org.json.JSONObject
 
 /**
  * One "Recent searches" entry — Spotify-style: not the typed query but the
@@ -26,47 +24,17 @@ data class RecentItem(
 
 private const val PREF = "RecentItems"
 private const val KEY = "items"
-private const val MAX_ITEMS = 20
-
-private fun RecentItem.toJson(): JSONObject = JSONObject().apply {
-    put("type", type); put("key", key); put("name", name); put("singer", singer)
-    put("image", image); put("songId", songId); put("songAlbum", songAlbum)
-    put("songUrl", songUrl); put("spotifyTrackId", spotifyTrackId)
-    put("explicit", explicit); put("durationMs", durationMs)
-}
-
-private fun JSONObject.toRecentItem(): RecentItem = RecentItem(
-    type = optString("type"), key = optString("key"), name = optString("name"),
-    singer = optString("singer"), image = optString("image"),
-    songId = optInt("songId", -1), songAlbum = optString("songAlbum"),
-    songUrl = optString("songUrl"), spotifyTrackId = optString("spotifyTrackId"),
-    explicit = optBoolean("explicit", false), durationMs = optInt("durationMs", 0),
-)
-
+/** Forget only the old selected-search-history key, preserving all other preferences. */
 fun getRecentItems(context: Context): List<RecentItem> {
-    val raw = context.getSharedPreferences(PREF, Context.MODE_PRIVATE).getString(KEY, null)
-        ?: return emptyList()
-    return runCatching {
-        val arr = JSONArray(raw)
-        (0 until arr.length()).map { arr.getJSONObject(it).toRecentItem() }
-    }.getOrDefault(emptyList())
+    clearRecentItems(context)
+    return emptyList()
 }
 
-private fun save(context: Context, items: List<RecentItem>) {
-    val arr = JSONArray().also { a -> items.forEach { a.put(it.toJson()) } }
-    context.getSharedPreferences(PREF, Context.MODE_PRIVATE)
-        .edit().putString(KEY, arr.toString()).apply()
-}
+@Suppress("UNUSED_PARAMETER")
+fun addRecentItem(context: Context, item: RecentItem) = Unit
 
-fun addRecentItem(context: Context, item: RecentItem) {
-    if (item.name.isBlank()) return
-    val rest = getRecentItems(context).filterNot { it.type == item.type && it.key == item.key }
-    save(context, (listOf(item) + rest).take(MAX_ITEMS))
-}
-
-fun removeRecentItem(context: Context, item: RecentItem) {
-    save(context, getRecentItems(context).filterNot { it.type == item.type && it.key == item.key })
-}
+@Suppress("UNUSED_PARAMETER")
+fun removeRecentItem(context: Context, item: RecentItem) = clearRecentItems(context)
 
 fun clearRecentItems(context: Context) {
     context.getSharedPreferences(PREF, Context.MODE_PRIVATE).edit().remove(KEY).apply()

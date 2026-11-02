@@ -43,8 +43,18 @@ internal class ControlRelay(private val view: WebView, private val fingerprint: 
     @Volatile var onDeviceRegistered: (() -> Unit)? = null
     private val main = Handler(Looper.getMainLooper())
 
-    /** The guarded fallback channel of a WebView without web message listeners (see [PlayerChannel]). */
+    /** Compatibility lifecycle type; secure listeners need no JavascriptInterface fallback. */
     internal var channel: PlayerChannel? = null
+    private val requestEpoch = NativeRequestEpoch()
+    private val activeCalls = java.util.concurrent.ConcurrentHashMap.newKeySet<Call>()
+
+    /** Logout/navigation cancels this page's native work and rejects every late answer. */
+    fun invalidate() {
+        requestEpoch.invalidate()
+        activeCalls.forEach { it.cancel() }
+        activeCalls.clear()
+        identity = null
+    }
 
     /** The same client ([http]), pinned to one address family (see RelayRoutes); same pool. */
     private val v4Client by lazy { http.newBuilder().dns(FamilyDns(IpFamily.V4)).build() }
@@ -104,6 +114,7 @@ internal class ControlRelay(private val view: WebView, private val fingerprint: 
 
     /** `{id, url, method, headers, body}` from the page's wrapped `fetch`. */
     private fun onMessage(json: String) {
+        if (!WebPlayerSecurityPolicy.isTrustedPlayer(view.url)) return
         val m = runCatching { JSONObject(json) }.getOrNull() ?: return
         if (m.optString("type") == "identity") {
             identity = m.optJSONObject("value")
@@ -144,8 +155,9 @@ internal class ControlRelay(private val view: WebView, private val fingerprint: 
     }
 
     private fun send(id: Int, doc: String, url: String, method: String, given: JSONObject, body: String?) {
+        val epoch = requestEpoch.current()
         if (!isRelayed(url)) {
-            reply(id, doc, 0, "{}", "")
+            reply(id, doc, 0, "{}", "", epoch)
             return
         }
         val built = relayHeaders(given, identity, fingerprint.userAgent, fallbackLanguage, fingerprint.secChUa)
@@ -201,14 +213,17 @@ internal class ControlRelay(private val view: WebView, private val fingerprint: 
         val command = COMMAND.containsMatchIn(url)
         val kind = if (command) commandKind(url, body) else ""
         fun finish(answer: Answer) {
+            if (!requestEpoch.isCurrent(epoch)) return
             matrixDone(page = answer.code == 402)
             if (command) app.myspoti.spotify.report.Refusal402.command(kind, answer.code, retried = refusal != null)
-            handle(id, doc, url, method, body, registration, asked, answer)
+            handle(id, doc, url, method, body, registration, asked, answer, epoch)
         }
         fun attempt(route: RelayRoute) {
+            if (!requestEpoch.isCurrent(epoch)) return
             tried += route
             val began = android.os.SystemClock.uptimeMillis()
-            fetch(route, url, method, built, sent) { answer, error ->
+            fetch(route, url, method, built, sent, epoch) { answer, error ->
+                if (!requestEpoch.isCurrent(epoch)) return@fetch
                 val via = if (route == RelayRoute.DEFAULT) "" else " via $route"
                 if (command) app.myspoti.spotify.report.Refusal402.attempt(kind, shortRoute(route), answer?.code, android.os.SystemClock.uptimeMillis() - began,
                     answer?.headers.orEmpty(), answer?.text.orEmpty())
@@ -221,7 +236,7 @@ internal class ControlRelay(private val view: WebView, private val fingerprint: 
                         // A kept route the network no longer offers (IPv6 gone with the Wi-Fi): this
                         // request goes the default way; the route stays kept for the next ones.
                         route != RelayRoute.DEFAULT && RelayRoute.DEFAULT !in tried -> attempt(RelayRoute.DEFAULT)
-                        else -> reply(id, doc, 0, "{}", "")
+                        else -> reply(id, doc, 0, "{}", "", epoch)
                     }
                     return@fetch
                 }
@@ -272,7 +287,8 @@ internal class ControlRelay(private val view: WebView, private val fingerprint: 
     }
 
     /** Sends one relayed request over [route]; [done] gets the answer, or null and why it failed. */
-    private fun fetch(route: RelayRoute, url: String, method: String, headers: Headers, sent: String?, done: (Answer?, String?) -> Unit) {
+    private fun fetch(route: RelayRoute, url: String, method: String, headers: Headers, sent: String?, epoch: Long, done: (Answer?, String?) -> Unit) {
+        if (!requestEpoch.isCurrent(epoch)) return
         if (route == RelayRoute.HTTP_ENGINE && android.os.Build.VERSION.SDK_INT >= 34) {
             PlatformStack.fetch(view.context.applicationContext, url, method, headers, sent) { code, heads, text, protocol, error ->
                 done(if (error == null) Answer(code, heads, text, protocol, null, null) else null, error)
@@ -289,10 +305,22 @@ internal class ControlRelay(private val view: WebView, private val fingerprint: 
         val payload = if (method == "GET" || method == "HEAD") null else (sent ?: "").toByteArray().toRequestBody(null)
         val tag = RelayTag()
         val request = Request.Builder().url(url).headers(headers).method(method, payload).tag(RelayTag::class.java, tag).build()
-        clientFor(route).newCall(request).enqueue(object : Callback {
-            override fun onFailure(call: Call, e: IOException) = done(null, e.message)
+        val call = clientFor(route).newCall(request)
+        activeCalls.add(call)
+        if (!requestEpoch.isCurrent(epoch)) {
+            activeCalls.remove(call)
+            call.cancel()
+            return
+        }
+        call.enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                activeCalls.remove(call)
+                if (requestEpoch.isCurrent(epoch)) done(null, e.message)
+            }
 
             override fun onResponse(call: Call, response: Response) {
+                activeCalls.remove(call)
+                if (!requestEpoch.isCurrent(epoch)) { response.close(); return }
                 val answer = runCatching {
                     response.use {
                         Answer(it.code, it.headers.map { h -> h.first to h.second }, it.body.string(), it.protocol.toString(),
@@ -316,7 +344,8 @@ internal class ControlRelay(private val view: WebView, private val fingerprint: 
     }
 
     /** What the page gets back, and what the logs keep of it. */
-    private fun handle(id: Int, doc: String, url: String, method: String, body: String?, registration: Boolean, asked: Long, it: Answer) {
+    private fun handle(id: Int, doc: String, url: String, method: String, body: String?, registration: Boolean, asked: Long, it: Answer, epoch: Long) {
+        if (!requestEpoch.isCurrent(epoch)) return
         val out = JSONObject()
         it.headers.forEach { (name, value) -> out.put(name, value) }
         val text = it.text
@@ -362,7 +391,6 @@ internal class ControlRelay(private val view: WebView, private val fingerprint: 
                 }
             }
         if (debuggable && registration) Logbook.log("registration answered: ${text.take(500)}")
-        if (debuggable && AD_MARK.containsMatchIn(text)) keepAdSample(method, url, body, text)
         // An ad in the queue Spotify sends: the song before it goes on to the next song
         // instead, before the page sees the queue (see AdBlock.withoutAds).
         val given = if (url.contains("/track-playback/")) app.myspoti.spotify.bridge.AdBlock.withoutAds(text) else null
@@ -379,15 +407,18 @@ internal class ControlRelay(private val view: WebView, private val fingerprint: 
             if (app.myspoti.spotify.bridge.AdBlock.ahead.value != a) Logbook.log("ad ahead: ${a.nextUri} is played before the end")
             app.myspoti.spotify.bridge.AdBlock.ahead.value = a
         }
-        reply(id, doc, it.code, out.toString(), sent)
+        reply(id, doc, it.code, out.toString(), sent, epoch)
     }
 
-    private fun reply(id: Int, doc: String, status: Int, headersJson: String, body: String) {
+    private fun reply(id: Int, doc: String, status: Int, headersJson: String, body: String, epoch: Long) {
+        if (!requestEpoch.isCurrent(epoch)) return
         val posted = android.os.SystemClock.uptimeMillis()
         // Quoted here, on the network thread: a large reply (a track-playback state machine) was
         // quoted on the main thread, which also draws the app and runs every tap behind it.
         val script = "window.__mspNetDone && window.__mspNetDone($id, $status, ${JSONObject.quote(headersJson)}, ${JSONObject.quote(body)}, ${JSONObject.quote(doc)})"
-        main.post { replyNow(id, script, posted) }
+        main.post {
+            if (requestEpoch.isCurrent(epoch) && WebPlayerSecurityPolicy.isTrustedPlayer(view.url)) replyNow(id, script, posted)
+        }
     }
 
     private fun replyNow(id: Int, script: String, posted: Long) {
@@ -406,9 +437,15 @@ internal class ControlRelay(private val view: WebView, private val fingerprint: 
             .headers(headers)
             .delete(PlayerDeviceRecord.goodbye(seq).toByteArray().toRequestBody(null))
             .build()
-        http.newCall(request).enqueue(object : Callback {
-            override fun onFailure(call: Call, e: IOException) = Logbook.log("previous player device: goodbye failed: ${e.message}")
+        val call = http.newCall(request)
+        activeCalls.add(call)
+        call.enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                activeCalls.remove(call)
+                Logbook.log("previous player device: goodbye failed: ${e.message}")
+            }
             override fun onResponse(call: Call, response: Response) = response.use {
+                activeCalls.remove(call)
                 Logbook.log("previous player device${if (debuggable) " #${shortHash(old)}" else ""} taken off -> ${it.code}")
                 if (it.code >= 400) Logbook.log("goodbye error body: ${it.body.string().take(200)}")
             }
@@ -451,14 +488,6 @@ internal class ControlRelay(private val view: WebView, private val fingerprint: 
     @Volatile private var commandHeaders: String? = null
 
     private val debuggable = view.context.applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE != 0
-
-    /** Debug builds: a playback response that carries an ad, kept in cache/ad-samples for study. */
-    private fun keepAdSample(method: String, url: String, sent: String?, received: String) = runCatching {
-        val dir = java.io.File(view.context.cacheDir, "ad-samples").apply { mkdirs() }
-        java.io.File(dir, "${System.currentTimeMillis()}.json").writeText(
-            JSONObject().put("method", method).put("url", url.substringBefore('?')).put("sent", sent ?: "").put("received", received).toString())
-        Logbook.log("relay: ad in $method ${shortPath(url)} (sample kept)")
-    }
 
     /** A Connect command's shape, without ids: endpoint, license, picked song, origin. */
     private fun commandSummary(body: String): String = runCatching {

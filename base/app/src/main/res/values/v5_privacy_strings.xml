@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="v5_privacy_settings_title">Optional online services</string>
+    <string name="v5_privacy_settings_detail">Each service needs your approval before its first request. All start turned off.</string>
+    <string name="v5_privacy_lyrics">Online lyrics</string>
+    <string name="v5_privacy_translation">Lyric translation</string>
+    <string name="v5_privacy_meaning">Song explanations</string>
+    <string name="v5_privacy_video">Music videos</string>
+    <string name="v5_privacy_consent_title">Allow %1$s?</string>
+    <string name="v5_privacy_lyrics_disclosure">Find lyrics by sending track information such as title, artist, album, duration or track ID to Spotify, LRCLIB (lrclib.net), LyricsPlus (lyricsplus.binimum.org and lyricsplus.prjktla.my.id), lrc.red and Kugou (lyrics.kugou.com). If extra sources are enabled, NetEase (music.163.com) and Genius (genius.com) may also receive song searches.</string>
+    <string name="v5_privacy_translation_disclosure">Send lyric or explanation text and the selected language to Google Translate (translate.googleapis.com) to translate it. Your Spotify sign-in credentials are not sent.</string>
+    <string name="v5_privacy_meaning_disclosure">Send song title and artist searches to Genius (genius.com) to find explanations and annotations.</string>
+    <string name="v5_privacy_video_disclosure">Send song title and artist searches, selected video IDs and video requests to YouTube and its media servers to find and play music videos.</string>
+    <string name="v5_privacy_network_notice">These providers can see your IP address and process requests under their own privacy policies. No request for this feature is sent until you allow it.</string>
+    <string name="v5_privacy_revoke_notice">You can turn access off here at any time. This stops future requests; requests already in progress may finish, and buffered content may remain until you leave the screen.</string>
+    <string name="v5_privacy_allow">Allow</string>
+    <string name="v5_privacy_decline">Not now</string>
+    <string name="ext_secure_webview_required">This device cannot provide a secure extension page. Update Android System WebView to use this feature.</string>
+    <string name="v5_background_playback">Continue playing in the background</string>
+    <string name="v5_webview_required">Update Android System WebView to securely open the player and sign-in page. Then reopen Supfy.</string>
+    <string name="v5_webview_update">Open WebView update</string>
+    <string name="v5_update_failed">The update could not be verified or installed. Try again later.</string>
+    <string name="v5_upstream_credit">Supfy is derived from Myspoti by kota-zo. Original copyrights and GPL-3.0 terms are preserved.</string>
+    <string name="v5_open_source_licenses">Open source licenses</string>
+    <string name="v5_open_source_detail">Original authors, license notices and complete source code</string>
+</resources>

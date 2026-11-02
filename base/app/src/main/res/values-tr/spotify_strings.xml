@@ -11,7 +11,7 @@
     <string name="context_menu_browse_artist" formatted="false">Sanatçıya git</string>
     <string name="context_menu_share" formatted="false">Paylaş</string>
     <string name="context_menu_sleep_timer" formatted="false">Otomatik kapatma</string>
-    <string name="context_menu_sleep_timer_turn_off" formatted="false">Kronometreyi kapat</string>
+    <string name="context_menu_sleep_timer_turn_off" formatted="false">Uyku zamanlayıcısını kapat</string>
     <string name="context_menu_sleep_timer_end_of_track" formatted="false">Parça sonu</string>
     <string name="snackbar_added_to_queue" formatted="false">Sıraya eklendi</string>
     <string name="snackbar_added_to_liked_songs" formatted="false">Beğenilen Şarkılar\'a eklendi.</string>
@@ -69,7 +69,7 @@
     <string name="content_description_play_button" formatted="false">Çal</string>
     <string name="play_mode_item_shuffle_title" formatted="false">Karışık Çal</string>
     <string name="np_content_desc_repeat" formatted="false">Tekrarla</string>
-    <string name="np_content_desc_sleep_timer" formatted="false">Uyku modu zamanlayıcı</string>
+    <string name="np_content_desc_sleep_timer" formatted="false">Uyku zamanlayıcısı</string>
     <string name="aligned_curation_first_save_default_row_remove_action_description" formatted="false">Kaldır</string>
     <string name="edit_playlist_items_move_chip" formatted="false">Taşı</string>
     <string name="bottom_actions_close" formatted="false">Kapat</string>
@@ -91,7 +91,7 @@
     <string name="artist_releases_singles" formatted="false">Single\'lar ve EP\'ler</string>
     <string name="latest_release_title" formatted="false">Son çıkan</string>
     <string name="artist_subtitle" formatted="false">Sanatçı</string>
-    <string name="assisted_curation_search_search_history_title" formatted="false">Yakındaki aramalar</string>
+    <string name="assisted_curation_search_search_history_title" formatted="false">Son aramalar</string>
     <string name="chat_content_picker_clear_recent_searches" formatted="false">Sil</string>
     <string name="assisted_curation_search_filter_podcasts" formatted="false">Podcast\'ler</string>
     <string name="assisted_curation_search_filter_episodes" formatted="false">Bölümler</string>

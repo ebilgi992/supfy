@@ -24,6 +24,7 @@ internal class RuntimeShaderCacheImpl : RuntimeShaderCache {
     private val runtimeShaders = mutableMapOf<String, RuntimeShader>()
 
     override fun obtainRuntimeShader(key: String, string: String): RuntimeShader {
+        if (!isRuntimeShaderSupported()) throw UnsupportedOperationException("Runtime shaders require Android 13")
         return runtimeShaders.getOrPut(key) { RuntimeShader(string) }
     }
 

@@ -242,7 +242,7 @@ object OfflineCrypto {
                     val rest = net.open(spec.buildUpon().setPosition(ahead.bytes.size.toLong()).build())
                     head = ahead.bytes
                     headAt = 0
-                    android.util.Log.d(LOG, "stream: opened from its read-ahead start (${ahead.bytes.size} bytes), ${if (rest == C.LENGTH_UNSET.toLong()) "length unknown" else "${ahead.bytes.size + rest} bytes"}")
+                    app.myspoti.host.android.PrivacyLog.d(LOG, "stream: opened from its read-ahead start (${ahead.bytes.size} bytes), ${if (rest == C.LENGTH_UNSET.toLong()) "length unknown" else "${ahead.bytes.size + rest} bytes"}")
                     return if (rest == C.LENGTH_UNSET.toLong()) rest else ahead.bytes.size + rest
                 } catch (e: IOException) {
                     // The rest could not be had from there: the whole file, as without a head.
@@ -250,7 +250,7 @@ object OfflineCrypto {
                 }
             }
             return net.open(spec).also { n ->
-                android.util.Log.d(LOG, "stream: opened at ${dataSpec.position}, ${if (n == C.LENGTH_UNSET.toLong()) "length unknown" else "$n bytes"}")
+                app.myspoti.host.android.PrivacyLog.d(LOG, "stream: opened at ${dataSpec.position}, ${if (n == C.LENGTH_UNSET.toLong()) "length unknown" else "$n bytes"}")
             }
         }
 
@@ -262,7 +262,7 @@ object OfflineCrypto {
             dashAt = dataSpec.position
             left = if (dataSpec.length != C.LENGTH_UNSET.toLong()) dataSpec.length else live.length - dataSpec.position
             transferStarted(dataSpec)
-            android.util.Log.d(LOG, "dash: read from $dashAt of ${live.length} bytes")
+            app.myspoti.host.android.PrivacyLog.d(LOG, "dash: read from $dashAt of ${live.length} bytes")
             return left
         }
 

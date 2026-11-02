@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="update_code_title">%1$s kodu değişti (%2$d satır, +%3$d/−%4$d)</string>
+    <string name="update_code_body">Bu eklentinin güçlü yetkileri (kritik işlemler veya geniş ağ erişimi) var. Bu yüzden yeni kod onayın olmadan çalıştırılmaz.</string>
+    <string name="update_code_files">Değişen dosyalar: %1$s</string>
+    <string name="update_code_update">Güncelle</string>
+    <string name="update_code_later">Şimdi değil</string>
+    <string name="update_check_waiting">Güncelleme bulundu: 24 saat içinde kendiliğinden uygulanacak</string>
+    <string name="update_check_repo_changed">Güncelleme reddedildi: deponun sahibi değişti</string>
+    <string name="update_repo_changed_title">Deponun sahibi değişti</string>
+    <string name="update_repo_changed_body">Bu depo aynı adla yeniden kaydedildi veya başka birine devredildi; bu yüzden güncellemeleri engellendi. Eklentiyi kaldır ya da yalnızca yeni sahibine güveniyorsan yeniden kur.</string>
+    <string name="update_author_owner">geliştirici: %1$s · depo sahibi: %2$s</string>
+    <string name="update_author_unverified">geliştirici: %1$s · doğrulanmadı</string>
+</resources>

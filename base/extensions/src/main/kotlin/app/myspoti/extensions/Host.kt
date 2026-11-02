@@ -119,10 +119,11 @@ class MemoryStorage : Storage {
 data class AuthRequest(val url: String, val callback: String, val hidden: Boolean = false) {
     /** This request, or why it is refused. */
     fun checked(): AuthRequest {
-        val start = runCatching { URI(url) }.getOrNull() ?: throw IllegalArgumentException("auth.open: not a URL: $url")
+        val start = runCatching { URI(url) }.getOrNull() ?: throw IllegalArgumentException("auth.open: invalid URL")
         require(start.scheme == "https" && !start.host.isNullOrEmpty()) { "auth.open: the url must be https" }
+        require(start.userInfo == null && !SafeNet.isPrivateHost(start.host)) { "auth.open: public host required" }
         require(!RawRequest.isSpotifyHost(start.host.lowercase())) { "auth.open: not on a Spotify address" }
-        val end = runCatching { URI(callback) }.getOrNull() ?: throw IllegalArgumentException("auth.open: not a URL: $callback")
+        val end = runCatching { URI(callback) }.getOrNull() ?: throw IllegalArgumentException("auth.open: invalid callback")
         val scheme = end.scheme?.lowercase() ?: throw IllegalArgumentException("auth.open: the callback needs a scheme")
         require(scheme !in UNSAFE_SCHEMES) { "auth.open: a $scheme: callback is not allowed" }
         if (scheme == "https") require(!end.host.isNullOrEmpty() && !RawRequest.isSpotifyHost(end.host.lowercase())) { "auth.open: the callback must name a host that is not Spotify's" }
@@ -175,7 +176,8 @@ object BasicHttp {
     fun send(request: HttpRequest, userAgent: String, client: okhttp3.OkHttpClient = SafeNet.client): HttpResponse {
         val method = request.method.uppercase()
         require(method in METHODS) { "method $method is not allowed" }
-        val url = request.url.toHttpUrlOrNull() ?: throw IllegalArgumentException("not a URL: ${request.url}")
+        val url = request.url.toHttpUrlOrNull() ?: throw IllegalArgumentException("Invalid URL")
+        require(url.isHttps && url.username.isEmpty() && url.password.isEmpty()) { "HTTPS required without URL credentials" }
         SafeNet.checkUrlHost(url.host)
         val timeout = request.timeout.coerceIn(1_000, 20_000).toLong()
         val headers = okhttp3.Headers.Builder().add("User-Agent", userAgent)
@@ -206,7 +208,7 @@ object BasicHttp {
                     if (out.size() > MAX_BODY) throw IllegalStateException("response larger than ${MAX_BODY / 1024 / 1024} MB")
                 }
             }
-            val responseHeaders = r.headers.names().associate { it.lowercase() to r.headers.values(it).joinToString(", ") }
+            val responseHeaders = r.headers.names().filterNot { it.equals("Set-Cookie", true) || it.equals("Set-Cookie2", true) }.associate { it.lowercase() to r.headers.values(it).joinToString(", ") }
             return HttpResponse(r.code, responseHeaders, out.toString(Charsets.UTF_8.name()))
         }
     }

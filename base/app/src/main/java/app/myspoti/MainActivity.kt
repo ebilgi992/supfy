@@ -93,6 +93,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        SupfyDefaults.applyInitialLocale()
         // Edge to edge on every Android version (15+ enforces it, 14 and older do not): the pages draw
         // under the status bar and handle its inset, otherwise a band of the window's colour sits
         // above their gradient on 14 and older.
@@ -113,7 +114,16 @@ class MainActivity : AppCompatActivity() {
                         requestedOrientation = orientationFor(config)
                     }
                     androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.fillMaxSize()) {
+                        val capabilityError by MyspotiRuntime.host.capabilityError.collectAsState()
                         when {
+                            capabilityError != null -> LoginProblemScreen(
+                                onRetry = {
+                                    val provider = android.webkit.WebView.getCurrentWebViewPackage()?.packageName ?: "com.google.android.webview"
+                                    runCatching { startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse("https://play.google.com/store/apps/details?id=$provider"))) }
+                                },
+                                detailRes = R.string.v5_webview_required,
+                                buttonRes = R.string.v5_webview_update,
+                            )
                             showLook -> com.music.spotui.ui.look.LookStep(onNext = {
                                 com.music.spotui.data.preferences.LookPref.setChosen(this@MainActivity); showLook = false
                                 setupNeeded = com.music.spotui.ui.screens.Setup.needed(this@MainActivity)
@@ -127,7 +137,7 @@ class MainActivity : AppCompatActivity() {
                         }
                         // The sign-in page opening (the app's own screen, never a white page) or not coming (an
                         // error with Try again, never a page that stays blank): over whatever is under it.
-                        if (showingLogin) {
+                        if (showingLogin && capabilityError == null) {
                             val load by MyspotiRuntime.host.loginLoad.collectAsState()
                             when {
                                 load == LoginLoad.FAILED || loginProblem -> LoginProblemScreen(onRetry = {
@@ -167,10 +177,7 @@ class MainActivity : AppCompatActivity() {
                         com.music.spotui.extensions.ExtensionConfirmHost()
                         // An extension's sign-in page, in a web view of its own.
                         com.music.spotui.extensions.ExtensionAuthHost()
-                        // Beta and dev builds only: hold the faint dot to copy the recent logs.
-                        if (com.music.spotui.data.api.UpdateChecker.isBeta || app.myspoti.engine.BuildConfig.DEBUG)
-                            com.music.spotui.ui.components.BetaLogButton(
-                                androidx.compose.ui.Modifier.align(androidx.compose.ui.Alignment.BottomEnd))
+                        com.music.spotui.ui.components.V5PrivacyConsentHost()
                         // Picture-in-picture: the clip alone, over the app (which stays composed underneath,
                         // so coming back finds the same screen).
                         if (inPip) com.music.spotui.ui.components.PipVideo()
@@ -188,7 +195,7 @@ class MainActivity : AppCompatActivity() {
         // A new activity while the sign-in page is open (the system let the old one go while the user
         // read the e-mail code): the page is still there and is put back in front as it was left. It
         // used to stay hidden behind the welcome screen, and "Log in" started the flow over.
-        if (!signedIn && MyspotiRuntime.loginRequired.value) {
+        if (!signedIn && MyspotiRuntime.loginRequired.value && MyspotiRuntime.host.capabilityError.value == null) {
             showingLogin = true
             MyspotiRuntime.host.attach(root, visible = true)
         }
@@ -291,7 +298,6 @@ class MainActivity : AppCompatActivity() {
     // The clip player follows the app on screen: paused with its side jobs in the background.
     override fun onStart() {
         // Beta and dev builds only, like the log button: a stable release has no freeze reports to read.
-        if (com.music.spotui.data.api.UpdateChecker.isBeta || app.myspoti.engine.BuildConfig.DEBUG) app.myspoti.host.android.MainThreadWatch.start()
         super.onStart()
         com.music.spotui.video.MusicVideoController.onForeground()
         // The song shown may have been liked or unliked in another app meanwhile.
@@ -306,7 +312,7 @@ class MainActivity : AppCompatActivity() {
         super.onStop()
         // The sign-in is only in memory until the WebView saves it: leaving the app (and being swiped away) must not lose it.
         MyspotiRuntime.host.flushCookies()
-        app.myspoti.host.android.MainThreadWatch.stop()
+        if (!SupfyDefaults.backgroundAllowed.value) com.music.spotui.di.SongPlayer.pause(by = "background preference")
         if (!isChangingConfigurations) com.music.spotui.video.MusicVideoController.onBackground()
     }
 
@@ -320,6 +326,7 @@ class MainActivity : AppCompatActivity() {
 
     /** Spotify's login page, full screen, until the Web Player comes back signed in. */
     private fun showLogin() {
+        if (MyspotiRuntime.host.capabilityError.value != null) return
         showingLogin = true
         MyspotiRuntime.host.attach(root, visible = true)
         MyspotiRuntime.host.openLogin()
@@ -565,7 +572,7 @@ private fun ConnectingScreen() {
 
 /** The sign-in page did not come (or the player did not start after it): what happened, and a way to go again. */
 @androidx.compose.runtime.Composable
-private fun LoginProblemScreen(onRetry: () -> Unit) {
+private fun LoginProblemScreen(onRetry: () -> Unit, detailRes: Int = R.string.login_failed_detail, buttonRes: Int = R.string.retry_button) {
     Column(
         Modifier.fillMaxSize().background(com.music.spotui.ui.theme.AppBackground).systemBarsPadding().padding(28.dp),
         verticalArrangement = Arrangement.Center,
@@ -573,14 +580,14 @@ private fun LoginProblemScreen(onRetry: () -> Unit) {
     ) {
         Text(stringResource(R.string.login_failed_title), color = com.music.spotui.ui.theme.AppText, fontFamily = com.music.spotui.ui.theme.AppSans,
             fontWeight = FontWeight.Bold, fontSize = 20.sp, textAlign = TextAlign.Center)
-        Text(stringResource(R.string.login_failed_detail), color = com.music.spotui.ui.theme.AppText.copy(alpha = 0.6f), fontFamily = com.music.spotui.ui.theme.AppSans,
+        Text(stringResource(detailRes), color = com.music.spotui.ui.theme.AppText.copy(alpha = 0.6f), fontFamily = com.music.spotui.ui.theme.AppSans,
             fontSize = 15.sp, lineHeight = 21.sp, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 10.dp, bottom = 28.dp))
         Box(
             contentAlignment = Alignment.Center,
             modifier = Modifier.fillMaxWidth().height(54.dp).clip(RoundedCornerShape(50))
                 .background(com.music.spotui.ui.theme.AppAccent).clickable(onClick = onRetry),
         ) {
-            Text(stringResource(R.string.retry_button), color = Color.Black, fontFamily = com.music.spotui.ui.theme.AppSans,
+            Text(stringResource(buttonRes), color = Color.Black, fontFamily = com.music.spotui.ui.theme.AppSans,
                 fontWeight = FontWeight.Bold, fontSize = 17.sp)
         }
     }

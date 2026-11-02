@@ -430,17 +430,15 @@ class ExtensionRuntime(
 
     /** Why [r] may not be sent (its host, its scheme), or null. */
     private fun refusal(r: HttpRequest): String? {
-        val uri = runCatching { URI(r.url) }.getOrElse { return "http: not a URL: ${r.url}" }
-        val hostName = uri.host?.lowercase() ?: return "http: no host in ${r.url}"
+        val uri = runCatching { URI(r.url) }.getOrElse { return "http: invalid URL" }
+        val hostName = uri.host?.lowercase() ?: return "http: missing host"
         if (isPrivate(hostName)) return "http: $hostName is a local address"
         val listed = manifest.hosts()
         val anyHost = Action.NETWORK_ANY in granted && "*" in listed && Action.NETWORK in declared
         val named = listed.any { it != "*" && hostMatches(it, hostName) }
         if (!(anyHost || (Action.NETWORK.key in granted && Action.NETWORK in declared && named)))
             return "http: $hostName is not in this extension's network hosts"
-        // Plain http only to a host named outright: never through a wildcard or "any host".
-        val exact = listed.any { it == hostName }
-        if (uri.scheme != "https" && !(uri.scheme == "http" && exact)) return "http: https only (or http to a host the manifest names exactly)"
+        if (uri.scheme != "https" || uri.userInfo != null) return "http: HTTPS required without URL credentials"
         return null
     }
 

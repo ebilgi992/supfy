@@ -1,7 +1,7 @@
 package com.music.spotui.data.api
 
 import android.content.Context
-import android.util.Log
+import app.myspoti.host.android.PrivacyLog as Log
 import app.myspoti.engine.R
 import app.myspoti.host.android.MyspotiRuntime
 import com.music.spotui.data.entity.ContextPageModel

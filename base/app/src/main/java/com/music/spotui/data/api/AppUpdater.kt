@@ -1,5 +1,7 @@
 package com.music.spotui.data.api
 
+import app.myspoti.host.android.PrivacyLog
+import app.myspoti.engine.R
 import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -14,6 +16,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.HttpUrl.Companion.toHttpUrl
 import java.io.File
 import java.util.concurrent.TimeUnit
 
@@ -37,9 +40,9 @@ object AppUpdater {
     private val _state = MutableStateFlow<State>(State.Idle)
     val state: StateFlow<State> = _state
 
-    private const val ACTION = "app.myspoti.UPDATE_STATUS"
+    private const val ACTION = "com.supfy.app.UPDATE_STATUS"
     private val http by lazy {
-        OkHttpClient.Builder().connectTimeout(20, TimeUnit.SECONDS).readTimeout(60, TimeUnit.SECONDS).build()
+        app.myspoti.extensions.SafeNet.client.newBuilder().connectTimeout(20, TimeUnit.SECONDS).readTimeout(60, TimeUnit.SECONDS).build()
     }
 
     /** Android lets this app install packages (the "Install unknown apps" switch). */
@@ -58,16 +61,17 @@ object AppUpdater {
         val app = context.applicationContext
         if (!canInstall(app)) { _state.value = State.NeedsPermission; return }
         _state.value = State.Downloading(-1f)
-        val apk = File(File(app.cacheDir, "updates"), "myspoti-${release.version}.apk")
+        val apk = File(File(app.cacheDir, "updates"), "supfy-update.apk")
         val result = runCatching {
             download(release, apk)
+            verifyApk(app, apk)
             install(app, apk)
         }
         // The installer session holds its own copy once committed; a failed download left a partial one.
         runCatching { apk.delete() }
         result.exceptionOrNull()?.let {
-            android.util.Log.w("AppUpdater", "update failed", it)
-            _state.value = State.Failed(it.message ?: it.javaClass.simpleName)
+            PrivacyLog.w("AppUpdater", "update verification or download failed")
+            _state.value = State.Failed(context.getString(R.string.v5_update_failed))
         }
     }
 
@@ -79,7 +83,9 @@ object AppUpdater {
     private suspend fun download(release: UpdateChecker.Release, file: File): Unit = withContext(Dispatchers.IO) {
         val dir = file.parentFile!!.apply { mkdirs() }
         dir.listFiles()?.forEach { it.delete() }
-        http.newCall(Request.Builder().url(release.apkUrl).build()).execute().use { r ->
+        require(UpdateTrustPolicy.releaseUrl(release.pageUrl) && UpdateTrustPolicy.assetUrl(release.apkUrl)) { "Untrusted update source" }
+        require(release.sha256.matches(Regex("[0-9a-fA-F]{64}"))) { "Missing update checksum" }
+        trustedDownload(release.apkUrl).use { r ->
             if (!r.isSuccessful) throw java.io.IOException("HTTP ${r.code}")
             val total = r.body.contentLength()
             if (total > MAX_APK_BYTES) throw java.io.IOException("the download is too big ($total bytes)")
@@ -102,7 +108,43 @@ object AppUpdater {
                 }
             }
             if (total > 0 && done != total) throw java.io.IOException("download cut at $done / $total bytes")
+            val digest = java.security.MessageDigest.getInstance("SHA-256")
+            file.inputStream().use { input -> val buffer = ByteArray(64 * 1024); while (true) { val count = input.read(buffer); if (count < 0) break; digest.update(buffer, 0, count) } }
+            val actual = digest.digest().joinToString("") { "%02x".format(it) }
+            require(UpdateTrustPolicy.checksum(actual, release.sha256)) { "Update checksum mismatch" }
         }
+    }
+
+    /** Every redirect is checked before a connection; app credentials/cookies are never attached. */
+    private fun trustedDownload(initial: String): okhttp3.Response {
+        var url = initial.toHttpUrl()
+        repeat(6) {
+            require(url.isHttps && url.username.isEmpty() && url.password.isEmpty() && url.port == 443 && url.host in setOf(
+                "github.com", "release-assets.githubusercontent.com", "objects.githubusercontent.com", "github-releases.githubusercontent.com"
+            )) { "Untrusted update redirect" }
+            val response = http.newCall(Request.Builder().url(url).build()).execute()
+            if (response.code !in setOf(301, 302, 303, 307, 308)) return response
+            val next = response.header("Location")?.let(url::resolve)
+            response.close()
+            url = requireNotNull(next) { "Invalid update redirect" }
+        }
+        error("Too many update redirects")
+    }
+
+    private fun verifyApk(context: Context, apk: File) {
+        val flags = if (Build.VERSION.SDK_INT >= 28) android.content.pm.PackageManager.GET_SIGNING_CERTIFICATES else android.content.pm.PackageManager.GET_SIGNATURES
+        @Suppress("DEPRECATION")
+        val installed = context.packageManager.getPackageInfo(context.packageName, flags)
+        @Suppress("DEPRECATION")
+        val candidate = requireNotNull(context.packageManager.getPackageArchiveInfo(apk.absolutePath, flags)) { "Invalid APK" }
+        fun signers(info: android.content.pm.PackageInfo): Set<String> {
+            @Suppress("DEPRECATION")
+            val signatures = if (Build.VERSION.SDK_INT >= 28) info.signingInfo?.apkContentsSigners else info.signatures
+            return signatures.orEmpty().map { signature -> java.security.MessageDigest.getInstance("SHA-256").digest(signature.toByteArray()).joinToString("") { "%02x".format(it) } }.toSet()
+        }
+        @Suppress("DEPRECATION")
+        fun version(info: android.content.pm.PackageInfo): Long = if (Build.VERSION.SDK_INT >= 28) info.longVersionCode else info.versionCode.toLong()
+        require(context.packageName == UpdateTrustPolicy.PACKAGE && UpdateTrustPolicy.identity(candidate.packageName, version(candidate), version(installed), signers(candidate), signers(installed))) { "Update identity verification failed" }
     }
 
     /** Streams the APK into an installer session; [StatusReceiver] gets the outcome. */
@@ -112,6 +154,7 @@ object AppUpdater {
         val params = PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL).apply {
             setAppPackageName(context.packageName)
             setSize(apk.length())
+            if (Build.VERSION.SDK_INT >= 31) setRequireUserAction(PackageInstaller.SessionParams.USER_ACTION_REQUIRED)
             // User action stays required (the default): without the
             // UPDATE_PACKAGES_WITHOUT_USER_ACTION permission a NOT_REQUIRED flag
             // would be ignored anyway; the confirmation is the user's last check.
@@ -120,7 +163,7 @@ object AppUpdater {
         var committed = false
         try {
             installer.openSession(id).use { session ->
-                session.openWrite("myspoti.apk", 0, apk.length()).use { out ->
+                session.openWrite("supfy.apk", 0, apk.length()).use { out ->
                     apk.inputStream().use { it.copyTo(out) }
                     session.fsync(out)
                 }
@@ -153,7 +196,7 @@ object AppUpdater {
                 PackageInstaller.STATUS_SUCCESS -> _state.value = State.Idle
                 PackageInstaller.STATUS_FAILURE_ABORTED -> _state.value = State.Idle
                 else -> _state.value = State.Failed(
-                    intent.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE) ?: "install status $status",
+                    "Update installation failed",
                 )
             }
         }

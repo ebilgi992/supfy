@@ -33,7 +33,7 @@ object GeniusMeaning {
     private const val BASE = "https://genius.com/api"
     private const val KEEP = 12
     private val json = Json { ignoreUnknownKeys = true }
-    private val http by lazy { OkHttpClient.Builder().callTimeout(12, TimeUnit.SECONDS).build() }
+    private val http by lazy { app.myspoti.extensions.SafeNet.client.newBuilder().callTimeout(12, TimeUnit.SECONDS).build() }
     /** title|artist → the meaning, or null when Genius has none (not asked again this session). */
     private val recent = java.util.Collections.synchronizedMap(object : LinkedHashMap<String, Meaning?>(KEEP, 0.75f, true) {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Meaning?>?) = size > KEEP
@@ -43,6 +43,7 @@ object GeniusMeaning {
 
     /** null: no song on Genius matches, or it says nothing about it. Throws when Genius can't be reached. */
     suspend fun find(title: String, artist: String): Meaning? = withContext(Dispatchers.IO) {
+        if (!com.music.spotui.privacy.ConsentPolicy.await(com.music.spotui.privacy.ConsentPolicy.Feature.GENIUS_MEANING)) return@withContext null
         val k = key(title, artist)
         if (recent.containsKey(k)) return@withContext recent[k]
         val cleanTitle = clean(title)
@@ -100,6 +101,7 @@ object GeniusMeaning {
      * the light bulb and the underlined lines are there the moment the lyrics open.
      */
     fun prefetch(trackId: String, title: String, artist: String, lang: String) {
+        if (!com.music.spotui.privacy.ConsentPolicy.isGranted(com.music.spotui.privacy.ConsentPolicy.Feature.GENIUS_MEANING)) return
         if (trackId.isBlank() || title.isBlank() || current.value?.first == trackId) return
         if (prefetchFor == trackId && prefetchJob?.isActive == true) return
         prefetchFor = trackId
@@ -107,7 +109,7 @@ object GeniusMeaning {
         prefetchJob = scope.launch {
             val m = runCatching { find(title, artist) }.getOrNull() ?: return@launch
             current.value = trackId to m
-            if (!com.music.spotui.data.DataSaver.metered) pretranslate(m, lang)
+            if (!com.music.spotui.data.DataSaver.metered && com.music.spotui.privacy.ConsentPolicy.isGranted(com.music.spotui.privacy.ConsentPolicy.Feature.TRANSLATION)) pretranslate(m, lang)
         }
     }
 
@@ -129,13 +131,13 @@ object GeniusMeaning {
      * [translation]. The first answer for [m] also says whether Genius wrote it in [lang] already.
      */
     fun requestTranslation(m: Meaning, text: String, lang: String) {
-        scope.launch(translateSlots) { translateNow(m, text, lang) }
+        scope.launch(translateSlots) { runCatching { translateNow(m, text, lang) } }
     }
 
     /** Whether [text] is being translated into [lang] right now. */
     fun isTranslating(text: String, lang: String): Boolean = inFlight["$lang|$text"] == true
 
-    private fun translateNow(m: Meaning, text: String, lang: String) {
+    private suspend fun translateNow(m: Meaning, text: String, lang: String) {
         val k = "$lang|$text"
         synchronized(inFlight) {
             if (translated.containsKey(k) || sameLanguage["${m.url}|$lang"] == true || inFlight[k] == true) return
@@ -151,15 +153,17 @@ object GeniusMeaning {
 
     /** Everything of [m] translated in the background, the "About" first, then the lines in order. */
     fun pretranslate(m: Meaning, lang: String) {
+        if (!com.music.spotui.privacy.ConsentPolicy.isGranted(com.music.spotui.privacy.ConsentPolicy.Feature.TRANSLATION)) return
         val texts = listOfNotNull(m.about) + m.notes.map { it.explanation }
         scope.launch(translateSlots) {
             // The first answer says the language: nothing more is sent when it is the reader's.
-            translateNow(m, texts.firstOrNull() ?: return@launch, lang)
+            runCatching { translateNow(m, texts.firstOrNull() ?: return@launch, lang) }
             if (sameLanguage["${m.url}|$lang"] == false) texts.drop(1).forEach { requestTranslation(m, it, lang) }
         }
     }
 
     private fun get(url: String): JsonObject? {
+        if (!com.music.spotui.privacy.ConsentPolicy.awaitBlocking(com.music.spotui.privacy.ConsentPolicy.Feature.GENIUS_MEANING)) return null
         val req = Request.Builder().url(url)
             .header("User-Agent", "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Mobile Safari/537.36")
             .header("Accept", "application/json").build()

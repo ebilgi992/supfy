@@ -67,7 +67,6 @@ import com.music.spotui.ui.immersive.Immersive
 import com.music.spotui.ui.look.rememberReduceMotion
 import com.music.spotui.ui.navigation.Routes
 import com.music.spotui.ui.screens.installedRoute
-import com.music.spotui.ui.screens.shareDiagnosticReport
 import kotlinx.coroutines.launch
 
 /** Where the Immersive Settings are: the list of categories, one category, or a choice inside it. */
@@ -670,6 +669,7 @@ private fun AppPage(navController: NavController, back: () -> Unit) {
     val scope = rememberCoroutineScope()
     val check = com.music.spotui.data.api.rememberUpdateCheckState(ctx)
     ImmersivePage(title = stringResource(R.string.settings_section_app), onBack = back) {
+        item(key = "v5-privacy") { com.music.spotui.ui.components.V5PrivacySettings() }
         immersiveGroup("updates") {
             row {
                 ImmersiveSwitchRow(stringResource(R.string.settings_auto_update_title), checked = com.music.spotui.data.preferences.AutoUpdateCheckPref.on,
@@ -707,16 +707,7 @@ private fun AppPage(navController: NavController, back: () -> Unit) {
                     },
                 )
             }
-            row {
-                ImmersiveGroupRow(
-                    stringResource(R.string.diagnostic_export_title), detail = stringResource(R.string.diagnostic_export_detail),
-                    onClick = {
-                        val file = runCatching { app.myspoti.host.android.Logbook.export(ctx) }.getOrNull()
-                        if (file != null) shareDiagnosticReport(ctx, file)
-                        else android.widget.Toast.makeText(ctx, ctx.getString(R.string.diagnostic_export_failed), android.widget.Toast.LENGTH_SHORT).show()
-                    },
-                )
-            }
+
         }
     }
 }

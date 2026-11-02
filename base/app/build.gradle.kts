@@ -22,22 +22,22 @@ android {
     // signed with the first key, as "Myspoti Beta"; releases are "app.myspoti.stable",
     // signed with their own key, as "Myspoti".
     // Local builds (no version given) are on the beta side, like the phone test builds.
-    val version = (findProperty("appVersionName") as String?) ?: "2.3.0"
+    val version = (findProperty("appVersionName") as String?) ?: "1.0.0-v5"
     // "-beta" as in UpdateChecker.isBeta, one predicate for the app id, the label and the log stripping.
-    val beta = findProperty("appVersionName") == null || version.contains("-beta")
+    val beta = version.contains("-beta")
     defaultConfig {
-        applicationId = if (beta) "app.myspoti" else "app.myspoti.stable"
-        manifestPlaceholders["appLabel"] = if (beta) "Myspoti Beta" else "Myspoti"
+        applicationId = "com.supfy.app"
+        manifestPlaceholders["appLabel"] = "Supfy"
         // The adb command line (com.music.spotui.cli): betas and debug builds only.
-        manifestPlaceholders["cliEnabled"] = beta.toString()
+        manifestPlaceholders["cliEnabled"] = "false"
         minSdk = 29
         targetSdk = 36
         // CI release builds pass the tag's version (-PappVersionName / -PappVersionCode).
-        versionCode = (findProperty("appVersionCode") as String?)?.toIntOrNull() ?: 200
+        versionCode = (findProperty("appVersionCode") as String?)?.toIntOrNull() ?: 1029
         versionName = version
         // GitHub "owner/repo" whose releases the app checks for updates; empty = off
         // (local builds). CI sets it to the repository it builds.
-        buildConfigField("String", "UPDATE_REPO", "\"${(findProperty("updateRepo") as String?) ?: System.getenv("MYSPOTI_UPDATE_REPO") ?: ""}\"")
+        buildConfigField("String", "UPDATE_REPO", "\"ebilgi992/supfy\"")
         ndk {
             // -Pabis=arm64-v8a: a smaller test APK for one phone.
             abiFilters += (findProperty("abis") as String?)?.split(",") ?: listOf("arm64-v8a", "armeabi-v7a")
@@ -52,20 +52,20 @@ android {
     }
 
     // Release key from the CI secrets (env), else keystore/keystore.properties.
-    val envStore = System.getenv("MYSPOTI_KEYSTORE")
+    val envStore = System.getenv("SUPFY_KEYSTORE")
     val hasReleaseKey = envStore != null || keystorePropertiesFile.exists()
     // A stable release (a version without "-beta", given by CI) is never signed with the debug key:
     // without the release key the build stops. Local builds (no version) and -PoverDev are not stable releases.
     val stableRelease = !beta && findProperty("overDev") == null
     if (stableRelease && !hasReleaseKey && gradle.startParameter.taskNames.any { Regex("(assemble|bundle|package|install)Release").containsMatchIn(it) })
-        throw GradleException("A stable release needs the release key: set MYSPOTI_KEYSTORE (CI) or add keystore/keystore.properties.")
+        throw GradleException("A stable release needs the release key: set SUPFY_KEYSTORE (CI) or add keystore/keystore.properties.")
     signingConfigs {
         create("release") {
             if (envStore != null) {
                 storeFile = file(envStore)
-                storePassword = System.getenv("MYSPOTI_KEYSTORE_PASSWORD")
-                keyAlias = System.getenv("MYSPOTI_KEY_ALIAS")
-                keyPassword = System.getenv("MYSPOTI_KEY_PASSWORD")
+                storePassword = System.getenv("SUPFY_KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("SUPFY_KEY_ALIAS")
+                keyPassword = System.getenv("SUPFY_KEY_PASSWORD")
             } else if (keystorePropertiesFile.exists()) {
                 storeFile = rootProject.file("keystore/${keystoreProperties.getProperty("storeFile")}")
                 storePassword = keystoreProperties.getProperty("storePassword")
@@ -78,9 +78,9 @@ android {
     buildTypes {
         debug {
             // Installs next to the release apps (own data, own sign-in).
-            applicationIdSuffix = ".dev"
-            manifestPlaceholders["appLabel"] = "Myspoti dev"
-            manifestPlaceholders["cliEnabled"] = "true"
+            // Supfy update compatibility: no applicationId suffix.
+            manifestPlaceholders["appLabel"] = "Supfy"
+            manifestPlaceholders["cliEnabled"] = "false"
         }
         release {
             // Real key when provided (CI releases); otherwise the debug key, so a local
@@ -89,8 +89,8 @@ android {
             // -PoverDev: the optimised build under the dev app's id, to measure the speed of a
             // beta on the test phone without replacing the signed beta installed there.
             if (findProperty("overDev") != null) {
-                applicationIdSuffix = ".dev"
-                manifestPlaceholders["appLabel"] = "Myspoti dev"
+                // Supfy update compatibility: no applicationId suffix.
+                manifestPlaceholders["appLabel"] = "Supfy"
             }
             isMinifyEnabled = true
             isShrinkResources = true

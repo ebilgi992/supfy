@@ -3,7 +3,7 @@ package com.music.spotui.data.api
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.Dispatchers
-import android.util.Log
+import app.myspoti.host.android.PrivacyLog as Log
 import app.myspoti.api.Album
 import app.myspoti.api.Artist
 import app.myspoti.api.Image

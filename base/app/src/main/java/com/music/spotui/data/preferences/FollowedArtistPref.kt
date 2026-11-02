@@ -1,23 +1,13 @@
+@file:Suppress("UNUSED_PARAMETER")
+
 package com.music.spotui.data.preferences
 
 import android.content.Context
 
-// Local record of artists followed from the app (keyed by Spotify artist id),
-// so the Follow button keeps its state across visits. The follow itself is also
-// mirrored to the real Spotify account via SpotifySync.
+private val followedArtists = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
 
-fun addFollowedArtist(context: Context, artistId: String, name: String) {
-    if (artistId.isBlank()) return
-    context.getSharedPreferences("FollowedArtists", Context.MODE_PRIVATE)
-        .edit().putString(artistId, name).apply()
-}
-
-fun removeFollowedArtist(context: Context, artistId: String) {
-    if (artistId.isBlank()) return
-    context.getSharedPreferences("FollowedArtists", Context.MODE_PRIVATE)
-        .edit().remove(artistId).apply()
-}
-
-fun isArtistFollowed(context: Context, artistId: String): Boolean =
-    artistId.isNotBlank() &&
-        context.getSharedPreferences("FollowedArtists", Context.MODE_PRIVATE).contains(artistId)
+/** Follow state is kept only for this session; names are not retained by this helper. */
+fun addFollowedArtist(context: Context, artistId: String, name: String) { if (artistId.isNotBlank()) followedArtists.add(artistId) }
+fun removeFollowedArtist(context: Context, artistId: String) { followedArtists.remove(artistId) }
+fun isArtistFollowed(context: Context, artistId: String): Boolean = artistId.isNotBlank() && artistId in followedArtists
+internal fun clearFollowedArtistMemory() { followedArtists.clear() }

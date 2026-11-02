@@ -1,0 +1,6 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="action_playback_mirror">Spotify’ı burada sessiz çalmaya devam ettirir; dinlemeleri hesabında sayar</string>
+    <string name="action_attest">Bunun Supfy olduğunu doğrula</string>
+    <string name="mirror_indicator">Spotify, %1$s tarafından yansıtılıyor</string>
+</resources>

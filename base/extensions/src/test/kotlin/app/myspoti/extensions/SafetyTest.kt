@@ -58,7 +58,7 @@ class SafetyTest {
     }
 
     @Test fun basicHttpNeverConnectsToLocalAddresses() {
-        listOf("http://127.0.0.1:9/", "http://2130706433:9/", "http://0x7f.1:9/", "http://[::1]:9/", "http://localhost:9/", "http://[::ffff:127.0.0.1]:9/").forEach {
+        listOf("https://127.0.0.1:9/", "https://2130706433:9/", "https://0x7f.1:9/", "https://[::1]:9/", "https://localhost:9/", "https://[::ffff:127.0.0.1]:9/").forEach {
             try { BasicHttp.send(HttpRequest(it, timeout = 1_000), "t"); fail("$it was sent") } catch (e: java.io.IOException) { assertTrue(e.message, e.message!!.contains("local")) }
         }
     }

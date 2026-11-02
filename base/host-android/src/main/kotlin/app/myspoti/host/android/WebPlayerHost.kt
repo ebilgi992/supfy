@@ -85,6 +85,14 @@ class WebPlayerHost(private val context: Context) : BridgeHost {
     /** How the sign-in page is opening: the UI covers it while it loads and shows an error if it fails. */
     val loginLoad: StateFlow<LoginLoad> = _loginLoad
 
+    private val _capabilityError = MutableStateFlow<String?>(null)
+    /** Stable, non-sensitive error code when this WebView cannot provide a secure native channel. */
+    val capabilityError: StateFlow<String?> = _capabilityError
+
+    private var providerFlow = false
+    private var sessionEpoch = 0L
+    private val pendingEvaluations = mutableSetOf<CompletableDeferred<String?>>()
+
     /** Fires after each Web Player page load; the API injects the bridge then. */
     var onPageLoaded: (() -> Unit)? = null
 
@@ -104,7 +112,7 @@ class WebPlayerHost(private val context: Context) : BridgeHost {
 
     init {
         // Debug builds only: lets desktop tools (chrome://inspect, CDP) look at the page.
-        if (debuggable) WebView.setWebContentsDebuggingEnabled(true)
+        WebView.setWebContentsDebuggingEnabled(debuggable)
         watchNetwork()
     }
 
@@ -135,15 +143,15 @@ class WebPlayerHost(private val context: Context) : BridgeHost {
 
     private lateinit var relay: ControlRelay
 
-    /** The guarded fallback channel of the bridge's messages, when the WebView has no web message listener. */
-    private var hostChannel: PlayerChannel? = null
-
-    /** Hands the page that starts its secret for the fallback channels; the relay's script comes after. */
-    private fun armChannels(view: WebView, renew: Boolean) {
-        for (channel in listOfNotNull(hostChannel, relay.channel)) {
-            if (renew) channel.newPage()
-            view.evaluateJavascript(channel.shim(), null)
+    /** Invalidate callbacks before crossing a document or account boundary. Main thread only. */
+    private fun invalidatePage() {
+        sessionEpoch++
+        if (::relay.isInitialized) relay.invalidate()
+        pendingEvaluations.forEach {
+            it.completeExceptionally(app.myspoti.spotify.bridge.BridgeException("PLAYER_DOCUMENT_CHANGED"))
         }
+        pendingEvaluations.clear()
+        onPageStarting?.invoke()
     }
 
     /** Fetches the audio files itself: the last request the WebView would stamp with its package. */
@@ -162,6 +170,9 @@ class WebPlayerHost(private val context: Context) : BridgeHost {
         settings.apply {
             javaScriptEnabled = true
             domStorageEnabled = true
+            allowFileAccess = false
+            allowContentAccess = false
+            mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
             mediaPlaybackRequiresUserGesture = false
             userAgentString = fingerprint.userAgent
             cacheMode = WebSettings.LOAD_DEFAULT
@@ -202,14 +213,18 @@ class WebPlayerHost(private val context: Context) : BridgeHost {
         // Playback control requests leave from the app, without the WebView's X-Requested-With.
         relay = ControlRelay(this, fingerprint).also {
             it.onDeviceRegistered = { drmAsked = true; main.removeCallbacks(drmWatch) }
-            it.install()
+            if (androidx.webkit.WebViewFeature.isFeatureSupported(androidx.webkit.WebViewFeature.WEB_MESSAGE_LISTENER)) {
+                it.install()
+            } else {
+                _capabilityError.value = WebPlayerSecurityPolicy.SECURE_MESSAGE_CHANNEL_UNAVAILABLE
+            }
         }
         val webView = this
         CookieManager.getInstance().apply {
             setAcceptCookie(true)
-            setAcceptThirdPartyCookies(webView, true)
+            setAcceptThirdPartyCookies(webView, false)
         }
-        hostChannel = exposeToPlayer("MyspotiHost") { json -> _messages.tryEmit(json) }
+        exposeToPlayer("MyspotiHost") { json -> _messages.tryEmit(json) }
         webChromeClient = object : WebChromeClient() {
             override fun onConsoleMessage(message: android.webkit.ConsoleMessage): Boolean {
                 if (message.messageLevel() == android.webkit.ConsoleMessage.MessageLevel.ERROR ||
@@ -223,10 +238,12 @@ class WebPlayerHost(private val context: Context) : BridgeHost {
             }
 
             override fun onPermissionRequest(request: PermissionRequest) {
-                Logbook.log("permission request: ${request.resources.joinToString()}")
-                if (PermissionRequest.RESOURCE_PROTECTED_MEDIA_ID in request.resources) { drmAsked = true; main.removeCallbacks(drmWatch) }
-                val allowed = request.resources.filter { it == PermissionRequest.RESOURCE_PROTECTED_MEDIA_ID }
-                if (allowed.isNotEmpty()) request.grant(allowed.toTypedArray()) else request.deny()
+                val allowed = WebPlayerSecurityPolicy.allowedPermissions(request.origin.toString(), request.resources.toList())
+                if (allowed.isNotEmpty() && WebPlayerSecurityPolicy.isTrustedPlayer(webView.url)) {
+                    drmAsked = true
+                    main.removeCallbacks(drmWatch)
+                    request.grant(allowed.toTypedArray())
+                } else request.deny()
             }
         }
         webViewClient = object : WebViewClient() {
@@ -278,6 +295,7 @@ class WebPlayerHost(private val context: Context) : BridgeHost {
 
             override fun onPageStarted(view: WebView, url: String, favicon: Bitmap?) {
                 Logbook.log("page start ${Logbook.noQuery(url).take(120)}")
+                invalidatePage()
                 mainFrameFailed = false
                 // A load that never ends (measured: a reload's document request answered nothing
                 // for 9 minutes, the page stayed "loading", empty, without the bridge).
@@ -290,7 +308,12 @@ class WebPlayerHost(private val context: Context) : BridgeHost {
                 if (!isLoginPage(url) && _loginLoad.value != LoginLoad.NONE && _loginLoad.value != LoginLoad.FAILED) setLoginLoad(LoginLoad.NONE)
                 _url.value = url
                 _loginRequired.value = isLoginPage(url)
-                if (url.startsWith(PLAYER_URL)) { drmAsked = false; licenseAnswersLogged = 0; onPageStarting?.invoke(); armChannels(view, renew = true); relay.injectNow() }
+                if (WebPlayerSecurityPolicy.isTrustedPlayer(url)) {
+                    providerFlow = false
+                    drmAsked = false
+                    licenseAnswersLogged = 0
+                    if (_capabilityError.value == null) relay.injectNow()
+                }
                 if (PLAYER_ROOT.matches(url) && url != roots.getString(ROOT_KEY, null)) roots.edit().putString(ROOT_KEY, url).apply()
             }
 
@@ -334,7 +357,7 @@ class WebPlayerHost(private val context: Context) : BridgeHost {
             override fun onPageFinished(view: WebView, url: String) {
                 Logbook.log("page finished ${Logbook.noQuery(url).take(120)}")
                 main.removeCallbacks(loadTimeout)
-                if (url.startsWith(PLAYER_URL) && !mainFrameFailed) { pageFailures = 0; main.removeCallbacks(retryPlayerPage) }
+                if (WebPlayerSecurityPolicy.isTrustedPlayer(url) && !mainFrameFailed) { pageFailures = 0; main.removeCallbacks(retryPlayerPage) }
                 _url.value = url
                 _loginRequired.value = isLoginPage(url)
                 // Finished is not painted: Spotify's sign-in is a script-built page. Looked at until it has content.
@@ -343,26 +366,22 @@ class WebPlayerHost(private val context: Context) : BridgeHost {
                     main.removeCallbacks(loginProbe)
                     main.postDelayed(loginProbe, LoginLoad.FIRST_PROBE_MS)
                 }
-                if (url.startsWith(PLAYER_URL)) {
-                    // Again, same secret: the page start's call may have run before the new document existed.
-                    armChannels(view, renew = false)
+                if (WebPlayerSecurityPolicy.isTrustedPlayer(url) && _capabilityError.value == null) {
                     onPageLoaded?.invoke()
                     if (!drmAsked) { main.removeCallbacks(drmWatch); main.postDelayed(drmWatch, DRM_WATCH_MS) }
                 }
             }
 
             override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
-                val host = request.url.host.orEmpty()
-                // Stay on Spotify's own pages (player, login, consent); open nothing else.
-                // Exact or subdomain match: "evilspotify.com" must not count as Spotify.
-                val allowed = listOf("spotify.com", "spotify.net", "scdn.co", "google.com", "facebook.com", "apple.com")
-                    .any { host == it || host.endsWith(".$it") }
-                // And only over https: a plain http link to those hosts, or any other scheme, stays out.
-                // The page's own loads (loadUrl, about:blank) do not come through here.
-                val secure = request.url.scheme == "https"
-                // A sign-in step that goes nowhere looks like a page that does nothing: say which host was refused.
-                if (!allowed || !secure) Logbook.log("navigation refused: ${host.ifEmpty { request.url.scheme.orEmpty() }}${if (allowed && !secure) " (${request.url.scheme}, not https)" else ""}")
-                return !(allowed && secure)
+                val target = request.url.toString()
+                val startsProvider = request.isForMainFrame && request.hasGesture() && isLoginPage(view.url)
+                val allowed = WebPlayerSecurityPolicy.allowNavigation(target, request.isForMainFrame, providerFlow || startsProvider)
+                if (allowed && startsProvider) providerFlow = true
+                if (!allowed) {
+                    if (request.isForMainFrame) providerFlow = false
+                    Logbook.log("navigation refused")
+                }
+                return !allowed
             }
 
             /**
@@ -377,7 +396,7 @@ class WebPlayerHost(private val context: Context) : BridgeHost {
                 if (gone !== this@WebPlayerHost.view) return true
                 Logbook.log("renderer gone (crashed=${detail.didCrash()}): rebuilding the page")
                 // The page is gone with it: the calls it had fail now, not each after its timeout.
-                onPageStarting?.invoke()
+                invalidatePage()
                 rebuild()
                 return true
             }
@@ -419,7 +438,7 @@ class WebPlayerHost(private val context: Context) : BridgeHost {
     }
 
     /** Spotify's sign-in pages and the "Continue with Google / Facebook / Apple" ones (see [LoginLoad.isLoginUrl]). */
-    private fun isLoginPage(url: String?) = LoginLoad.isLoginUrl(url)
+    private fun isLoginPage(url: String?) = WebPlayerSecurityPolicy.isLoginPage(url)
 
     fun load() = load(firstWatchMs = LOAD_WATCH_MS)
 
@@ -551,23 +570,33 @@ class WebPlayerHost(private val context: Context) : BridgeHost {
         // A player retry or load timeout still pending would replace the sign-in page just asked for.
         main.removeCallbacks(retryPlayerPage)
         main.removeCallbacks(loadTimeout)
+        invalidatePage()
+        providerFlow = false
         beginLoginLoad()
         view.loadUrl(LOGIN_URL)
     }
 
     /** Signs out of Spotify in this WebView, then shows the login page. */
-    fun logout() = main.post { roots.edit().remove(SIGNED_IN_KEY).apply(); beginLoginLoad(); cleanSlate { view.loadUrl(LOGIN_URL) } }
+    fun logout() = main.post {
+        invalidatePage()
+        providerFlow = false
+        view.stopLoading()
+        main.removeCallbacks(retryPlayerPage)
+        main.removeCallbacks(loadTimeout)
+        roots.edit().remove(SIGNED_IN_KEY).apply()
+        beginLoginLoad()
+        cleanSlate { view.loadUrl(LOGIN_URL) }
+    }
 
-    /**
-     * "Try again" after the sign-in page failed: from nothing. A failed attempt may have left half
-     * a sign-in behind (the cookies and storage of a flow that never finished), and Spotify's page
-     * answers "Oops! Something went wrong" to a flow it cannot match with its own state.
-     */
-    fun retryLogin() = main.post { beginLoginLoad(); cleanSlate { view.loadUrl(LOGIN_URL) } }
+    /** Retry preserves the existing account session and browser storage. */
+    fun retryLogin() = openLogin()
 
     private fun cleanSlate(then: () -> Unit) {
+        val requestedEpoch = sessionEpoch
         CookieManager.getInstance().removeAllCookies {
             main.post {
+                if (requestedEpoch != sessionEpoch) return@post
+                CookieManager.getInstance().flush()
                 // Web storage too: localStorage/IndexedDB hold the player's session
                 // state, and clearCache(true) also drops the disk cache (false kept it).
                 android.webkit.WebStorage.getInstance().deleteAllData()
@@ -619,8 +648,9 @@ class WebPlayerHost(private val context: Context) : BridgeHost {
     private val loginTimeout = Runnable {
         if (_loginLoad.value != LoginLoad.LOADING) return@Runnable
         // A page can show everything and still be "loading" (a stuck script or tracker): content decides.
+        val epoch = sessionEpoch
         view.evaluateJavascript(LoginLoad.PAINT_JS) { answer ->
-            if (_loginLoad.value != LoginLoad.LOADING) return@evaluateJavascript
+            if (epoch != sessionEpoch || _loginLoad.value != LoginLoad.LOADING) return@evaluateJavascript
             if (LoginLoad.painted(answer) && isLoginPage(view.url)) setLoginLoad(LoginLoad.SHOWN)
             else loginFailed("no content after ${LoginLoad.TIMEOUT_MS / 1000} s")
         }
@@ -629,8 +659,9 @@ class WebPlayerHost(private val context: Context) : BridgeHost {
     /** Asks the page how much it shows; empty after its load finished means a page that did not run. */
     private val loginProbe: Runnable = Runnable {
         if (_loginLoad.value != LoginLoad.LOADING) return@Runnable
+        val epoch = sessionEpoch
         view.evaluateJavascript(LoginLoad.PAINT_JS) { answer ->
-            if (_loginLoad.value != LoginLoad.LOADING) return@evaluateJavascript
+            if (epoch != sessionEpoch || _loginLoad.value != LoginLoad.LOADING) return@evaluateJavascript
             if (LoginLoad.painted(answer)) { setLoginLoad(LoginLoad.SHOWN); return@evaluateJavascript }
             when (LoginLoad.blank(++loginProbes, loginReloaded)) {
                 LoginLoad.Blank.WAIT -> main.postDelayed(loginProbe, LoginLoad.PROBE_EVERY_MS)
@@ -648,19 +679,38 @@ class WebPlayerHost(private val context: Context) : BridgeHost {
     override suspend fun evaluate(script: String) {
         val done = CompletableDeferred<Unit>()
         main.post {
-            runCatching { view.evaluateJavascript(script, null) }
-                .onFailure { Logbook.log("script not run in the page: ${it.message}") }
-            done.complete(Unit)
+            val error = _capabilityError.value
+            if (error != null || !WebPlayerSecurityPolicy.isTrustedPlayer(view.url)) {
+                done.completeExceptionally(app.myspoti.spotify.bridge.BridgeException(error ?: "PLAYER_ORIGIN_REQUIRED"))
+            } else {
+                runCatching { view.evaluateJavascript(script, null) }
+                    .onSuccess { done.complete(Unit) }
+                    .onFailure { done.completeExceptionally(app.myspoti.spotify.bridge.BridgeException("PLAYER_PAGE_UNAVAILABLE")) }
+            }
         }
         done.await()
     }
 
-    /** The page's own answer: a call that never reached the bridge fails now, not after its timeout. */
+    /** Callback results belong only to the document that was evaluated. */
     override suspend fun evaluateValue(script: String): String? {
         val done = CompletableDeferred<String?>()
         main.post {
-            runCatching { view.evaluateJavascript(script) { value -> done.complete(value) } }
-                .onFailure { done.completeExceptionally(app.myspoti.spotify.bridge.BridgeException("page not reachable: ${it.message}")) }
+            val error = _capabilityError.value
+            if (error != null || !WebPlayerSecurityPolicy.isTrustedPlayer(view.url)) {
+                done.completeExceptionally(app.myspoti.spotify.bridge.BridgeException(error ?: "PLAYER_ORIGIN_REQUIRED"))
+                return@post
+            }
+            val epoch = sessionEpoch
+            pendingEvaluations.add(done)
+            runCatching {
+                view.evaluateJavascript(script) { value ->
+                    pendingEvaluations.remove(done)
+                    if (epoch == sessionEpoch) done.complete(value)
+                }
+            }.onFailure {
+                pendingEvaluations.remove(done)
+                done.completeExceptionally(app.myspoti.spotify.bridge.BridgeException("PLAYER_PAGE_UNAVAILABLE"))
+            }
         }
         return done.await()
     }
@@ -730,7 +780,7 @@ class WebPlayerHost(private val context: Context) : BridgeHost {
     fun detach() = main.post { (view.parent as? ViewGroup)?.removeView(view) }
 
     /** Frees the page (data saver, low memory). [load] brings it back. */
-    fun unload() = main.post { loadAsked = false; view.loadUrl("about:blank") }
+    fun unload() = main.post { invalidatePage(); loadAsked = false; view.loadUrl("about:blank") }
 
     companion object {
         /** Logcat tag of the engine: `adb logcat -s Myspoti`. */

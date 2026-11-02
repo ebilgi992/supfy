@@ -1,6 +1,6 @@
 package com.music.spotui.data.api
 
-import android.util.Log
+import app.myspoti.host.android.PrivacyLog as Log
 import org.json.JSONArray
 import java.net.HttpURLConnection
 import java.net.URL
@@ -12,7 +12,7 @@ object LyricTranslate {
 
     data class Result(val lines: List<String>, val sourceLanguage: String?)
 
-    fun detectLanguage(lines: List<String>, targetLang: String): String? {
+    suspend fun detectLanguage(lines: List<String>, targetLang: String): String? {
         val sample = lines.asSequence()
             .map { it.trim() }
             .filter { it.isNotEmpty() && it != "♪" }
@@ -22,7 +22,7 @@ object LyricTranslate {
         return translateText(sample, targetLang)?.sourceLanguage
     }
 
-    fun translateLines(lines: List<String>, targetLang: String): Result? {
+    suspend fun translateLines(lines: List<String>, targetLang: String): Result? {
         if (lines.isEmpty()) return Result(emptyList(), null)
 
         val idx = ArrayList<Int>()
@@ -47,20 +47,19 @@ object LyricTranslate {
 
     private data class Response(val text: String, val sourceLanguage: String?)
 
-    private fun translateText(text: String, targetLang: String): Response? = runCatching {
+    private suspend fun translateText(text: String, targetLang: String): Response? {
+        if (!com.music.spotui.privacy.ConsentPolicy.await(com.music.spotui.privacy.ConsentPolicy.Feature.TRANSLATION)) return null
+        return runCatching {
         com.music.spotui.data.DataSaver.check()
         val q = URLEncoder.encode(text, "UTF-8")
         val tl = URLEncoder.encode(targetLang, "UTF-8")
-        val conn = (URL(
-            "https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=$tl&dt=t&q=$q"
-        ).openConnection() as HttpURLConnection).apply {
-            connectTimeout = 12_000
-            readTimeout = 12_000
-            setRequestProperty("User-Agent", "Mozilla/5.0")
-        }
-        try {
-            if (conn.responseCode !in 200..299) return null
-            val responseBody = conn.inputStream.bufferedReader().use { it.readText() }
+        app.myspoti.extensions.SafeNet.client.newBuilder()
+            .callTimeout(12, java.util.concurrent.TimeUnit.SECONDS).build()
+            .newCall(okhttp3.Request.Builder().url(
+                "https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=$tl&dt=t&q=$q"
+            ).build()).execute().use { response ->
+            if (!response.isSuccessful) return null
+            val responseBody = response.body.string()
             val root = JSONArray(responseBody)
             val chunks = root.optJSONArray(0)
                 ?: return null
@@ -71,11 +70,10 @@ object LyricTranslate {
                 }
             }.ifBlank { return null }
             Response(translated, root.optString(2).ifBlank { null })
-        } finally {
-            conn.disconnect()
         }
     }.getOrElse {
-        Log.e(TAG, "translate failed", it)
+        Log.e(TAG, "translate failed")
         null
+    }
     }
 }

@@ -1,4 +1,7 @@
 #!/bin/sh
+SUPFY_PROJECT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+exec "$SUPFY_PROJECT_DIR/base/gradlew" -p "$SUPFY_PROJECT_DIR/base" "$@"
+
 
 #
 # Copyright © 2015-2021 the original authors.

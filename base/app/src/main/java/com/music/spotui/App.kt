@@ -295,16 +295,10 @@ private fun UpdatePrompt() {
     var release by updateRelease
     val owner = androidx.lifecycle.compose.LocalLifecycleOwner.current
     androidx.compose.runtime.LaunchedEffect(owner) {
-        // Each time the app comes to the foreground (the check itself skips when the last one is
-        // under an hour old), then every 6 h while it stays open. Turned off in Settings: no
-        // automatic check; the manual one there still asks.
+        // One app-open/foreground activation only; the checker enforces opt-in and 24 h.
         owner.lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.STARTED) {
-            while (true) {
-                if (com.music.spotui.data.preferences.AutoUpdateCheckPref.on) {
-                    // The request runs on the IO dispatcher, nothing waits for it.
-                    com.music.spotui.data.api.UpdateChecker.check(context)?.let { release = it }
-                }
-                kotlinx.coroutines.delay(com.music.spotui.data.api.UpdateChecker.PERIODIC_MS)
+            if (com.music.spotui.data.preferences.AutoUpdateCheckPref.on) {
+                com.music.spotui.data.api.UpdateChecker.check(context)?.let { release = it }
             }
         }
     }

@@ -1,6 +1,6 @@
 package com.music.spotui.video
 
-import android.util.Log
+import app.myspoti.host.android.PrivacyLog as Log
 import okhttp3.OkHttpClient
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.schabi.newpipe.extractor.NewPipe
@@ -32,7 +32,12 @@ object YouTubeSource {
     private const val TAG = "MusicVideo"
     private const val UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:128.0) Gecko/20100101 Firefox/128.0"
 
-    val http: OkHttpClient = OkHttpClient.Builder()
+    val http: OkHttpClient = app.myspoti.extensions.SafeNet.client.newBuilder()
+        .addInterceptor { chain ->
+            if (!com.music.spotui.privacy.ConsentPolicy.awaitBlocking(com.music.spotui.privacy.ConsentPolicy.Feature.MUSIC_VIDEO)) throw IOException("Video service declined")
+            require(chain.request().url.isHttps) { "HTTPS required" }
+            chain.proceed(chain.request())
+        }
         .addInterceptor(com.music.spotui.data.DataSaver.interceptor)
         .connectTimeout(15, TimeUnit.SECONDS)
         .readTimeout(30, TimeUnit.SECONDS)
@@ -50,7 +55,7 @@ object YouTubeSource {
         checkInterrupted()
         block()
     } catch (t: Throwable) {
-        if (t is CancellationException) throw t
+        if (t is CancellationException || t is com.music.spotui.privacy.ConsentPolicy.ConsentRequired) throw t
         if (t is InterruptedException || Thread.currentThread().isInterrupted) {
             Thread.currentThread().interrupt()
             if (t is InterruptedException) throw t
@@ -103,6 +108,7 @@ object YouTubeSource {
         .filter { it.isLetterOrDigit() }
 
     private fun search(query: String, filter: String): List<Hit> {
+        if (!com.music.spotui.privacy.ConsentPolicy.awaitBlocking(com.music.spotui.privacy.ConsentPolicy.Feature.MUSIC_VIDEO)) return emptyList()
         checkInterrupted()
         init()
         val key = "$filter\u0000$query\u0000$extractorLocale"
@@ -177,6 +183,7 @@ object YouTubeSource {
 
     /** Completed metadata is shared read-only; never mutate its streams or the returned StreamInfo. */
     fun info(url: String, fresh: Boolean = false): StreamInfo {
+        if (!com.music.spotui.privacy.ConsentPolicy.awaitBlocking(com.music.spotui.privacy.ConsentPolicy.Feature.MUSIC_VIDEO)) throw IOException("Video service declined")
         checkInterrupted()
         init()
         val canonical = YouTubeUrlKey.canonicalUrl(url)
@@ -265,7 +272,7 @@ object YouTubeSource {
                     }
                     maxChanged = maxOf(maxChanged, changed.toDouble() / a.size)
                 }
-                Log.i(TAG, "storyboard ${info.name}: ${frames.size} frames ${w}x$h (sheet ${bmp.width}x${bmp.height}), max changed ${"%.1f".format(maxChanged * 100)} %")
+                Log.i(TAG, "Video storyboard checked")
                 maxChanged < 0.02
             } finally { bmp.recycle() }
         }

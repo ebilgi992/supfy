@@ -1,6 +1,7 @@
 package com.music.spotui.data.api
 
-import android.util.Log
+import app.myspoti.host.android.PrivacyLog as Log
+import okhttp3.HttpUrl.Companion.toHttpUrl
 import com.music.spotui.data.entity.LyricLine
 import com.music.spotui.data.entity.LyricWord
 import com.music.spotui.data.entity.Lyrics
@@ -31,7 +32,7 @@ import java.net.URLEncoder
  */
 object LyricsApi {
     private const val LRCLIB = "https://lrclib.net/api"
-    private const val UA = "Myspoti (https://github.com/)"
+    private const val UA = "Supfy (https://github.com/ebilgi992/supfy)"
 
     /** What the resolver needs to know about a track. */
     data class Track(
@@ -81,6 +82,7 @@ object LyricsApi {
 
     /** Warm the cache in the background (current track and the next one). */
     fun prefetch(track: Track) {
+        if (!com.music.spotui.privacy.ConsentPolicy.isGranted(com.music.spotui.privacy.ConsentPolicy.Feature.LYRICS)) return
         if (track.title.isBlank() && track.trackId.isBlank()) return
         val c = cache[track.key]
         if (c is Lyrics) return
@@ -110,6 +112,9 @@ object LyricsApi {
     }
 
     suspend fun fetch(track: Track): Lyrics? {
+        // Joining an existing request performs no new disclosure or network operation.
+        inFlight[track.key]?.let { return it.await() }
+        if (!com.music.spotui.privacy.ConsentPolicy.await(com.music.spotui.privacy.ConsentPolicy.Feature.LYRICS)) return null
         when (val c = cache[track.key]) {
             is Lyrics -> return c
             is Miss -> if (System.currentTimeMillis() - c.at < MISS_RETRY_MS) return null
@@ -174,6 +179,7 @@ object LyricsApi {
      * replaces the song's lyrics in memory and storage; null (nothing changes) when it has none.
      */
     suspend fun fetchFrom(track: Track, sourceId: String): Lyrics? = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+        if (!com.music.spotui.privacy.ConsentPolicy.await(com.music.spotui.privacy.ConsentPolicy.Feature.LYRICS)) return@withContext null
         val asked = track.title.trim()
         val title = cleanTitle(track.title)
         val artist = track.artist.substringBefore(",").trim()
@@ -198,13 +204,13 @@ object LyricsApi {
                 sourceId == "genius" -> byHand { fromGenius(title, artist) }
                 else -> null
             }
-        } catch (e: kotlinx.coroutines.CancellationException) { throw e } catch (e: Exception) { Log.d("LyricsApi", "$sourceId by hand: ${e.javaClass.simpleName}"); null }
+        } catch (e: kotlinx.coroutines.CancellationException) { throw e } catch (e: Exception) { Log.d("LyricsApi", "Lyrics source unavailable"); null }
         val lyrics = found?.takeIf { !it.isEmpty } ?: return@withContext null
         // Words from another recording follow Spotify's own timing when that can be checked, and keep its colours.
         val chosen = if (lyrics.wordSynced && spotify != null) (alignTo(lyrics, spotify) ?: lyrics).copy(colors = spotify.colors) else lyrics
         cache[track.key] = chosen
         LyricsDisk.write(track.key, chosen)
-        Log.d("LyricsApi", "${track.title}: ${chosen.lines.size} lines from ${chosen.provider} (chosen: $sourceId)")
+        Log.d("LyricsApi", "Lyrics source selected")
         chosen
     }
 
@@ -226,7 +232,7 @@ object LyricsApi {
         val result = com.music.spotui.extensions.LyricsMerge.choose(own, fromExt)
         cache[track.key] = result ?: Miss()
         result?.let { LyricsDisk.write(track.key, it) }
-        Log.d("LyricsApi", "${track.title}: ${result?.let { "${it.lines.size} lines from ${it.provider}, synced=${it.synced}, words=${it.wordSynced}" } ?: "none"}")
+        Log.d("LyricsApi", "Lyrics resolution completed")
         result
     }
 
@@ -374,17 +380,17 @@ object LyricsApi {
         val gaps = words.lines.mapNotNull { l -> theirAt[matchKey(l.text)]?.takeIf { matchKey(l.text) in shared }?.let { it.timeMs - l.timeMs } }
         if (gaps.size < 3) {
             if (gaps.isEmpty()) return words
-            Log.d("LyricsApi", "${words.provider}: only ${gaps.size} lines to compare with Spotify's timing, Spotify's lines kept")
+            Log.d("LyricsApi", "Lyrics timing retained")
             return null
         }
         val shift = gaps.sorted()[gaps.size / 2]
         val agreeing = gaps.count { kotlin.math.abs(it - shift) <= ALIGN_TOLERANCE_MS }
         if (agreeing < maxOf(3, (gaps.size * 0.6).toInt()) || kotlin.math.abs(shift) > MAX_ALIGN_SHIFT_MS) {
-            Log.d("LyricsApi", "${words.provider}: timing off Spotify's by $shift ms, $agreeing of ${gaps.size} lines agree: Spotify's lines kept")
+            Log.d("LyricsApi", "Lyrics timing retained")
             return null
         }
         if (kotlin.math.abs(shift) < 60) return words
-        Log.d("LyricsApi", "${words.provider}: moved by $shift ms to Spotify's timing ($agreeing of ${gaps.size} lines)")
+        Log.d("LyricsApi", "Lyrics timing aligned")
         return words.copy(lines = words.lines.map { l ->
             l.copy(timeMs = (l.timeMs + shift).coerceAtLeast(0), words = l.words?.map { w ->
                 w.copy(startMs = (w.startMs + shift).coerceAtLeast(0), endMs = if (w.endMs > 0) (w.endMs + shift).coerceAtLeast(0) else 0)
@@ -424,7 +430,7 @@ object LyricsApi {
     private suspend fun fromSpotify(track: Track): Lyrics? {
         if (track.trackId.isBlank()) return null
         val sp = runCatching { app.myspoti.host.android.MyspotiRuntime.api.extras.lyrics("spotify:track:${track.trackId}") }
-            .onFailure { Log.d("LyricsApi", "spotify lyrics miss for ${track.trackId}: ${it.message}") }
+            .onFailure { Log.d("LyricsApi", "Spotify lyrics unavailable") }
             .getOrNull() ?: return null
         if (sp.lines.isEmpty()) return null
         val bg = sp.background
@@ -855,37 +861,33 @@ object LyricsApi {
      * set aside is not asked at all, unless asked for by hand ([fetchFrom]).
      */
     private fun httpGet(spec: String, timeoutMs: Int = 5000, provider: String? = null): String? {
+        if (!com.music.spotui.privacy.ConsentPolicy.awaitBlocking(com.music.spotui.privacy.ConsentPolicy.Feature.LYRICS)) return null
         if (provider != null && bypass.get() != true) health.reason(provider)?.let {
-            Log.d("LyricsApi", "$provider set aside ($it)")
+            Log.d("LyricsApi", "Lyrics provider deferred")
             health.skipped()
             return null
         }
         return runCatching {
             com.music.spotui.data.DataSaver.check()
-            val conn = (URL(spec).openConnection() as HttpURLConnection).apply {
-                requestMethod = "GET"
-                connectTimeout = timeoutMs
-                readTimeout = timeoutMs
-                setRequestProperty("User-Agent", UA)
-                setRequestProperty("Accept", "application/json, text/html;q=0.9, */*;q=0.8")
-            }
-            try {
-                val code = conn.responseCode
-                if (code != 200) {
-                    Log.d("LyricsApi", "HTTP $code for $spec")
-                    if (provider == null) health.skipped()
-                    else if (code >= 500 || code == 429 || code == 408) health.failed(provider)
-                    else health.answered(provider)
-                    return null
+            val url = spec.toHttpUrl()
+            require(url.isHttps) { "HTTPS required" }
+            app.myspoti.extensions.SafeNet.client.newBuilder()
+                .connectTimeout(timeoutMs.toLong(), java.util.concurrent.TimeUnit.MILLISECONDS)
+                .readTimeout(timeoutMs.toLong(), java.util.concurrent.TimeUnit.MILLISECONDS).build()
+                .newCall(okhttp3.Request.Builder().url(url).header("User-Agent", UA)
+                    .header("Accept", "application/json, text/html;q=0.9, */*;q=0.8").build()).execute().use { response ->
+                    val code = response.code
+                    if (code != 200) {
+                        if (provider == null) health.skipped()
+                        else if (code >= 500 || code == 429 || code == 408) health.failed(provider)
+                        else health.answered(provider)
+                        return null
+                    }
+                    provider?.let(health::answered)
+                    response.body.string()
                 }
-                val body = conn.inputStream.bufferedReader().use { it.readText() }
-                provider?.let(health::answered)
-                body
-            } finally {
-                conn.disconnect()
-            }
         }.getOrElse {
-            Log.d("LyricsApi", "request failed: ${it.message}")
+            Log.d("LyricsApi", "request failed")
             if (provider == null || it is com.music.spotui.data.DataSaver.Blocked) health.skipped() else health.failed(provider)
             null
         }

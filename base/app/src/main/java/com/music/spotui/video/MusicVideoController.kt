@@ -3,7 +3,7 @@ package com.music.spotui.video
 import android.content.Context
 import android.net.Uri
 import android.os.SystemClock
-import android.util.Log
+import app.myspoti.host.android.PrivacyLog as Log
 import android.util.AtomicFile
 import app.myspoti.power.EnergySettings
 import androidx.compose.runtime.mutableFloatStateOf
@@ -21,6 +21,8 @@ import com.music.spotui.di.Graph
 import app.myspoti.host.android.Logbook
 import app.myspoti.host.android.MyspotiRuntime
 import com.music.spotui.di.SongPlayer
+import com.music.spotui.privacy.ConsentPolicy
+import com.music.spotui.privacy.ConsentPolicy.Feature
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -36,6 +38,8 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
@@ -56,6 +60,8 @@ import kotlin.math.abs
 object MusicVideoController {
     private const val TAG = "MusicVideo"
     private const val MIN_SCORE = 0.4
+
+    private fun consentGranted() = ConsentPolicy.isGranted(Feature.MUSIC_VIDEO)
 
     sealed interface State {
         data object Idle : State
@@ -87,6 +93,7 @@ object MusicVideoController {
     private var refineJob: Job? = null
     private var surfaceIdleJob: Job? = null
     private val generation = java.util.concurrent.atomic.AtomicLong()
+    private val consentEpoch = java.util.concurrent.atomic.AtomicLong()
     private val prefetchSequence = java.util.concurrent.atomic.AtomicLong()
     private val refineLock = kotlinx.coroutines.sync.Mutex()
     private var currentTitle = ""
@@ -237,6 +244,7 @@ object MusicVideoController {
 
     /** Resolve and cache a track's video in the background, without touching the UI state. */
     fun prefetch(trackId: String, title: String, artist: String, durationMs: Long) {
+        if (!consentGranted()) return
         if (com.music.spotui.data.DataSaver.active || !com.music.spotui.data.preferences.MusicVideoPref.on || !appVisible || !EnergySettings.state.value.policy.allowBackgroundLookups || trackId.isBlank() || trackId == currentTrackId) return
         if (trackId == settledId && SystemClock.elapsedRealtime() < settledUntil) return
         // Already answered (or failed a moment ago): nothing to look up, nothing to read.
@@ -291,6 +299,7 @@ object MusicVideoController {
 
     /** Find (or load) the video of the track now playing. Disk access stays on IO. */
     fun prepare(trackId: String, title: String, artist: String, durationMs: Long) {
+        if (!consentGranted()) return
         // Data saver on mobile data: no look-up (it downloads audio) and no video stream.
         if (trackId.isBlank() || !appVisible || com.music.spotui.data.DataSaver.active || !com.music.spotui.data.preferences.MusicVideoPref.on) return
         currentTitle = title; currentArtist = artist; currentDuration = durationMs
@@ -465,6 +474,7 @@ object MusicVideoController {
 
     /** Full FFT work starts only after the prefix has been cached and video is requested. */
     private fun ensureRefinement(s: State.Ready) {
+        if (!consentGranted()) return
         val current = state.value as? State.Ready ?: return
         if (current.trackId != s.trackId || current.videoUrl != s.videoUrl || current.mapComplete) return
         if (s.mapComplete || !on.value || !SongPlayer.isPlaying() || SongPlayer.isBuffering || !appVisible || surfaces <= 0 || SongPlayer.activeDevice.value != null || refineJob?.isActive == true) return
@@ -573,16 +583,20 @@ object MusicVideoController {
     // Callbacks waiting for a stream being resolved: a second request for the same
     // URL (warm-up, then "play it" on a track change) must not be dropped.
     private val waiting = HashMap<String, MutableList<() -> Unit>>()
+    private val streamJobs = HashMap<String, Job>()
 
     private fun preloadStream(url: String, fresh: Boolean = false, then: (() -> Unit)? = null) {
+        if (!consentGranted()) return
         if (!fresh && freshSource(url) != null) { then?.invoke(); return }
         then?.let { waiting.getOrPut(url) { mutableListOf() }.add(it) }
         if (!resolving.add(url)) return
-        scope.launch {
+        val request = consentEpoch.get()
+        val job = scope.launch(start = kotlinx.coroutines.CoroutineStart.LAZY) {
             val t0 = SystemClock.elapsedRealtime()
             val vs = withContext(Dispatchers.IO) {
-                runCatching { buildSource(url, fresh) }.onFailure { Log.w(TAG, "video stream failed: ${it.message}") }.getOrNull()
+                runInterruptible { runCatching { buildSource(url, fresh) }.getOrNull() }
             }
+            if (consentEpoch.get() != request || !consentGranted()) return@launch
             resolving.remove(url)
             val cbs = waiting.remove(url).orEmpty()
             if (vs != null) {
@@ -591,6 +605,18 @@ object MusicVideoController {
                 cbs.forEach { it() }
             }
         }
+        streamJobs[url] = job
+        job.invokeOnCompletion {
+            // Confine the maps and callbacks to the same main thread as the controller.
+            scope.launch {
+                if (streamJobs[url] === job) {
+                    streamJobs.remove(url)
+                    resolving.remove(url)
+                    waiting.remove(url)
+                }
+            }
+        }
+        job.start()
     }
 
     /**
@@ -598,6 +624,7 @@ object MusicVideoController {
      * now (paused, muted, at the mapped time) so switching is immediate.
      */
     fun warm() {
+        if (!consentGranted()) return
         val s = state.value as? State.Ready ?: return
         if (SongPlayer.activeDevice.value != null || !EnergySettings.state.value.policy.allowBackgroundLookups) return
         preloadStream(s.videoUrl) {
@@ -650,6 +677,7 @@ object MusicVideoController {
     fun detachPlayerScreen() { playerScreens = (playerScreens - 1).coerceAtLeast(0) }
 
     private fun resumeWanted() {
+        if (!consentGranted()) return
         if (wantVideo && !on.value && SongPlayer.activeDevice.value == null) {
             val s = state.value as? State.Ready ?: return
             on.value = true
@@ -658,6 +686,7 @@ object MusicVideoController {
     }
 
     fun setOn(value: Boolean) {
+        if (value && !consentGranted()) return
         val s = state.value
         if (value && s !is State.Ready) return
         com.music.spotui.di.Haptics.click()
@@ -699,6 +728,7 @@ object MusicVideoController {
         }
 
     private fun start(s: State.Ready) {
+        if (!consentGranted()) return
         if (!appVisible || !on.value || s.trackId != currentTrackId || SongPlayer.activeDevice.value != null) return
         val t0 = SystemClock.elapsedRealtime()
         val vs = freshSource(s.videoUrl)
@@ -779,10 +809,10 @@ object MusicVideoController {
             ?: error("no video stream")
         Log.i(TAG, "video ${v.height}p ${v.codec}")
         val headers = streamHeaders(v.content)
-        val http = DefaultHttpDataSource.Factory()
+        val http = ConsentDataSource.Factory(DefaultHttpDataSource.Factory()
             .apply { headers["User-Agent"]?.let { setUserAgent(it) } }
             .setDefaultRequestProperties(headers - "User-Agent")
-            .setAllowCrossProtocolRedirects(true)
+            .setAllowCrossProtocolRedirects(true), ::consentGranted)
         val item = v.itagItem
         val source = if (item != null) {
             // As NewPipe: a DASH manifest over the progressive stream (ranged requests).
@@ -797,10 +827,10 @@ object MusicVideoController {
             .let { list -> list.filter { it.averageBitrate in 1..160 }.maxByOrNull { it.averageBitrate } ?: list.minByOrNull { it.averageBitrate } }
         val audio = a?.let { st ->
             val h = streamHeaders(st.content)
-            val ahttp = DefaultHttpDataSource.Factory()
+            val ahttp = ConsentDataSource.Factory(DefaultHttpDataSource.Factory()
                 .apply { h["User-Agent"]?.let { setUserAgent(it) } }
                 .setDefaultRequestProperties(h - "User-Agent")
-                .setAllowCrossProtocolRedirects(true)
+                .setAllowCrossProtocolRedirects(true), ::consentGranted)
             runCatching {
                 val ai = st.itagItem
                 if (ai != null) {
@@ -1023,5 +1053,42 @@ object MusicVideoController {
         } else if (state.value is State.Idle && currentTrackId.isNotBlank()) {
             prepare(currentTrackId, currentTitle, currentArtist, currentDuration)
         } else if (on.value) (state.value as? State.Ready)?.let(::start) else resumeWanted()
+    }
+
+    /** No automatic disclosure: optional lookups resume only after an explicit settings grant. */
+    init {
+        scope.launch {
+            ConsentPolicy.grantedFeatures.map { Feature.MUSIC_VIDEO in it }.distinctUntilChanged().collect { granted ->
+                if (!granted) {
+                    // Invalidate callbacks before cancellation; blocked IO may finish later.
+                    generation.incrementAndGet()
+                    consentEpoch.incrementAndGet()
+                    prepareJob?.cancel()
+                    prefetchJobs.values.forEach { it.cancel() }
+                    streamJobs.values.forEach { it.cancel() }
+                    streamJobs.clear()
+                    resolving.clear()
+                    waiting.clear()
+                    refineJob?.cancel()
+                    surfaceIdleJob?.cancel()
+                    surfaceIdleJob = null
+                    discardRetained()
+                    wantVideo = false
+                    on.value = false
+                    fullscreen.value = false
+                    inPip.value = false
+                    stop()
+                    playerState.value?.release()
+                    playerState.value = null
+                    sources.clear()
+                    warmedFor = null
+                    currentTrackId = ""
+                    nextPrepareAt = 0L
+                    state.value = State.Idle
+                } else if (appVisible && playerScreens > 0) {
+                    onForeground()
+                }
+            }
+        }
     }
 }

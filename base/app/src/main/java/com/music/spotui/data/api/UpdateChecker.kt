@@ -2,6 +2,8 @@ package com.music.spotui.data.api
 
 import android.content.Context
 import app.myspoti.engine.BuildConfig
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
@@ -9,23 +11,16 @@ import okhttp3.Request
 import org.json.JSONObject
 import java.util.concurrent.TimeUnit
 
-/**
- * New version check against the GitHub releases of [BuildConfig.UPDATE_REPO]
- * (set by the CI build; empty in local builds, which never check).
- * Automatic checks at most once an hour (launch/resume) and every 6 h while open. The release's
- * APK is downloaded and installed in the app ([AppUpdater]).
- */
+/** Supfy-only release discovery. Automatic requests are opt-in, at most once per day on app open. */
 object UpdateChecker {
     /** [apkUrl]: the release's signed APK; blank when the release has none (then its page opens). */
-    data class Release(val version: String, val pageUrl: String, val notes: String = "", val apkUrl: String = "")
+    data class Release(val version: String, val pageUrl: String, val notes: String = "", val apkUrl: String = "", val sha256: String = "")
 
-    /** Launch / resume check: not more often than this (releases can come several a day). */
-    const val INTERVAL_MS = 3_600_000L
-    /** While the app stays open, the check runs again this often. */
-    const val PERIODIC_MS = 6 * 3_600_000L
-    /** After a failed automatic check (offline, rate limit), wait this long before trying again. */
-    private const val RETRY_MS = 10 * 60_000L
-    private val http by lazy { OkHttpClient.Builder().callTimeout(10, TimeUnit.SECONDS).addInterceptor(com.music.spotui.data.DataSaver.interceptor).build() }
+    /** Minimum interval between automatic attempts, including failures. */
+    const val INTERVAL_MS = UpdateTrustPolicy.INTERVAL_MS
+    /** Compatibility constant; callers must not schedule a background poll. */
+    const val PERIODIC_MS = INTERVAL_MS
+    private val http by lazy { app.myspoti.extensions.SafeNet.client.newBuilder().callTimeout(10, TimeUnit.SECONDS).addInterceptor(com.music.spotui.data.DataSaver.interceptor).build() }
 
     /** Answer of [refresh]: the check always asks GitHub, whatever was cached. */
     sealed interface Outcome {
@@ -44,29 +39,25 @@ object UpdateChecker {
     fun lastChecked(context: Context): Long =
         context.getSharedPreferences("updates", Context.MODE_PRIVATE).getLong("checked_at", 0L)
 
-    /**
-     * Automatic check (launch, resume, periodic). [manual]: a release dismissed with "Later" is
-     * offered again (the automatic check stays quiet about it). Skipped when the last
-     * successful check is less than [INTERVAL_MS] old; a failed one is retried after [RETRY_MS]
-     * and never erases the release already known.
-     */
-    suspend fun check(context: Context, manual: Boolean = false): Release? = withContext(Dispatchers.IO) {
-        val repo = BuildConfig.UPDATE_REPO
-        if (repo.isBlank()) return@withContext null
+    private val appOpenCheck = Mutex()
+
+    /** App-open check. The opt-in and daily attempt limit are enforced before any request. */
+    suspend fun check(context: Context, manual: Boolean = false): Release? = withContext(Dispatchers.IO) { appOpenCheck.withLock {
         val prefs = context.getSharedPreferences("updates", Context.MODE_PRIVATE)
         val now = System.currentTimeMillis()
-        if (now - prefs.getLong("checked_at", 0L) < INTERVAL_MS || now - prefs.getLong("tried_at", 0L) < RETRY_MS) return@withContext pending(prefs, manual)
-        store(prefs, fetch(repo, force = false), now)
+        if (!UpdateTrustPolicy.automaticDue(automaticEnabled(context), prefs.getLong("attempted_at_v5", 0L), now))
+            return@withLock if (automaticEnabled(context)) pending(prefs, manual) else null
+        prefs.edit().putLong("attempted_at_v5", now).apply()
+        store(prefs, fetch(UpdateTrustPolicy.REPOSITORY, force = false), now)
         pending(prefs, manual)
-    }
+    } }
 
     /**
      * "Check now" from Settings: bypasses the throttle, the stored answer and every HTTP/CDN
      * cache, and says what happened.
      */
     suspend fun refresh(context: Context): Outcome = withContext(Dispatchers.IO) {
-        val repo = BuildConfig.UPDATE_REPO
-        if (repo.isBlank()) return@withContext Outcome.UpToDate
+        val repo = UpdateTrustPolicy.REPOSITORY
         val prefs = context.getSharedPreferences("updates", Context.MODE_PRIVATE)
         val result = fetch(repo, force = true)
         store(prefs, result, System.currentTimeMillis())
@@ -83,7 +74,7 @@ object UpdateChecker {
             is Fetch.Err -> e.putLong("tried_at", now)
             is Fetch.Ok -> e.putLong("checked_at", now).putLong("tried_at", 0L)
                 .putString("version", result.release?.version).putString("url", result.release?.pageUrl)
-                .putString("notes", result.release?.notes).putString("apk", result.release?.apkUrl)
+                .putString("notes", result.release?.notes).putString("apk", result.release?.apkUrl).putString("sha256", result.release?.sha256)
         }
         e.apply()
     }
@@ -102,7 +93,8 @@ object UpdateChecker {
             // Betas and releases are two apps (different package names, one cannot update the
             // other): each one is offered its own channel only.
             Fetch.Ok(list.filter { !it.optBoolean("draft") && (!isBeta || it.optBoolean("prerelease")) }
-                .map { Release(it.getString("tag_name").removePrefix("v"), it.getString("html_url"), cleanNotes(it.optString("body")), apkAsset(it)) }
+                .map { Release(it.getString("tag_name").removePrefix("v"), it.getString("html_url"), cleanNotes(it.optString("body")), apkAsset(it), apkChecksum(it)) }
+                .filter { UpdateTrustPolicy.releaseUrl(it.pageUrl) }
                 .reduceOrNull { best, next -> if (isNewer(next.version, best.version)) next else best })
         }
     } catch (e: Exception) { Fetch.Err(false) }
@@ -116,18 +108,18 @@ object UpdateChecker {
         val version = prefs.getString("version", null) ?: return null
         val url = prefs.getString("url", null) ?: return null
         if (!manual && prefs.getString("dismissed", null) == version) return null
-        return Release(version, url, prefs.getString("notes", null).orEmpty(), prefs.getString("apk", null).orEmpty()).takeIf { isNewer(version, BuildConfig.VERSION_NAME) }
+        return Release(version, url, prefs.getString("notes", null).orEmpty(), prefs.getString("apk", null).orEmpty(), prefs.getString("sha256", null).orEmpty()).takeIf { UpdateTrustPolicy.releaseUrl(url) && isNewer(version, BuildConfig.VERSION_NAME) }
     }
 
-    /** The ABIs a release carries one APK for (`myspoti-<channel>-<version>-<abi>.apk`): no x86, no universal APK. */
+    /** The ABIs a release carries one APK for (`supfy-<channel>-<version>-<abi>.apk`): no x86, no universal APK. */
     internal val RELEASE_ABIS = listOf("arm64-v8a", "armeabi-v7a")
 
     /**
      * The release's APK download link for this app's channel and this phone: the CI uploads one
-     * `myspoti-<beta|stable>-<version>-<abi>.apk` per ABI of [RELEASE_ABIS], and the first of [abis]
+     * `supfy-<beta|stable>-<version>-<abi>.apk` per ABI of [RELEASE_ABIS], and the first of [abis]
      * (the phone's, most preferred first) that has one wins, so a 64-bit phone that also runs
      * armeabi-v7a takes arm64-v8a. Older releases carry one APK without an ABI,
-     * `myspoti-<beta|stable>-<version>.apk` or `myspoti-<version>.apk` (the app's own channel, since [fetch]
+     * `supfy-<beta|stable>-<version>.apk` or `supfy-<version>.apk` (the app's own channel, since [fetch]
      * only offers a release of it), taken as before. Only this channel's APK: a release carrying both
      * must not hand a phone the other channel's build (a different package, it could not update this one),
      * and a name that matches none (or no APK for this phone's ABIs) gives no link.
@@ -135,10 +127,23 @@ object UpdateChecker {
     internal fun apkAsset(release: JSONObject, beta: Boolean = isBeta, abis: List<String> = deviceAbis): String {
         val assets = release.optJSONArray("assets") ?: return ""
         val version = release.optString("tag_name").removePrefix("v")
-        val channel = "myspoti-${if (beta) "beta" else "stable"}-$version"
+        val channel = "supfy-${if (beta) "beta" else "stable"}-$version"
         val byName = (0 until assets.length()).map { assets.getJSONObject(it) }.associateBy { it.optString("name") }
-        val want = abis.filter { it in RELEASE_ABIS }.map { "$channel-$it.apk" } + listOf("$channel.apk", "myspoti-$version.apk")
-        return want.firstNotNullOfOrNull { byName[it] }?.optString("browser_download_url").orEmpty()
+        val want = abis.filter { it in RELEASE_ABIS }.map { "$channel-$it.apk" } + listOf("$channel.apk", "supfy-$version.apk")
+        return want.firstNotNullOfOrNull { byName[it] }?.optString("browser_download_url").orEmpty().takeIf(UpdateTrustPolicy::assetUrl).orEmpty()
+    }
+
+    /** Automatic checks are an explicit opt-in and run only when the app opens. */
+    fun automaticEnabled(context: Context): Boolean = context.getSharedPreferences("updates", Context.MODE_PRIVATE).getBoolean("automatic_v5", false)
+    fun setAutomaticEnabled(context: Context, enabled: Boolean) {
+        context.getSharedPreferences("updates", Context.MODE_PRIVATE).edit().putBoolean("automatic_v5", enabled).apply()
+    }
+    private fun apkChecksum(release: JSONObject): String {
+        val url = apkAsset(release)
+        val assets = release.optJSONArray("assets") ?: return ""
+        val digest = (0 until assets.length()).map { assets.getJSONObject(it) }
+            .firstOrNull { it.optString("browser_download_url") == url }?.optString("digest").orEmpty().removePrefix("sha256:")
+        return digest.takeIf { it.matches(Regex("[0-9a-fA-F]{64}")) }.orEmpty()
     }
 
     /** This phone's ABIs, most preferred first. */

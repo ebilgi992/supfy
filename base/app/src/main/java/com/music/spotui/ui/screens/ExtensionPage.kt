@@ -3,7 +3,6 @@ package com.music.spotui.ui.screens
 import android.annotation.SuppressLint
 import android.view.View
 import android.webkit.CookieManager
-import android.webkit.JavascriptInterface
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebSettings
@@ -28,6 +27,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -39,6 +39,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.navigation.NavController
+import androidx.webkit.WebViewCompat
+import androidx.webkit.WebViewFeature
 import app.myspoti.engine.R
 import app.myspoti.extensions.Action
 import app.myspoti.extensions.PageContent
@@ -62,7 +64,7 @@ internal fun extensionPageRoute(id: String) = "extension-page/${android.net.Uri.
  * It is drawn in the app's page (dialogs, the protected ones included, are above it) and hidden
  * while a protected surface is on screen.
  */
-@SuppressLint("SetJavaScriptEnabled", "JavascriptInterface")
+@SuppressLint("SetJavaScriptEnabled")
 @Composable
 fun ExtensionPageScreen(navController: NavController, id: String) {
     val registry by Extensions.registry.collectAsState()
@@ -104,7 +106,7 @@ fun ExtensionPageScreen(navController: NavController, id: String) {
  * failure, or the sandboxed WebView (hidden and paused while [shielded], a protected surface is on
  * screen). The same in both looks, which only differ in the frame around it.
  */
-@SuppressLint("SetJavaScriptEnabled", "JavascriptInterface")
+@SuppressLint("SetJavaScriptEnabled")
 @Composable
 internal fun ExtensionPageBody(id: String, loaded: Result<PageContent?>?, hosts: List<String>, network: Boolean, any: Boolean, shielded: Boolean) {
     Box(Modifier.fillMaxSize()) {
@@ -113,39 +115,70 @@ internal fun ExtensionPageBody(id: String, loaded: Result<PageContent?>?, hosts:
             loaded == null -> CircularProgressIndicator(Modifier.align(Alignment.Center), color = AppAccent)
             page == null -> Text(stringResource(R.string.ext_page_failed), color = AppMuted, modifier = Modifier.padding(20.dp))
             else -> {
-                val html = remember(page) { PageNetwork.wrap(page.html, PageNetwork.csp(hosts, network, any)) }
-                val web = remember { arrayOfNulls<WebView>(1) }
-                AndroidView(
-                    modifier = Modifier.fillMaxSize(),
-                    factory = { ctx ->
-                        WebView(ctx).apply {
-                            web[0] = this
-                            settings.javaScriptEnabled = true
-                            settings.allowFileAccess = false
-                            settings.allowContentAccess = false
-                            settings.domStorageEnabled = false
-                            settings.setGeolocationEnabled(false)
-                            settings.javaScriptCanOpenWindowsAutomatically = false
-                            settings.setSupportMultipleWindows(false)
-                            settings.mediaPlaybackRequiresUserGesture = true
-                            settings.mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
-                            settings.cacheMode = WebSettings.LOAD_NO_CACHE
-                            CookieManager.getInstance().setAcceptThirdPartyCookies(this, false)
-                            setBackgroundColor(android.graphics.Color.BLACK)
-                            webViewClient = SandboxClient(hosts, network, any)
-                            addJavascriptInterface(PageBridge(id), "MyspotiPage")
-                            Extensions.attachPage(id) { json -> evaluateJavascript("window.dispatchEvent(new MessageEvent('message', { data: $json }));", null) }
-                            loadDataWithBaseURL(null, html, "text/html", "utf-8", null)
+                val supported = remember { WebViewFeature.isFeatureSupported(WebViewFeature.WEB_MESSAGE_LISTENER) }
+                if (!supported) {
+                    Text(stringResource(R.string.ext_secure_webview_required), color = AppMuted, modifier = Modifier.padding(20.dp))
+                } else {
+                    val html = remember(page, hosts, network, any) { PageNetwork.wrap(page.html, PageNetwork.csp(hosts, network, any)) }
+                    key(id, html, hosts, network, any) {
+                        val origin = remember(id) { ExtensionPageBridgePolicy.origin(id) }
+                        val web = remember { arrayOfNulls<WebView>(1) }
+                        val sink = remember { arrayOfNulls<(String) -> Unit>(1) }
+                        val alive = remember { java.util.concurrent.atomic.AtomicBoolean(true) }
+                        AndroidView(
+                            modifier = Modifier.fillMaxSize(),
+                            factory = { ctx ->
+                                WebView(ctx).apply {
+                                    web[0] = this
+                                    settings.javaScriptEnabled = true
+                                    settings.allowFileAccess = false
+                                    settings.allowContentAccess = false
+                                    settings.domStorageEnabled = false
+                                    settings.setGeolocationEnabled(false)
+                                    settings.javaScriptCanOpenWindowsAutomatically = false
+                                    settings.setSupportMultipleWindows(false)
+                                    settings.mediaPlaybackRequiresUserGesture = true
+                                    settings.mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
+                                    settings.cacheMode = WebSettings.LOAD_NO_CACHE
+                                    CookieManager.getInstance().setAcceptThirdPartyCookies(this, false)
+                                    setBackgroundColor(android.graphics.Color.BLACK)
+                                    webViewClient = SandboxClient(hosts, network, any, origin)
+                                    WebViewCompat.addWebMessageListener(this, "MyspotiPage", setOf(origin)) { source, message, sourceOrigin, isMainFrame, _ ->
+                                        val data = runCatching { message.data }.getOrNull()
+                                        if (alive.get() && source === web[0] && source.url == "$origin/" &&
+                                            !SurfaceGuard.app.suspended && data != null &&
+                                            ExtensionPageBridgePolicy.acceptMessage(origin, sourceOrigin.toString(), isMainFrame, data)) {
+                                            Extensions.pageMessage(id, data)
+                                        }
+                                    }
+                                    val receive: (String) -> Unit = { json ->
+                                        if (alive.get() && web[0] === this && url == "$origin/" &&
+                                            !SurfaceGuard.app.suspended && ExtensionPageBridgePolicy.withinLimit(json)) {
+                                            evaluateJavascript("window.dispatchEvent(new MessageEvent('message', { data: $json }));", null)
+                                        }
+                                    }
+                                    sink[0] = receive
+                                    Extensions.attachPage(id, receive)
+                                    // The synthetic origin labels this inline document; it is never fetched.
+                                    loadDataWithBaseURL("$origin/", html, "text/html", "utf-8", null)
+                                }
+                            },
+                            update = { wv ->
+                                if (shielded) { wv.onPause(); wv.visibility = View.INVISIBLE } else { wv.onResume(); wv.visibility = View.VISIBLE }
+                            },
+                        )
+                        DisposableEffect(id, html) {
+                            onDispose {
+                                alive.set(false)
+                                sink[0]?.let { Extensions.detachPage(id, it) }
+                                web[0]?.let {
+                                    WebViewCompat.removeWebMessageListener(it, "MyspotiPage")
+                                    it.stopLoading()
+                                    it.destroy()
+                                }
+                                web[0] = null
+                            }
                         }
-                    },
-                    update = { wv ->
-                        if (shielded) { wv.onPause(); wv.visibility = View.INVISIBLE } else { wv.onResume(); wv.visibility = View.VISIBLE }
-                    },
-                )
-                DisposableEffect(id) {
-                    onDispose {
-                        Extensions.attachPage(id, null)
-                        web[0]?.destroy()
                     }
                 }
             }
@@ -153,18 +186,29 @@ internal fun ExtensionPageBody(id: String, loaded: Result<PageContent?>?, hosts:
     }
 }
 
-/** The page's one door: a message to its own extension. */
-private class PageBridge(private val id: String) {
-    @JavascriptInterface
-    fun postMessage(data: String) = Extensions.pageMessage(id, data)
+/** A synthetic, isolated origin and a UTF-8 byte budget for each extension page. */
+internal object ExtensionPageBridgePolicy {
+    fun origin(id: String): String {
+        val hash = java.security.MessageDigest.getInstance("SHA-256").digest(id.toByteArray(Charsets.UTF_8))
+            .joinToString("") { "%02x".format(it.toInt() and 0xff) }
+        return "https://${hash.chunked(32).joinToString(".")}.extension.invalid"
+    }
+
+    fun withinLimit(data: String): Boolean = data.length <= 64 * 1024 && data.toByteArray(Charsets.UTF_8).size <= 64 * 1024
+
+    fun acceptMessage(expectedOrigin: String, sourceOrigin: String?, isMainFrame: Boolean, data: String): Boolean =
+        isMainFrame && sourceOrigin == expectedOrigin && withinLimit(data)
 }
 
 /** No navigation; every load checked by [PageNetwork] and fetched here, without cookies. */
-private class SandboxClient(private val hosts: List<String>, private val network: Boolean, private val any: Boolean) : WebViewClient() {
+private class SandboxClient(private val hosts: List<String>, private val network: Boolean, private val any: Boolean, origin: String) : WebViewClient() {
+    private val syntheticHost = origin.removePrefix("https://")
+
     override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean = true
 
     override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? {
         val url = request.url.toString()
+        if (request.url.host.equals(syntheticHost, ignoreCase = true)) return refused()
         if (url.startsWith("data:") || url.startsWith("about:")) return null
         if (com.music.spotui.data.DataSaver.active || !PageNetwork.allows(url, request.method, hosts, network, any)) return refused()
         // OkHttp with the sandbox's Dns: a name that resolves to a local address is never connected to,

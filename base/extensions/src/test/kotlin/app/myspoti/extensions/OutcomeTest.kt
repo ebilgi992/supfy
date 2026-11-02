@@ -118,7 +118,9 @@ class PlayAttemptTest {
         val json = a.toJson().toString()
         assertFalse(json, json.contains("SECRET"))
         assertFalse(json, json.contains("pw@"))
-        assertTrue(json, json.contains("https://cdn.example.com/a.flac"))
+        assertTrue(json, json.contains("https://cdn.example.com"))
+        assertFalse(json, json.contains("/a.flac"))
+        assertFalse(json, json.contains("/find"))
         assertFalse(a.summary(), a.summary().contains("SECRET"))
         assertEquals("not a url", PlayAttempt.maskUrl("not a url?x=1"))
     }

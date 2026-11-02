@@ -39,6 +39,7 @@ object SessionActions {
         com.music.spotui.data.api.Api.LikedCache.tracks = null
         com.music.spotui.data.api.TopStats.clear()
         com.music.spotui.data.api.ProfileCache.clearSession()
+        com.music.spotui.data.preferences.clearLibrarySelectionMemory()
         // Likes kept for later stay this account's, sent when it signs in again; the next account gets none.
         com.music.spotui.data.LibraryOutbox.signedOut()
         SongPlayer.clearSession()
@@ -63,7 +64,13 @@ object SessionActions {
     fun sessionLost() {
         Logbook.log("session lost without a sign-out: the account is read again at the next session")
         com.music.spotui.data.api.ProfileCache.clearSession()
+        com.music.spotui.data.preferences.clearLibrarySelectionMemory()
         com.music.spotui.data.LibraryOutbox.signedOut()
+        com.music.spotui.ui.screens.ContextViewModel.clearCache()
+        com.music.spotui.data.api.Api.HomeCache.clear()
+        com.music.spotui.data.api.Api.LikedCache.tracks = null
+        com.music.spotui.data.api.TopStats.clear()
+        AutoBrowser.clearSession()
     }
 
     /** The new account is signed in. */

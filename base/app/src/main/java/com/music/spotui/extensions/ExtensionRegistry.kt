@@ -34,7 +34,9 @@ data class InstalledExtension(
     val sha256: String,
     /** The [Ask.key]s the user accepted: what the sandbox lets this extension do. */
     val granted: Set<String>,
-    val enabled: Boolean = true,
+    val enabled: Boolean = false,
+    /** Exact package explicitly enabled in Supfy V5; old registry entries fail closed. */
+    val enableApprovalSha: String? = null,
     /** Why the app turned it off (it crashed, a repository blocked it), shown on its page. */
     val disabledReason: String? = null,
     val installedAt: Long = 0,
@@ -284,25 +286,12 @@ class FileStore(private val file: File) : Storage {
     }
 }
 
-/** An extension's log: the last lines in memory, and on disk (cut to [maxChars]) for its page. */
-class ExtensionLog(private val file: File, private val maxLines: Int = 300, private val maxChars: Int = 64 * 1024) {
-    private val lines: ArrayDeque<String> by lazy {
-        ArrayDeque(runCatching { file.readLines() }.getOrDefault(emptyList()).takeLast(maxLines))
-    }
-
-    @Synchronized fun add(line: String) {
-        lines.addLast(line)
-        while (lines.size > maxLines) lines.removeFirst()
-        runCatching {
-            file.parentFile?.mkdirs()
-            if (file.length() > maxChars) writeAtomically(file, lines.joinToString("\n", postfix = "\n"))
-            else file.appendText(line + "\n")
-        }
-    }
-
-    @Synchronized fun lines(): List<String> = lines.toList()
-
-    @Synchronized fun clear() { lines.clear(); file.delete() }
+/** Compatibility surface. Extension-supplied text is never retained in memory or on disk. */
+@Suppress("UNUSED_PARAMETER")
+class ExtensionLog(private val file: File, maxLines: Int = 300, maxChars: Int = 64 * 1024) {
+    fun add(line: String) = Unit
+    fun lines(): List<String> = emptyList()
+    fun clear() { runCatching { file.delete() } }
 }
 
 /** Counts each extension's failures in a row; at [limit] the app turns it off. */

@@ -79,7 +79,7 @@ class ExtensionMediaHttp(
     }
 
     private fun checkHop(url: HttpUrl) {
-        if (url.scheme != "https" && url.scheme != "http") throw refuse(url, "not http(s)")
+        if (!url.isHttps || url.username.isNotEmpty() || url.password.isNotEmpty()) throw refuse(url, "HTTPS required without URL credentials")
         if (SafeNet.isPrivateHost(url.host)) throw refuse(url, "${url.host} is a local address")
     }
 

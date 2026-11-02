@@ -121,6 +121,8 @@ object SafeNet {
             .followSslRedirects(false)
             .retryOnConnectionFailure(false)
             .addInterceptor { chain ->
+                require(chain.request().url.isHttps) { "HTTPS required" }
+                require(chain.request().url.username.isEmpty() && chain.request().url.password.isEmpty()) { "URL credentials denied" }
                 checkUrlHost(chain.request().url.host)
                 chain.proceed(chain.request())
             }
@@ -146,5 +148,5 @@ object SafeNet {
     }
 
     /** [url] as it is written in a log: no user info, no query, no fragment (they carry tokens). */
-    fun redact(url: HttpUrl): String = "${url.scheme}://${url.host}${if (url.port != HttpUrl.defaultPort(url.scheme)) ":${url.port}" else ""}${url.encodedPath}"
+    fun redact(url: HttpUrl): String = "${url.scheme}://${url.host}${if (url.port != HttpUrl.defaultPort(url.scheme)) ":${url.port}" else ""}"
 }

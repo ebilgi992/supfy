@@ -1,7 +1,7 @@
 package com.music.spotui.data.offline
 
 import android.content.Context
-import android.util.Log
+import app.myspoti.host.android.PrivacyLog as Log
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.snapshots.SnapshotStateMap
 import com.music.spotui.data.api.Response

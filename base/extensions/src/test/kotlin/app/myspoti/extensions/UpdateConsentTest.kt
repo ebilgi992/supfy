@@ -16,6 +16,12 @@ class UpdateConsentTest {
     private val code = CodeDiff.of(mapOf("main.js" to "a\nb"), mapOf("main.js" to "a\nc\nd"))
     private val h = 3600_000L
 
+    @Test fun everyNewVersionRequiresApprovalEvenWithUnchangedRights() {
+        val accepted = snap("same", *harmless)
+        val next = accepted.copy(version = "2.0", versionCode = 2)
+        assertTrue(UpdateGate.decide(accepted, next, firstSeen = 0, now = 100 * h) is UpdateGate.Decision.Ask)
+    }
+
     @Test fun codeOnlyChangeWithACriticalActionAsks() {
         val d = UpdateGate.decide(snap("v1", req("library.write")), snap("v2", req("library.write")), code, firstSeen = 0, now = 100 * h)
         val c = (d as UpdateGate.Decision.Ask).changes.single()

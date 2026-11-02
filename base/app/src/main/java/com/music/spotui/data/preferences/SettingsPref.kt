@@ -115,18 +115,16 @@ object DownloadSyncPref {
 }
 
 /**
- * The automatic update check at launch (on by default: the app behaved that way before this
- * option existed). Off means no check when the app starts — a check asked for in Settings still
- * works, it reads the same release list.
+ * The Supfy V5 automatic check is off until explicitly enabled. Legacy preference values
+ * cannot enable it; a manual check remains available in Settings.
  */
 object AutoUpdateCheckPref {
-    private const val KEY = "auto_update_check"
-    var on by androidx.compose.runtime.mutableStateOf(prefs(com.music.spotui.di.Graph.app).getBoolean(KEY, true))
+    var on by androidx.compose.runtime.mutableStateOf(com.music.spotui.data.api.UpdateChecker.automaticEnabled(com.music.spotui.di.Graph.app))
         private set
 
     fun set(c: Context, value: Boolean) {
+        com.music.spotui.data.api.UpdateChecker.setAutomaticEnabled(c, value)
         on = value
-        prefs(c).edit().putBoolean(KEY, value).apply()
     }
 }
 
@@ -191,6 +189,9 @@ object MusicVideoPref {
     fun set(c: Context, value: Boolean) {
         on = value
         prefs(c).edit().putBoolean(KEY, value).apply()
+        if (value && !com.music.spotui.privacy.ConsentPolicy.isGranted(com.music.spotui.privacy.ConsentPolicy.Feature.MUSIC_VIDEO)) {
+            com.music.spotui.privacy.ConsentPolicy.requestConsent(com.music.spotui.privacy.ConsentPolicy.Feature.MUSIC_VIDEO)
+        }
         if (!value) com.music.spotui.video.MusicVideoController.setOn(false)
     }
 }

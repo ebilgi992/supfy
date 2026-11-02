@@ -132,7 +132,7 @@ class SandboxTest {
         assertEquals("""{"v":1}""", eval("return myspoti.http.get('https://api.example.com/x?' + myspoti.query({ q: 'a b', n: null })).json().ok;", host))
         assertEquals("https://api.example.com/x?q=a%20b", host.requests.single().url)
         assertEquals("""{"v":true}""", eval("return myspoti.http.get('https://img.cdn.example.org/a').ok;", host))
-        for (url in listOf("https://evil.com/", "https://api.example.com.evil.com/", "http://127.0.0.1/", "https://localhost/", "http://cdn.example.org/")) {
+        for (url in listOf("http://api.example.com/", "https://evil.com/", "https://api.example.com.evil.com/", "http://127.0.0.1/", "https://localhost/", "http://cdn.example.org/")) {
             val out = eval("try { myspoti.http.get('$url'); return 'sent'; } catch (e) { return e.message; }", host)
             assertFalse("$url: $out", out!!.contains("sent"))
         }

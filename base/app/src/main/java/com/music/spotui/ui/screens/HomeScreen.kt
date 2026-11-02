@@ -16,7 +16,7 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.ui.platform.LocalContext
 import kotlinx.coroutines.launch
 import android.os.Build
-import android.util.Log
+import app.myspoti.host.android.PrivacyLog as Log
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background

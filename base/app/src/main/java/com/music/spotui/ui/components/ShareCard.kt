@@ -34,10 +34,10 @@ object ShareCard {
         val file = withContext(Dispatchers.IO) {
             runCatching {
                 val cover = loadCover(context, coverUri)
-                val card = render(title, artist, cover)
+                val card = render(title, artist, cover, context.getString(app.myspoti.engine.R.string.app_name))
                 val dir = File(context.cacheDir, "shared").apply { mkdirs() }
                 dir.listFiles()?.forEach { it.delete() }
-                File(dir, "myspoti_card.png").also { f ->
+                File(dir, "supfy_card.png").also { f ->
                     f.outputStream().use { card.compress(Bitmap.CompressFormat.PNG, 100, it) }
                 }
             }.getOrNull()
@@ -62,7 +62,7 @@ object ShareCard {
         return if (bmp.config == Bitmap.Config.HARDWARE) bmp.copy(Bitmap.Config.ARGB_8888, false) else bmp
     }
 
-    private fun render(title: String, artist: String, cover: Bitmap?): Bitmap {
+    private fun render(title: String, artist: String, cover: Bitmap?, appName: String): Bitmap {
         val out = Bitmap.createBitmap(W, H, Bitmap.Config.ARGB_8888)
         val c = Canvas(out)
         val paint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
@@ -113,7 +113,7 @@ object ShareCard {
             color = Color.argb(170, 255, 255, 255); textSize = 40f; textAlign = Paint.Align.CENTER
             typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD); letterSpacing = 0.12f
         }
-        c.drawText("Myspoti", W / 2f, H - 150f, mark)
+        c.drawText(appName, W / 2f, H - 150f, mark)
         return out
     }
 }

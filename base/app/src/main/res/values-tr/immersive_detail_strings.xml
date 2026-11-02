@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="immersive_detail_pause">Duraklat</string>
+    <string name="immersive_detail_save">Kitaplığa kaydet</string>
+    <string name="immersive_detail_unsave">Kitaplıktan kaldır</string>
+    <string name="immersive_detail_find">Listede bul</string>
+    <string name="immersive_detail_smart_shuffle_on">Akıllı karışık çalma açık: karıştırılmış listeye öneriler eklenir.</string>
+    <string name="immersive_detail_more">Daha fazla</string>
+    <string name="immersive_detail_less">Daha az</string>
+    <string name="immersive_detail_featured_on">Yer aldığı listeler</string>
+    <string name="immersive_detail_remove_local">Bu çalma listesinden kaldır</string>
+    <string name="immersive_detail_follow">Takip et</string>
+    <string name="immersive_detail_unfollow">Takibi bırak</string>
+</resources>

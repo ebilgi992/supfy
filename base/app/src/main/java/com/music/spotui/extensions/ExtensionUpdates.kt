@@ -1,5 +1,9 @@
 package com.music.spotui.extensions
 
+import okhttp3.HttpUrl.Companion.toHttpUrl
+import okhttp3.RequestBody.Companion.toRequestBody
+import okhttp3.MediaType.Companion.toMediaType
+
 import app.myspoti.extensions.Archive
 import app.myspoti.extensions.BlockList
 import app.myspoti.extensions.Catalog
@@ -60,40 +64,42 @@ object ExtensionUpdates {
 
     /** https only, no cookies. [follow]: follow redirects (else [Answer.location] is the target). */
     internal fun get(url: String, max: Int, follow: Boolean = true, accept: String? = null, method: String = "GET", body: String? = null, token: String? = null): Answer {
-        val uri = runCatching { URI(url) }.getOrNull()
-        if (uri?.scheme != "https" || uri.host.isNullOrBlank()) throw ExtensionException("an https address is needed")
         if (com.music.spotui.data.DataSaver.active) throw ExtensionException("the data saver is on")
-        val c = uri.toURL().openConnection() as HttpURLConnection
-        c.connectTimeout = 15_000; c.readTimeout = 20_000; c.useCaches = false
-        c.instanceFollowRedirects = follow
-        c.requestMethod = method
-        c.setRequestProperty("User-Agent", "Myspoti-Extensions/1")
-        c.setRequestProperty("Cache-Control", "no-cache"); c.setRequestProperty("Pragma", "no-cache")
-        accept?.let { c.setRequestProperty("Accept", it) }
-        token?.let { c.setRequestProperty("Authorization", "Bearer $it") }
-        try {
-            if (body != null) {
-                c.doOutput = true
-                c.setRequestProperty("Content-Type", if (body.startsWith("{")) "application/json" else "application/x-www-form-urlencoded")
-                c.outputStream.use { it.write(body.toByteArray()) }
-            }
-            val status = c.responseCode
-            val stream = if (status in 200..299) c.inputStream else null
-            val bytes = stream?.use { s ->
-                val out = java.io.ByteArrayOutputStream()
-                val buf = ByteArray(16 * 1024)
-                while (true) {
-                    val n = s.read(buf)
-                    if (n < 0) break
-                    out.write(buf, 0, n)
-                    if (out.size() > max) throw ExtensionException("larger than ${max / 1024} KB")
+        var current = url
+        var sentToken = token
+        repeat(6) {
+            val uri = current.toHttpUrl()
+            require(uri.isHttps && uri.username.isEmpty() && uri.password.isEmpty()) { "HTTPS required without URL credentials" }
+            // OAuth credentials are confined to the GitHub API and are dropped on redirects.
+            require(sentToken == null || uri.host == "api.github.com") { "Credential destination denied" }
+            val builder = okhttp3.Request.Builder().url(uri).header("User-Agent", "Supfy-Extensions/1")
+                .header("Cache-Control", "no-cache").header("Pragma", "no-cache")
+            accept?.let { value -> builder.header("Accept", value) }
+            sentToken?.let { value -> builder.header("Authorization", "Bearer $value") }
+            val payload = body?.toRequestBody((if (body.startsWith("{")) "application/json" else "application/x-www-form-urlencoded").toMediaType())
+            builder.method(method, payload)
+            app.myspoti.extensions.SafeNet.client.newCall(builder.build()).execute().use { response ->
+                val location = response.header("Location")
+                if (follow && response.code in setOf(301, 302, 303, 307, 308) && location != null) {
+                    require(method == "GET" || method == "HEAD") { "Redirected write denied" }
+                    current = requireNotNull(uri.resolve(location)).toString()
+                    sentToken = null
+                } else {
+                    val bytes = if (response.isSuccessful) response.body.byteStream().use { stream ->
+                        val output = java.io.ByteArrayOutputStream()
+                        val buffer = ByteArray(16 * 1024)
+                        while (true) {
+                            val count = stream.read(buffer); if (count < 0) break
+                            require(output.size().toLong() + count <= max) { "Extension response too large" }
+                            output.write(buffer, 0, count)
+                        }
+                        output.toByteArray()
+                    } else null
+                    return Answer(response.code, bytes, location, uri.toString())
                 }
-                out.toByteArray()
             }
-            return Answer(status, bytes, c.getHeaderField("Location"), c.url.toString())
-        } finally {
-            c.disconnect()
         }
+        throw ExtensionException("Too many extension redirects")
     }
 
     /**
@@ -157,17 +163,16 @@ object ExtensionUpdates {
 
     /** Once at launch, then every few hours while the app runs: the kill switch and the updates that are due. */
     suspend fun daily() {
-        while (true) {
-            runCatching { refreshBlocks() }.onFailure { Logbook.log("ext: blocked.json not read: ${it.message}") }
-            runCatching { checkAll(force = false) }
-            delay(6 * 3600 * 1000L)
-        }
+        // App-open only, and only packages the user explicitly enabled may initiate traffic.
+        if (Extensions.registry.value.extensions.none { it.enabled && it.enableApprovalSha == it.sha256 }) return
+        runCatching { refreshBlocks() }.onFailure { Logbook.log("ext: block list unavailable") }
+        runCatching { checkAll(force = false) }
     }
 
     /** Every extension from GitHub not checked for a day ([force]: all of them). */
     suspend fun checkAll(force: Boolean) {
         val now = System.currentTimeMillis()
-        Extensions.registry.value.extensions.filter { it.origin != null && (force || now - it.lastCheck > DAY_MS) }.forEach { check(it.id, manual = force) }
+        Extensions.registry.value.extensions.filter { it.origin != null && (force || it.enabled && it.enableApprovalSha == it.sha256 && now - it.lastCheck > DAY_MS) }.forEach { check(it.id, manual = force) }
     }
 
     /**

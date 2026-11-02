@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version='1.0' encoding='utf-8'?>
 <resources>
     <string name="sources_audio_title">Ses kaynakları</string>
     <string name="sources_download_title">İndirme kaynakları</string>
@@ -14,4 +14,14 @@
     <string name="sources_open">Eklentiyi aç</string>
     <string name="sources_order_hint">Kaynaklar Ayarlar\'da (Oynatma, İndirmeler) belirlenen sırayla sorulur.</string>
     <string name="sources_below_spotify">Sorulmaz: Spotify yukarıda</string>
+    <string name="source_pick_title">Kaynak</string>
+    <string name="source_pick_detail">Supfy yeniden başlayana kadar bu şarkıyı ve sonrakileri seçtiğin kaynaktan çalar. Ayarlardaki sıran değişmez.</string>
+    <string name="source_pick_playing">Şimdi çalınıyor</string>
+    <string name="source_pick_temporary">Geçici: Supfy yeniden başlayana kadar ilk sırada</string>
+    <string name="source_pick_reset">Kendi sırama dön</string>
+    <string name="source_pick_reset_detail">Ayarlar → Çalma bölümündeki sıra</string>
+    <string name="source_pick_tag">geçici</string>
+    <string name="source_pick_missing">%1$s kaynağında bu şarkı yok: mevcut kaynaktan çalmaya devam eder ve sıran değişmez.</string>
+    <string name="source_pick_next">%1$s sonraki şarkıdan itibaren çalar; bu şarkı mevcut kaynaktan devam eder.</string>
+    <string name="source_pick_active">Bu oturum için geçici seçim: Supfy yeniden başlayana kadar önce %1$s kaynağına sorulur.</string>
 </resources>

@@ -12,7 +12,7 @@ import androidx.compose.ui.input.pointer.positionChange
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
-import android.util.Log
+import app.myspoti.host.android.PrivacyLog as Log
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -852,7 +852,8 @@ private fun ImmersiveStrip(
 /** The clip filling the screen, landscape while it shows; back or the exit button leaves. */
 @Composable
 private fun VideoFullscreen() {
-    val activity = LocalContext.current as? android.app.Activity
+    val activity = generateSequence(LocalContext.current) { (it as? android.content.ContextWrapper)?.baseContext }
+        .filterIsInstance<android.app.Activity>().firstOrNull()
     androidx.compose.runtime.DisposableEffect(activity) {
         val before = activity?.requestedOrientation
         activity?.requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE

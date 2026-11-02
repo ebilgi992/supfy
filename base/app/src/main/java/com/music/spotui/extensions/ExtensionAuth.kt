@@ -189,6 +189,7 @@ private fun authView(ctx: android.content.Context, o: ExtensionAuth.Open, onHost
         javaScriptCanOpenWindowsAutomatically = true
         setSupportMultipleWindows(true)
         setGeolocationEnabled(false)
+        mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_NEVER_ALLOW
     }
 
     /** The callback, reached by a link, a redirect, a form or a window.open: the page closes on it. */
@@ -199,13 +200,21 @@ private fun authView(ctx: android.content.Context, o: ExtensionAuth.Open, onHost
     }
 
     /** Only web pages in this view: no app, intent or file scheme leaves it. */
-    fun refused(uri: android.net.Uri) = uri.scheme != "https" && uri.scheme != "http"
+    fun refused(uri: android.net.Uri): Boolean = uri.scheme != "https" || uri.host.isNullOrBlank() ||
+        uri.userInfo != null || app.myspoti.extensions.SafeNet.isPrivateHost(uri.host.orEmpty()) ||
+        app.myspoti.extensions.RawRequest.isSpotifyHost(uri.host.orEmpty().lowercase())
 
     view.webViewClient = object : WebViewClient() {
         override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean =
             reached(request.url.toString()) || refused(request.url)
 
+        override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): android.webkit.WebResourceResponse? {
+            if (refused(request.url)) return android.webkit.WebResourceResponse("text/plain", "utf-8", java.io.ByteArrayInputStream(ByteArray(0)))
+            return null
+        }
+
         override fun onPageStarted(view: WebView, url: String, favicon: Bitmap?) {
+            if (!o.request.reached(url) && refused(android.net.Uri.parse(url))) { view.stopLoading(); ExtensionAuth.finish(o, null, "Address denied"); return }
             // A form POSTed to an https callback does not go through shouldOverrideUrlLoading.
             if (reached(url)) { view.stopLoading(); return }
             runCatching { java.net.URI(url).host }.getOrNull()?.let(onHost)
@@ -215,7 +224,7 @@ private fun authView(ctx: android.content.Context, o: ExtensionAuth.Open, onHost
             // The page itself cannot be loaded (no network, no such host): the sign-in ends. A check's
             // HTTP status (403, 503 of a challenge page) is not an error, the page goes on.
             if (request.isForMainFrame && !o.request.reached(request.url.toString()))
-                ExtensionAuth.finish(o, null, "network: ${error.description}")
+                ExtensionAuth.finish(o, null, "Sign-in network error")
         }
     }
     view.webChromeClient = object : WebChromeClient() {

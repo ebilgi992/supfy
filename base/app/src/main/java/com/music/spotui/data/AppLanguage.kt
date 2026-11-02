@@ -22,6 +22,7 @@ object AppLanguage {
         AppCompatDelegate.getApplicationLocales().takeIf { !it.isEmpty }?.get(0)?.toLanguageTag() ?: SYSTEM
 
     fun apply(context: Context, tag: String) {
+        app.myspoti.SupfyDefaults.setLanguagePreference(tag)
         AppCompatDelegate.setApplicationLocales(
             if (tag == SYSTEM) LocaleListCompat.getEmptyLocaleList() else LocaleListCompat.forLanguageTags(tag)
         )

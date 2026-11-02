@@ -65,7 +65,7 @@ class ExtensionMediaHttpTest {
 
     @Test fun redactedUrlHasNoQuery() {
         val u = "https://user:pw@cdn.example.org:8443/a/b.flac?token=SECRET#frag".toHttpUrl()
-        assertEquals("https://cdn.example.org:8443/a/b.flac", SafeNet.redact(u))
+        assertEquals("https://cdn.example.org:8443", SafeNet.redact(u))
     }
 
     // ── Redirects ──
@@ -132,12 +132,12 @@ class ExtensionMediaHttpTest {
         }
     }
 
-    @Test fun refusesADowngradeAndAllowsAnUpgrade() {
+    @Test fun refusesPlainHttpEvenWhenAnUpgradeIsOffered() {
         val down = Fake(mapOf("https://a.example.org/s" to { r -> reply(r, 302, "http://a.example.org/s") }))
         try { http(down).open("https://a.example.org/s"); fail() } catch (_: ExtensionMediaHttp.Refused) { /* refused */ }
         val up = Fake(mapOf("http://a.example.org/s" to { r -> reply(r, 301, "https://a.example.org/s") }, "https://a.example.org/s" to { r -> reply(r, 200) }))
-        assertEquals(200, http(up).open("http://a.example.org/s", headers = mapOf("X-Token" to "t")).response.code)
-        assertNull(up.seen[1].header("X-Token")) // another port: treated as another origin
+        try { http(up).open("http://a.example.org/s", headers = mapOf("X-Token" to "t")); fail() } catch (_: ExtensionMediaHttp.Refused) { /* refused before connecting */ }
+        assertTrue(up.seen.isEmpty())
     }
 
     @Test fun stopsAfterFiveRedirects() {
@@ -174,7 +174,7 @@ class ExtensionMediaHttpTest {
         val logs = mutableListOf<String>()
         val transport = ExtensionMediaHttp.Transport { _, _ -> throw SafeNet.LocalAddress("cdn.example.org resolves to a local address") }
         try { ExtensionMediaHttp(transport, { logs += it }).open("https://cdn.example.org/a?sig=SECRET"); fail() } catch (_: java.net.UnknownHostException) { /* refused */ }
-        assertEquals(listOf("media: refused https://cdn.example.org/a: cdn.example.org resolves to a local address"), logs)
+        assertEquals(listOf("media: refused https://cdn.example.org: cdn.example.org resolves to a local address"), logs)
     }
 
     @Test fun theAppsHeadersWinOnTheSameName() {

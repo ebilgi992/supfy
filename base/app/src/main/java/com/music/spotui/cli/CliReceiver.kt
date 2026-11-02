@@ -3,7 +3,7 @@ package com.music.spotui.cli
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.util.Log
+import app.myspoti.host.android.PrivacyLog as Log
 import app.myspoti.extensions.ExtensionPackage
 import app.myspoti.host.android.MyspotiRuntime
 import com.music.spotui.di.SongPlayer

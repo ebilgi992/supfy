@@ -4,8 +4,7 @@ package com.music.spotui.data.offline
  * Ported from Spotui (https://github.com/Spotui/Spotui), GPL-3.0.
  */
 
-import android.util.Log
-
+import app.myspoti.host.android.PrivacyLog as Log
 /**
  * Downloads an MPEG-DASH stream of FLAC in fragmented MP4 (FLAC-in-ISOBMFF) and remuxes it
  * into a real single `.flac` file, no ffmpeg:

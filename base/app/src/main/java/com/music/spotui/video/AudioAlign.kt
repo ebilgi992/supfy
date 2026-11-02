@@ -149,7 +149,7 @@ object AudioAlign {
             codec.start()
             if (!done.await(60, java.util.concurrent.TimeUnit.SECONDS)) error("decode timeout")
             failure?.let { throw it }
-            android.util.Log.i("MusicVideo", "decode $codecName: ${(System.nanoTime() - t0) / 1_000_000} ms")
+            app.myspoti.host.android.PrivacyLog.i("MusicVideo", "decode $codecName: ${(System.nanoTime() - t0) / 1_000_000} ms")
             return out.result()
         } finally {
             // Released on the codec's own thread, after the callback running there: released from

@@ -153,6 +153,8 @@ object UpdateGate {
     fun decide(accepted: Snapshot, next: Snapshot, code: CodeDiff? = null, firstSeen: Long? = null, now: Long = 0): Decision {
         identityChange(accepted, next)?.let { return Decision.Block(it) }
         val changes = diff(accepted, next).toMutableList()
+        if (accepted.version != next.version || accepted.versionCode != next.versionCode)
+            changes += Change(Change.Kind.CODE, "version", critical = true)
         val codeChanged = accepted.scriptSha != null && next.scriptSha != null && accepted.scriptSha != next.scriptSha
         if (codeChanged && (accepted.sensitive() || next.sensitive()))
             changes += Change(Change.Kind.CODE, code?.files.orEmpty().joinToString(", "), critical = true, added = code?.added ?: 0, removed = code?.removed ?: 0)

@@ -1,32 +1,16 @@
+@file:Suppress("UNUSED_PARAMETER")
+
 package com.music.spotui.data.preferences
 
 import android.content.Context
 import com.music.spotui.data.entity.AlbumsModel
 
-fun addLikedAlbumId(context: Context, albumId: String) {
-    val sharedPreferences = context.getSharedPreferences("LikedAlbums", Context.MODE_PRIVATE)
-    val editor = sharedPreferences.edit()
-    editor.putString(albumId, albumId)
-    editor.apply()
-}
+private val albumLikesLock = Any()
+private val likedAlbums = mutableSetOf<String>()
 
-fun removeLikedAlbumId(context: Context, albumId: String) {
-    val sharedPreferences = context.getSharedPreferences("LikedAlbums", Context.MODE_PRIVATE)
-    val editor = sharedPreferences.edit()
-    editor.remove(albumId)
-    editor.apply()
-}
-
-fun isAlbumLiked(context: Context, albumId: String): Boolean {
-    val sharedPreferences = context.getSharedPreferences("LikedAlbums", Context.MODE_PRIVATE)
-    return sharedPreferences.contains(albumId)
-}
-
-fun getLikedAlbumIds(context: Context): Set<Int> {
-    val sharedPreferences = context.getSharedPreferences("LikedAlbums", Context.MODE_PRIVATE)
-    return sharedPreferences.all.keys.mapNotNull { it.toIntOrNull() }.toSet()
-}
-
-fun getAlbumsByIds(albumIds: Set<Int>, albums: List<AlbumsModel>): List<AlbumsModel> {
-    return albums.filter { album -> album.id in albumIds }
-}
+fun addLikedAlbumId(context: Context, albumId: String) { synchronized(albumLikesLock) { likedAlbums.add(albumId) } }
+fun removeLikedAlbumId(context: Context, albumId: String) { synchronized(albumLikesLock) { likedAlbums.remove(albumId) } }
+fun isAlbumLiked(context: Context, albumId: String): Boolean = synchronized(albumLikesLock) { albumId in likedAlbums }
+fun getLikedAlbumIds(context: Context): Set<Int> = synchronized(albumLikesLock) { likedAlbums.mapNotNull { it.toIntOrNull() }.toSet() }
+fun getAlbumsByIds(albumIds: Set<Int>, albums: List<AlbumsModel>): List<AlbumsModel> = albums.filter { it.id in albumIds }
+internal fun clearLikedAlbumMemory() { synchronized(albumLikesLock) { likedAlbums.clear() } }

@@ -3,7 +3,7 @@ package com.music.spotui.di
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.util.Log
+import app.myspoti.host.android.PrivacyLog as Log
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.jsonObject
 

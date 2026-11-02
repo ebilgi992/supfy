@@ -1,7 +1,7 @@
 package com.music.spotui.ui.navigation
 
 import android.os.Build
-import android.util.Log
+import app.myspoti.host.android.PrivacyLog as Log
 import androidx.annotation.RequiresApi
 import androidx.compose.animation.AnimatedContentScope
 import androidx.compose.ui.graphics.graphicsLayer

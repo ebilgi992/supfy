@@ -16,3 +16,10 @@ keystore.properties
 node_modules/
 
 .kotlin/
+
+# Canonical V5 Android build artifacts
+**/build/
+**/local.properties
+.kotlin/
+
+__pycache__/

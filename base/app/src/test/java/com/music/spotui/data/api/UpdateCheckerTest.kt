@@ -39,31 +39,36 @@ class UpdateCheckerTest {
     @Test fun findsTheReleaseApkOfThisChannelOnly() {
         // An older release: one APK named after the version, whichever channel the release is.
         val legacy = org.json.JSONObject("""{"tag_name":"v2.0.0-beta.4","assets":[
-            {"name":"checksums.txt","browser_download_url":"https://x/c.txt"},
-            {"name":"myspoti-2.0.0-beta.4.apk","browser_download_url":"https://x/myspoti.apk"}]}""")
-        assertEquals("https://x/myspoti.apk", UpdateChecker.apkAsset(legacy, beta = true, abis = arm64))
-        assertEquals("https://x/myspoti.apk", UpdateChecker.apkAsset(legacy, beta = false, abis = arm64))
+            {"name":"checksums.txt","browser_download_url":"https://github.com/ebilgi992/supfy/releases/download/v2/supfy-c.txt"},
+            {"name":"supfy-2.0.0-beta.4.apk","browser_download_url":"https://github.com/ebilgi992/supfy/releases/download/v2/supfy-legacy.apk"}]}""")
+        assertEquals("https://github.com/ebilgi992/supfy/releases/download/v2/supfy-legacy.apk", UpdateChecker.apkAsset(legacy, beta = true, abis = arm64))
+        assertEquals("https://github.com/ebilgi992/supfy/releases/download/v2/supfy-legacy.apk", UpdateChecker.apkAsset(legacy, beta = false, abis = arm64))
         val both = org.json.JSONObject("""{"tag_name":"v2.2.1","assets":[
-            {"name":"myspoti-stable-2.2.1.apk","browser_download_url":"https://x/stable.apk"},
-            {"name":"myspoti-beta-2.2.1.apk","browser_download_url":"https://x/beta.apk"}]}""")
-        assertEquals("https://x/beta.apk", UpdateChecker.apkAsset(both, beta = true, abis = arm64))
-        assertEquals("https://x/stable.apk", UpdateChecker.apkAsset(both, beta = false, abis = arm64))
+            {"name":"supfy-stable-2.2.1.apk","browser_download_url":"https://github.com/ebilgi992/supfy/releases/download/v2/supfy-stable.apk"},
+            {"name":"supfy-beta-2.2.1.apk","browser_download_url":"https://github.com/ebilgi992/supfy/releases/download/v2/supfy-beta.apk"}]}""")
+        assertEquals("https://github.com/ebilgi992/supfy/releases/download/v2/supfy-beta.apk", UpdateChecker.apkAsset(both, beta = true, abis = arm64))
+        assertEquals("https://github.com/ebilgi992/supfy/releases/download/v2/supfy-stable.apk", UpdateChecker.apkAsset(both, beta = false, abis = arm64))
         // Only the other channel's APK, or an unrelated .apk: no link, never the wrong build.
         val other = org.json.JSONObject("""{"tag_name":"v2.2.1","assets":[
-            {"name":"myspoti-stable-2.2.1.apk","browser_download_url":"https://x/stable.apk"},
-            {"name":"something-else.apk","browser_download_url":"https://x/else.apk"}]}""")
+            {"name":"supfy-stable-2.2.1.apk","browser_download_url":"https://github.com/ebilgi992/supfy/releases/download/v2/supfy-stable.apk"},
+            {"name":"something-else.apk","browser_download_url":"https://github.com/ebilgi992/supfy/releases/download/v2/supfy-else.apk"}]}""")
         assertEquals("", UpdateChecker.apkAsset(other, beta = true, abis = arm64))
         assertEquals("", UpdateChecker.apkAsset(org.json.JSONObject("{}"), beta = true, abis = arm64))
     }
+    @Test fun refusesUpstreamApksEvenWhenPublishedAlongsideSupfy() {
+        val upstream = org.json.JSONObject("""{"tag_name":"v5.0.1","assets":[{"name":"myspoti-stable-5.0.1.apk","browser_download_url":"https://github.com/ebilgi992/supfy/releases/download/v5.0.1/myspoti-stable-5.0.1.apk"}]}""")
+        assertEquals("", UpdateChecker.apkAsset(upstream, beta = false, abis = arm64))
+    }
+
     @Test fun findsTheApkOfThisPhonesAbi() {
         val split = org.json.JSONObject("""{"tag_name":"v2.3.0-beta.1","assets":[
-            {"name":"myspoti-beta-2.3.0-beta.1-armeabi-v7a.apk","browser_download_url":"https://x/beta-v7a.apk"},
-            {"name":"myspoti-beta-2.3.0-beta.1-arm64-v8a.apk","browser_download_url":"https://x/beta-arm64.apk"},
-            {"name":"myspoti-stable-2.3.0-beta.1-arm64-v8a.apk","browser_download_url":"https://x/stable-arm64.apk"}]}""")
+            {"name":"supfy-beta-2.3.0-beta.1-armeabi-v7a.apk","browser_download_url":"https://github.com/ebilgi992/supfy/releases/download/v2/supfy-beta-v7a.apk"},
+            {"name":"supfy-beta-2.3.0-beta.1-arm64-v8a.apk","browser_download_url":"https://github.com/ebilgi992/supfy/releases/download/v2/supfy-beta-arm64.apk"},
+            {"name":"supfy-stable-2.3.0-beta.1-arm64-v8a.apk","browser_download_url":"https://github.com/ebilgi992/supfy/releases/download/v2/supfy-stable-arm64.apk"}]}""")
         // A 64-bit phone that also runs armeabi-v7a takes arm64-v8a, whatever the assets' order.
-        assertEquals("https://x/beta-arm64.apk", UpdateChecker.apkAsset(split, beta = true, abis = arm64))
-        assertEquals("https://x/beta-v7a.apk", UpdateChecker.apkAsset(split, beta = true, abis = listOf("armeabi-v7a", "armeabi")))
-        assertEquals("https://x/stable-arm64.apk", UpdateChecker.apkAsset(split, beta = false, abis = arm64))
+        assertEquals("https://github.com/ebilgi992/supfy/releases/download/v2/supfy-beta-arm64.apk", UpdateChecker.apkAsset(split, beta = true, abis = arm64))
+        assertEquals("https://github.com/ebilgi992/supfy/releases/download/v2/supfy-beta-v7a.apk", UpdateChecker.apkAsset(split, beta = true, abis = listOf("armeabi-v7a", "armeabi")))
+        assertEquals("https://github.com/ebilgi992/supfy/releases/download/v2/supfy-stable-arm64.apk", UpdateChecker.apkAsset(split, beta = false, abis = arm64))
         // The other channel's APK for this ABI only: no link.
         assertEquals("", UpdateChecker.apkAsset(split, beta = false, abis = listOf("armeabi-v7a")))
         // An ABI the releases do not carry (x86 emulator, Chromebook): no link, the release page opens.
@@ -71,7 +76,7 @@ class UpdateCheckerTest {
         assertEquals("", UpdateChecker.apkAsset(split, beta = true, abis = emptyList()))
         // A release from before the ABI split: the channel's APK without a suffix, as before.
         val single = org.json.JSONObject("""{"tag_name":"v2.2.1","assets":[
-            {"name":"myspoti-stable-2.2.1.apk","browser_download_url":"https://x/stable.apk"}]}""")
-        assertEquals("https://x/stable.apk", UpdateChecker.apkAsset(single, beta = false, abis = listOf("armeabi-v7a")))
+            {"name":"supfy-stable-2.2.1.apk","browser_download_url":"https://github.com/ebilgi992/supfy/releases/download/v2/supfy-stable.apk"}]}""")
+        assertEquals("https://github.com/ebilgi992/supfy/releases/download/v2/supfy-stable.apk", UpdateChecker.apkAsset(single, beta = false, abis = listOf("armeabi-v7a")))
     }
 }

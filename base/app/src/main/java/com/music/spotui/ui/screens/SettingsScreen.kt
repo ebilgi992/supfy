@@ -312,6 +312,7 @@ fun SettingsScreen(navController: NavController) {
             if (tab == 4) {
             Section(R.string.settings_section_app)
             AboutRow()
+            com.music.spotui.ui.components.V5PrivacySettings()
             // A18: the launch check can be turned off; the manual check below keeps working.
             OptionRow(
                 label = stringResource(R.string.settings_auto_update_title),
@@ -331,19 +332,7 @@ fun SettingsScreen(navController: NavController) {
                 Text(stringResource(R.string.restart_player_title), color = AppText, fontSize = 16.sp)
                 Text(stringResource(R.string.restart_player_detail), color = AppMuted, fontSize = 12.sp)
             }
-            // The report a tester hands us. The engine's log is otherwise reachable only through
-            // adb logcat, which the person reporting the bug cannot run: the label is a literal
-            // rather than a string resource so this change stays out of the shared string files.
-            Column(
-                Modifier.fillMaxWidth().clickable {
-                    val file = runCatching { app.myspoti.host.android.Logbook.export(ctx) }.getOrNull()
-                    if (file != null) shareDiagnosticReport(ctx, file)
-                    else android.widget.Toast.makeText(ctx, ctx.getString(R.string.diagnostic_export_failed), android.widget.Toast.LENGTH_SHORT).show()
-                }.padding(horizontal = 20.dp, vertical = 10.dp),
-            ) {
-                Text(stringResource(R.string.diagnostic_export_title), color = AppText, fontSize = 16.sp)
-                Text(stringResource(R.string.diagnostic_export_detail), color = AppMuted, fontSize = 12.sp)
-            }
+
             }
             // Clear of the mini player and the navigation bar, as every other page (96 dp left the
             // last rows, "Restart the player" among them, under the mini player).
@@ -654,27 +643,4 @@ private fun AboutRow() {
             }
         }
     }
-}
-
-/**
- * Hands the exported report to the share sheet. The file goes through the app's FileProvider;
- * if the provider refuses the path (external storage absent), the report's own path is shared
- * instead, so the tester still has something to send.
- */
-internal fun shareDiagnosticReport(context: android.content.Context, file: java.io.File) {
-    val send = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
-        type = "text/plain"
-        putExtra(android.content.Intent.EXTRA_SUBJECT, "Myspoti diagnostic report")
-    }
-    val uri = runCatching {
-        androidx.core.content.FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
-    }.getOrNull()
-    if (uri != null) {
-        send.type = "application/octet-stream"
-        send.putExtra(android.content.Intent.EXTRA_STREAM, uri)
-        send.addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
-    } else {
-        send.putExtra(android.content.Intent.EXTRA_TEXT, "Myspoti diagnostic report: ${file.absolutePath}")
-    }
-    context.startActivity(android.content.Intent.createChooser(send, null).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK))
 }

@@ -1,14 +1,9 @@
 package com.music.spotui.data.local
 
 import android.content.Context
-import org.json.JSONObject
 import java.io.File
 
-/**
- * Every listen on this phone, whatever the source (Spotify, downloads, local files), for the
- * in-app recap. Stays on the phone; nothing is reported to Spotify or anyone else.
- * A listen counts after 30 s, like most services.
- */
+/** Compatibility models and recap calculations; V5 does not retain listening history. */
 object ListenHistory {
     enum class Source { SPOTIFY, DOWNLOAD, LOCAL }
 
@@ -36,48 +31,17 @@ object ListenHistory {
     }
 
     const val MIN_PLAYED_MS = 30_000L
-    private var file: File? = null
-    private val lock = Any()
-
+    /** Removes only the legacy history file; playback/session files remain untouched. */
     fun init(context: Context) {
-        file = File(context.filesDir, "listen_history.jsonl")
+        runCatching { File(context.filesDir, "listen_history.jsonl").delete() }
     }
 
-    fun record(listen: Listen) {
-        if (listen.playedMs < MIN_PLAYED_MS || listen.title.isBlank()) return
-        val f = file ?: return
-        val line = JSONObject()
-            .put("at", listen.atMs).put("key", listen.key).put("title", listen.title).put("artist", listen.artist)
-            .put("album", listen.album).put("cover", listen.cover).put("ms", listen.playedMs).put("src", listen.source.name)
-            .put("artists", org.json.JSONArray(listen.artists))
-            .toString()
-        synchronized(lock) {
-            f.appendText(line + "\n")
-            loaded?.let { loaded = it + listen }
-        }
-    }
+    @Suppress("UNUSED_PARAMETER")
+    fun record(listen: Listen) = Unit
 
-    /** The history as last read, kept while the file only grows by [record]: not read again for every screen. */
-    private var loaded: List<Listen>? = null
+    fun all(): List<Listen> = emptyList()
 
-    fun all(): List<Listen> = synchronized(lock) {
-        loaded?.let { return it }
-        val f = file?.takeIf { it.exists() } ?: return emptyList()
-        val list = f.readLines().mapNotNull { line ->
-            runCatching {
-                val o = JSONObject(line)
-                val artist = o.optString("artist")
-                val artists = o.optJSONArray("artists")?.let { a -> List(a.length()) { a.getString(it) } }?.filter { it.isNotBlank() }
-                Listen(o.getLong("at"), o.getString("key"), o.getString("title"), artist, o.optString("album"),
-                    o.optString("cover"), o.getLong("ms"), Source.valueOf(o.optString("src", "SPOTIFY")),
-                    artists?.ifEmpty { null } ?: listOf(artist.substringBefore(",").trim()))
-            }.getOrNull()
-        }
-        loaded = list
-        list
-    }
-
-    fun clear() = synchronized(lock) { loaded = null; file?.delete() }
+    fun clear() = Unit
 
     data class Ranked(val name: String, val subtitle: String, val cover: String, val count: Int, val minutes: Long)
 

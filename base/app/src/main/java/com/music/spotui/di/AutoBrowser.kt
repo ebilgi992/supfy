@@ -265,7 +265,7 @@ object AutoBrowser {
         // A cold start asks before the page is up: waiting gives the answer, returning at
         // once would tell the driver nothing matched.
         if (!awaitPlayer()) {
-            android.util.Log.w("Myspoti", "voice search dropped: the player page is not ready")
+            app.myspoti.host.android.PrivacyLog.w("Myspoti", "voice search dropped: the player page is not ready")
             return false
         }
         val song = (firstResult { Graph.api.searchEverything(query) })?.songs?.firstOrNull() ?: return false

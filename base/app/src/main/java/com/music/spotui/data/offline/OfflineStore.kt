@@ -111,7 +111,7 @@ object OfflineStore {
                 val done = synchronized(folderLock) {
                     if (moves != start) return@synchronized false
                     runCatching { OfflineCrypto.encryptInPlace(context.applicationContext, f) }
-                        .onFailure { android.util.Log.w("Offline", "could not encrypt ${f.name}: ${it.message}") }
+                        .onFailure { app.myspoti.host.android.PrivacyLog.w("Offline", "could not encrypt ${f.name}: ${it.message}") }
                     true
                 }
                 if (!done) break
@@ -147,7 +147,7 @@ object OfflineStore {
         val read = readIndex(indexFile) ?: run {
             if (indexFile.exists()) {
                 indexFile.copyTo(File(root, "index.corrupt-${System.currentTimeMillis()}.json"), overwrite = true)
-                runCatching { android.util.Log.w("Offline", "download index unreadable; using the backup, no file deleted") }
+                runCatching { app.myspoti.host.android.PrivacyLog.w("Offline", "download index unreadable; using the backup, no file deleted") }
             }
             readIndex(backupFile)
         }

@@ -155,7 +155,10 @@ object Extensions {
         if (isReady) return
         ctx = application
         dir = File(application.filesDir, "extensions")
-        _registry.value = Registry.read(File(dir, "registry.json")).let { r ->
+        _registry.value = Registry.read(File(dir, "registry.json")).let { saved ->
+            val r = saved.copy(extensions = saved.extensions.map { e ->
+                if (e.enabled && e.enableApprovalSha != e.sha256) e.copy(enabled = false, disabledReason = "Enable this package after reviewing its permissions") else e
+            })
             // Always-allow grants without an operation on a multiplexed endpoint (GraphQL) covered every
             // operation: dropped, the user is asked again (per operation from now on).
             if (r.extensions.none { e -> e.rawGrants.any { it.tooBroad } }) r
@@ -338,7 +341,7 @@ object Extensions {
             clashes.filter { keepNew(it) && it.kind != Clash.Kind.EXCLUSIVE }.forEach { stop(it.otherId); log(it.otherId, "turned off: replaced by $id") }
             val e = InstalledExtension(
                 id = id, name = p.manifest.name, version = p.manifest.version, versionCode = p.manifest.versionCode,
-                author = p.manifest.author, sha256 = p.sha256, granted = granted, enabled = !startOff,
+                author = p.manifest.author, sha256 = p.sha256, granted = granted, enabled = false,
                 disabledReason = if (startOff) "kept the extension it conflicts with" else null,
                 installedAt = before?.installedAt ?: System.currentTimeMillis(), source = source,
                 origin = origin ?: before?.origin,
@@ -383,7 +386,9 @@ object Extensions {
             update { Clashes.apply(it, id, clashes, keepNew).first }
             clashes.filter { keepNew(it) && it.kind != Clash.Kind.EXCLUSIVE }.forEach { stop(it.otherId); log(it.otherId, "turned off: replaced by $id") }
             arbiter.resume(id)
-            val now = e.copy(enabled = true, disabledReason = null)
+            val m = manifest(id) ?: return@launch
+            if (id !in _registry.value.noticeAccepted || m.actionSet().any { it.level == app.myspoti.extensions.Level.CRITICAL && it.key !in e.granted }) return@launch
+            val now = e.copy(enabled = true, enableApprovalSha = e.sha256, disabledReason = null)
             update { it.put(now) }
             failures.reset(id)
             clearError(id)
@@ -701,13 +706,22 @@ object Extensions {
     private val pageSinks = ConcurrentHashMap<String, (String) -> Unit>()
 
     fun attachPage(id: String, sink: ((String) -> Unit)?) { if (sink == null) pageSinks.remove(id) else pageSinks[id] = sink }
+    /** A disposed old WebView cannot detach a new page registered under the same id. */
+    fun detachPage(id: String, sink: (String) -> Unit) { pageSinks.remove(id, sink) }
 
     /** A message [id]'s page posted: its extension's answer goes back to that page only. */
     fun pageMessage(id: String, data: String) {
-        if (data.length > 64 * 1024 || guard.suspended) return
-        val rt = runtimes[id] ?: return
+        if (data.toByteArray(Charsets.UTF_8).size > 64 * 1024 || guard.suspended) return
+        val rt = runtimes[id]?.takeIf { it.provides(Hook.MESSAGE) } ?: return
+        val sink = pageSinks[id] ?: return
         val json = runCatching { kotlinx.serialization.json.Json.parseToJsonElement(data).toString() }.getOrElse { kotlinx.serialization.json.JsonPrimitive(data).toString() }
-        scope.launch { callHook(id, rt, Hook.MESSAGE, json, BLOCKS_MS) { it }?.let { reply -> main.post { pageSinks[id]?.invoke(reply) } } }
+        scope.launch {
+            if (guard.suspended || runtimes[id] !== rt || pageSinks[id] !== sink) return@launch
+            callHook(id, rt, Hook.MESSAGE, json, BLOCKS_MS) { it }?.let { reply ->
+                if (reply.toByteArray(Charsets.UTF_8).size > 64 * 1024) return@let
+                main.post { if (!guard.suspended && runtimes[id] === rt && pageSinks[id] === sink) sink(reply) }
+            }
+        }
     }
 
     /** The extensions that have a page (webview.page granted). */
@@ -1270,29 +1284,9 @@ object Extensions {
 
     /** https only, no cookies, at most [max] bytes. */
     private fun download(url: String, max: Int): ByteArray {
-        val uri = runCatching { URI(url) }.getOrNull()
-        if (uri?.scheme != "https" || uri.host.isNullOrBlank()) throw ExtensionException("an https address is needed")
-        if (com.music.spotui.data.DataSaver.active) throw ExtensionException("the data saver is on")
-        val c = uri.toURL().openConnection() as HttpURLConnection
-        c.connectTimeout = 15_000; c.readTimeout = 20_000; c.useCaches = false
-        c.setRequestProperty("User-Agent", "Myspoti-Extensions/1")
-        c.setRequestProperty("Cache-Control", "no-cache"); c.setRequestProperty("Pragma", "no-cache")
-        try {
-            if (c.responseCode !in 200..299) throw ExtensionException("the server answered ${c.responseCode}")
-            val out = java.io.ByteArrayOutputStream()
-            c.inputStream.use { s ->
-                val buf = ByteArray(16 * 1024)
-                while (true) {
-                    val n = s.read(buf)
-                    if (n < 0) break
-                    out.write(buf, 0, n)
-                    if (out.size() > max) throw ExtensionException("larger than ${max / 1024} KB")
-                }
-            }
-            return out.toByteArray()
-        } finally {
-            c.disconnect()
-        }
+        val response = ExtensionUpdates.get(url, max)
+        if (response.status !in 200..299) throw ExtensionException("Extension download failed")
+        return response.body ?: throw ExtensionException("Empty extension package")
     }
 
     // ── Sandboxes ──
@@ -1315,7 +1309,7 @@ object Extensions {
         // What is installed now: an update that landed while this start waited its turn is the one
         // to run (the entry it was asked with would no longer match the package on the phone).
         val e = _registry.value.find(asked.id) ?: return
-        if (!e.enabled) return
+        if (!e.enabled || e.enableApprovalSha != e.sha256) return
         if (runtimes.containsKey(e.id)) { if (runningSha[e.id] == e.sha256) return else stop(e.id) }
         val p = pkg(e.id) ?: return disable(e.id, "its package is missing")
         if (p.sha256 != e.sha256) return disable(e.id, "its package changed on the phone")
@@ -1387,15 +1381,15 @@ object Extensions {
     fun disable(id: String, reason: String) {
         stop(id)
         val e = _registry.value.find(id) ?: return
-        update { it.put(e.copy(enabled = false, disabledReason = reason)) }
+        update { it.put(e.copy(enabled = false, disabledReason = "Extension stopped")) }
         setError(id, reason)
         log(id, "turned off: $reason")
         main.post {
-            android.widget.Toast.makeText(ctx, ctx.getString(app.myspoti.engine.R.string.extension_turned_off, e.name, reason), android.widget.Toast.LENGTH_LONG).show()
+            android.widget.Toast.makeText(ctx, ctx.getString(app.myspoti.engine.R.string.extension_turned_off, e.name, "Extension stopped"), android.widget.Toast.LENGTH_LONG).show()
         }
     }
 
-    private fun setError(id: String, message: String) { _errors.value = _errors.value + (id to message) }
+    private fun setError(id: String, message: String) { _errors.value = _errors.value + (id to "Extension request failed") }
     private fun clearError(id: String) { _errors.value = _errors.value - id }
 
     internal fun update(change: (Registry) -> Registry) {
@@ -1409,12 +1403,8 @@ object Extensions {
         refreshProvided()
     }
 
-    fun log(id: String, message: String) {
-        val stamp = java.text.SimpleDateFormat("MM-dd HH:mm:ss", java.util.Locale.US).format(java.util.Date())
-        logOf(id).add("$stamp $message")
-        logTick.value++
-        Logbook.log("ext $id: $message")
-    }
+    @Suppress("UNUSED_PARAMETER")
+    fun log(id: String, message: String) = Unit
 
     private fun logOf(id: String) = logs.getOrPut(id) { ExtensionLog(File(dir, "$id/log.txt")) }
     private fun settingsOf(id: String) = settings.getOrPut(id) { FileStore(File(dir, "$id/settings.json")) }
@@ -1501,7 +1491,12 @@ object Extensions {
 
         override fun refresh(extensionId: String, surface: String) { blocksTick.value++ }
 
-        override fun postToPage(extensionId: String, json: String) { main.post { pageSinks[extensionId]?.invoke(json) } }
+        override fun postToPage(extensionId: String, json: String) {
+            if (guard.suspended || json.toByteArray(Charsets.UTF_8).size > 64 * 1024) return
+            val sink = pageSinks[extensionId] ?: return
+            val runtime = runtimes[extensionId] ?: return
+            main.post { if (!guard.suspended && pageSinks[extensionId] === sink && runtimes[extensionId] === runtime) sink(json) }
+        }
 
         override fun spotifyMutation(name: String): Boolean = app.myspoti.spotify.gql.isMutation(name)
 
@@ -1530,10 +1525,17 @@ object Extensions {
     /** The raw door: the Web Player's GraphQL, page services and Spotify URLs, as the account. */
     private object AppRaw : SpotifyRaw {
         private val api get() = MyspotiRuntime.spotify
-        override suspend fun gql(operation: String, variables: JsonObject): JsonElement = api.raw.gql(operation, variables)
+        override suspend fun gql(operation: String, variables: JsonObject): JsonElement = app.myspoti.extensions.BridgePrivacy.sanitize(api.raw.gql(operation, variables))
         override fun operations(): Set<String> = api.raw.operations
-        override suspend fun service(service: String, method: String, args: List<JsonElement>): JsonElement = api.raw.service(service, method, *args.toTypedArray())
-        override suspend fun get(url: String): JsonElement? = api.raw.get(url)
+        override suspend fun service(service: String, method: String, args: List<JsonElement>): JsonElement {
+            val operation = (service + method).lowercase()
+            require(!listOf("token", "cookie", "credential", "password", "authorization", "oauth").any { it in operation }) { "Credential service denied" }
+            return app.myspoti.extensions.BridgePrivacy.sanitize(api.raw.service(service, method, *args.toTypedArray()))
+        }
+        override suspend fun get(url: String): JsonElement? {
+            app.myspoti.extensions.RawRequest.check("GET", url)
+            return api.raw.get(url)?.let(app.myspoti.extensions.BridgePrivacy::sanitize)
+        }
         override fun isMutation(operation: String): Boolean = app.myspoti.spotify.gql.isMutation(operation)
         override suspend fun request(method: String, url: String, body: ByteArray?, headers: Map<String, String>): JsonElement =
             api.raw.request(method, url, body, headers).let { app.myspoti.extensions.RawRequest.response(it.status, it.headers, it.body) }
