@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <string name="settings_liquid_glass_title">Sıvı Cam</string>
-    <string name="settings_liquid_glass_detail">Çubuklar, arkalarındaki sayfayı cam gibi bükerek yansıtır</string>
-    <string name="settings_liquid_glass_unsupported">Android 12 veya üstü gerekir</string>
-    <string name="settings_liquid_glass_reduced">Telefon bulanıklığı veya animasyonları azalttığında buzlu cam görünümü kullanılır</string>
-    <string name="immersive_expand_tab_bar">Tüm sekmeleri göster</string>
-</resources>

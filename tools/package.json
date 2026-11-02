@@ -1,6 +1,0 @@
-{
-  "name": "supfy-dom-tests",
-  "private": true,
-  "scripts": { "test": "node protection.test.cjs && node playback.test.cjs && node account.test.cjs" },
-  "devDependencies": { "jsdom": "26.1.0" }
-}

@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <string name="immersive_screens_account">Hesap</string>
-    <string name="immersive_screens_account_page">Hesap sayfası</string>
-    <string name="immersive_screens_account_page_detail">Plan, gizlilik ve cihazlar</string>
-    <string name="immersive_screens_top_result">En iyi sonuç</string>
-    <string name="immersive_screens_reset_order">Varsayılan sıralamaya dön</string>
-</resources>
