@@ -500,8 +500,6 @@ private fun ProfileSheet(onOpen: (route: String) -> Unit = {}, onDismiss: () -> 
                 com.music.spotui.ui.components.ProfileAvatar(url = avatar, name = name, size = 48.dp)
                 Text(name.ifBlank { stringResource(R.string.spotify_account) }, color = AppText, fontSize = 18.sp, fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(start = 14.dp))
-                if (com.music.spotui.data.api.SupportReminder.level != com.music.spotui.data.api.SupportReminder.Level.NONE)
-                    com.music.spotui.ui.components.SupporterBadge(Modifier.padding(start = 10.dp))
             }
             if (myId != null) Text(stringResource(R.string.view_profile), color = AppMuted, fontSize = 13.sp,
                 modifier = Modifier.padding(start = 82.dp, bottom = 4.dp))
@@ -568,18 +566,7 @@ private fun ProfileSheet(onOpen: (route: String) -> Unit = {}, onDismiss: () -> 
                 Text(stringResource(R.string.account_page_title), color = AppText, fontSize = 16.sp)
                 Text(stringResource(R.string.account_page_detail), color = AppMuted, fontSize = 12.sp)
             }
-            val ctx = androidx.compose.ui.platform.LocalContext.current
-            // Donations (Ko-fi or GitHub Sponsors): always here, never in the way.
-            var support by remember { androidx.compose.runtime.mutableStateOf(false) }
-            if (support) com.music.spotui.ui.components.SupportSheet(onDismiss = { support = false })
-            androidx.compose.foundation.layout.Column(
-                Modifier.fillMaxWidth().clickable { support = true }
-                    .padding(horizontal = 20.dp, vertical = 10.dp),
-            ) {
-                Text(stringResource(R.string.support_title), color = com.music.spotui.ui.theme.AppAccent, fontSize = 16.sp)
-                Text(stringResource(R.string.support_row_detail), color = AppMuted, fontSize = 12.sp)
-            }
-            // About: version, Discord, source code and Ko-fi.
+            // About: version, website, community and source credits.
             var about by remember { androidx.compose.runtime.mutableStateOf(false) }
             if (about) com.music.spotui.ui.components.AboutSheet(onDismiss = { about = false })
             androidx.compose.foundation.layout.Column(
@@ -587,14 +574,6 @@ private fun ProfileSheet(onOpen: (route: String) -> Unit = {}, onDismiss: () -> 
             ) {
                 Text(stringResource(R.string.creator_biography_section_title), color = AppText, fontSize = 16.sp)
                 Text(stringResource(R.string.about_detail), color = AppMuted, fontSize = 12.sp)
-            }
-            var perks by remember { androidx.compose.runtime.mutableStateOf(false) }
-            if (perks) com.music.spotui.ui.components.SupporterSheet(onDismiss = { perks = false })
-            if (com.music.spotui.data.api.SupportReminder.PERKS_ENABLED) androidx.compose.foundation.layout.Column(
-                Modifier.fillMaxWidth().clickable { perks = true }.padding(horizontal = 20.dp, vertical = 10.dp),
-            ) {
-                Text(stringResource(R.string.supporter_perks_title), color = AppText, fontSize = 16.sp)
-                Text(stringResource(R.string.supporter_perks_detail), color = AppMuted, fontSize = 12.sp)
             }
             Text(
                 stringResource(R.string.connect_device_menu_logout),

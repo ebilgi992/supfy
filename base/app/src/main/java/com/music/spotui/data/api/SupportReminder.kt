@@ -2,9 +2,7 @@ package com.music.spotui.data.api
 
 import android.content.ComponentName
 import android.content.Context
-import android.content.Intent
 import android.content.pm.PackageManager
-import android.net.Uri
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -12,17 +10,8 @@ import androidx.compose.ui.graphics.Color
 import com.music.spotui.data.preferences.Look
 import com.music.spotui.data.preferences.LookPref
 
-/**
- * Donations and their thank-yous. Reminders: a day after first use, then every 8 to 12 days
- * (drawn per person and per reminder, never weekly);
- * for someone who said they gave once, every 3 months with a thank-you; never for a
- * monthly supporter. "I've supported" is taken on trust (nothing is checked, nothing is
- * sold): it unlocks cosmetic thank-yous only (accent colour, app icon, badge).
- */
+/** Cosmetic preferences retained across upgrades. Legacy reminder APIs remain disabled. */
 object SupportReminder {
-    const val URL = "https://ko-fi.com/myspoti"
-    /** GitHub Sponsors, the other way to give (monthly or once). */
-    const val SPONSORS_URL = "https://github.com/sponsors/kota-zo"
     const val FIRST_AFTER_MS = 24L * 3_600_000
     /**
      * Supporter perks ("I've supported", accent, icon, badge) are off until supports can
@@ -103,13 +92,10 @@ object SupportReminder {
         icon = Accent.entries.firstOrNull { it.key == p.getString("icon", "green") } ?: Accent.GREEN
     }
 
-    fun isDue(context: Context, now: Long = System.currentTimeMillis()): Boolean {
-        val p = prefs(context)
-        val firstSeen = p.getLong("first_seen", 0L).takeIf { it > 0 } ?: now.also { p.edit().putLong("first_seen", it).apply() }
-        return now >= nextAt(firstSeen, p.getLong("last_shown", 0L), level, p.getLong("supported_at", 0L))
-    }
+    @Suppress("UNUSED_PARAMETER")
+    fun isDue(context: Context, now: Long = System.currentTimeMillis()): Boolean = false
 
-    /** The reminder was answered (Ko-fi opened or "no thanks"). */
+    /** Legacy reminder state, retained for upgrade compatibility. */
     fun shown(context: Context) = prefs(context).edit().putLong("last_shown", System.currentTimeMillis()).apply()
 
     /** "I've supported", on trust. */
@@ -147,11 +133,4 @@ object SupportReminder {
 
     private fun aliasOf(a: Accent) = "app.myspoti.engine.ui.Launcher" + a.key.replaceFirstChar { it.uppercase() }
 
-    fun open(context: Context) {
-        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(URL)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-    }
-
-    fun openSponsors(context: Context) {
-        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(SPONSORS_URL)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-    }
 }

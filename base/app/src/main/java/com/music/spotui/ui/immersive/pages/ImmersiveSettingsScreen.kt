@@ -566,7 +566,7 @@ private fun rotationLabel(mode: String): Int = when (mode) {
     else -> R.string.settings_rotation_portrait
 }
 
-/** The accent colour of one look, for everyone (the same palette the supporter sheet uses). */
+/** The accent colour of one look, available to everyone. */
 @Composable
 private fun AccentRow(look: com.music.spotui.data.preferences.Look) {
     val ctx = LocalContext.current
@@ -693,6 +693,14 @@ private fun AppPage(navController: NavController, back: () -> Unit) {
                             androidx.compose.material3.Icon(Icons.Rounded.Refresh, stringResource(R.string.settings_update_refresh), tint = Immersive.Accent)
                         }
                     },
+                )
+            }
+        }
+        immersiveGroup("website") {
+            row {
+                ImmersiveGroupRow(
+                    stringResource(R.string.supfy_website_title), detail = stringResource(R.string.supfy_website_detail),
+                    chevron = true, onClick = { com.music.spotui.ui.components.openSupfyWebsite(ctx) },
                 )
             }
         }

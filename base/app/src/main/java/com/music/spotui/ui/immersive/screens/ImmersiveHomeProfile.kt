@@ -39,13 +39,9 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import app.myspoti.engine.R
 import com.music.spotui.data.api.ProfileCache
-import com.music.spotui.data.api.SupportReminder
 import com.music.spotui.di.Graph
 import com.music.spotui.di.SessionActions
 import com.music.spotui.ui.components.AboutSheet
-import com.music.spotui.ui.components.SupporterBadge
-import com.music.spotui.ui.components.SupporterSheet
-import com.music.spotui.ui.components.SupportSheet
 import com.music.spotui.ui.immersive.Immersive
 import com.music.spotui.ui.immersive.components.ImmersiveCover
 import com.music.spotui.ui.immersive.components.immersiveClickable
@@ -148,7 +144,6 @@ internal fun ImmersiveProfileSheet(onOpen: (route: String) -> Unit, onDismiss: (
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.padding(start = 14.dp),
                 )
-                if (SupportReminder.level != SupportReminder.Level.NONE) SupporterBadge(Modifier.padding(start = 10.dp))
             }
             if (myId != null) {
                 Text(
@@ -189,26 +184,11 @@ internal fun ImmersiveProfileSheet(onOpen: (route: String) -> Unit, onDismiss: (
                 onDismiss()
                 AccountBrowser.open(Graph.app, AccountBrowser.ACCOUNT_URL)
             }
-            // Donations: always here, never in the way.
-            var support by remember { mutableStateOf(false) }
-            if (support) SupportSheet(onDismiss = { support = false })
-            SheetRow(
-                stringResource(R.string.support_title),
-                stringResource(R.string.support_row_detail),
-                titleColor = Immersive.Accent,
-            ) { support = true }
-            // About: version, Discord, source code and Ko-fi.
+            // About: version, website, community and source credits.
             var about by remember { mutableStateOf(false) }
             if (about) AboutSheet(onDismiss = { about = false })
             SheetRow(stringResource(R.string.creator_biography_section_title), stringResource(R.string.about_detail)) {
                 about = true
-            }
-            var perks by remember { mutableStateOf(false) }
-            if (perks) SupporterSheet(onDismiss = { perks = false })
-            if (SupportReminder.PERKS_ENABLED) {
-                SheetRow(stringResource(R.string.supporter_perks_title), stringResource(R.string.supporter_perks_detail)) {
-                    perks = true
-                }
             }
             SheetRow(stringResource(R.string.connect_device_menu_logout), null) {
                 onDismiss()

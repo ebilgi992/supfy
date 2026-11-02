@@ -312,6 +312,13 @@ fun SettingsScreen(navController: NavController) {
             if (tab == 4) {
             Section(R.string.settings_section_app)
             AboutRow()
+            Column(
+                Modifier.fillMaxWidth().clickable { com.music.spotui.ui.components.openSupfyWebsite(ctx) }
+                    .padding(horizontal = 20.dp, vertical = 10.dp),
+            ) {
+                Text(stringResource(R.string.supfy_website_title), color = AppText, fontSize = 16.sp)
+                Text(stringResource(R.string.supfy_website_detail), color = AppMuted, fontSize = 12.sp)
+            }
             com.music.spotui.ui.components.V5PrivacySettings()
             // A18: the launch check can be turned off; the manual check below keeps working.
             OptionRow(
@@ -413,7 +420,7 @@ private fun LookRow() {
     }
 }
 
-/** The accent colour of one look, for everyone (the same palette the supporter sheet uses). */
+/** The accent colour of one look, available to everyone. */
 @Composable
 private fun AccentRow(look: com.music.spotui.data.preferences.Look) {
     val ctx = androidx.compose.ui.platform.LocalContext.current
