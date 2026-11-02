@@ -1,0 +1,37 @@
+{
+  "result": "PASS",
+  "url": "https://ebilgi992.github.io/supfy/",
+  "pagesCommit": "d53536446a795832926477dead2e6fad762ec6fa",
+  "checks": [
+    {
+      "path": "index.html",
+      "status": "PASS",
+      "sha256": "f62f974f6894ad2b441fffdab1c10328f680fed18f6febd5935a5a7f6c355cc8"
+    },
+    {
+      "path": "app.js",
+      "status": "PASS",
+      "sha256": "0980cd16585ccb646cc9104a15341f98eb7eae7bb52a8be670ccd6a8915e819e"
+    },
+    {
+      "path": "styles.css",
+      "status": "PASS",
+      "sha256": "b5b32f3c1bd6431c7ccbdde6c0845ede8b1416d09f83f35e80d8bfcf6d7296ff"
+    },
+    {
+      "path": "release.json",
+      "status": "PASS",
+      "sha256": "771ce6f2c928c4716c1ac4b7e4460110d8a71bf2e1c03885c811a89e8ac03623"
+    },
+    {
+      "path": "assets/supfy-mark.svg",
+      "status": "PASS",
+      "sha256": "3ad3240f6d93567ce4405bf0b7252fa7b0eadedff32ee8b2fcba36e3885834be"
+    },
+    {
+      "path": "assets/afterglow.svg",
+      "status": "PASS",
+      "sha256": "78560c2fde7ec89064347eb0df21edc3e88918971792f80de0b5a6b98a9e4bd0"
+    }
+  ]
+}

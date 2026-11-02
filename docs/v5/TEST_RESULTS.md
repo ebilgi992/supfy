@@ -117,3 +117,5 @@ network-loss/reconnect, screen-lock/Doze/long battery behavior, physical-device
 performance, full navigation/font scaling/TalkBack and runtime hostile-IPC/security
 penetration scenarios remain unverified. There is no claim of blanket OWASP compliance,
 trouble-free operation, all-device compatibility or100% security.
+
+Final optimized-APK relaunch after the provider error again displayed native Supfy/Turkish/login-entry XML without a data clear. The temporary stay-on setting was restored to its recorded original0 and the disposable cloned AVD stopped. Original main remains7af94664376f5bb6299ed739b988f6a81c98d473.

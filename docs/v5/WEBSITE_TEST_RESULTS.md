@@ -150,3 +150,5 @@ Current file SHA-256 values:
 - `styles.css`: `b5b32f3c1bd6431c7ccbdde6c0845ede8b1416d09f83f35e80d8bfcf6d7296ff`
 - `app.js`: `0980cd16585ccb646cc9104a15341f98eb7eae7bb52a8be670ccd6a8915e819e`
 - `release.json`: `771ce6f2c928c4716c1ac4b7e4460110d8a71bf2e1c03885c811a89e8ac03623`
+
+Final Pages commit `d53536446a795832926477dead2e6fad762ec6fa` reports built. All6 public HTTPS files match the19-check local browser input byte-for-byte, including the enabled download and explicit15PASS/1interrupted/3not-run status. Evidence: [website-https.json](evidence/website-https.json).

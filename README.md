@@ -39,6 +39,12 @@ python3 tools/v5_localization_audit.py
 python3 tools/v5_security_audit.py --self-test
 ```
 
+Yerel debug anahtarıyla küçültülmüş bir test yapısı için (üretim sürümü değildir):
+
+```sh
+./gradlew -PoverDev -Pabis=arm64-v8a,armeabi-v7a,x86_64 :app:assembleRelease
+```
+
 Telefon APK'sı varsayılan olarak ARM64/ARMv7 içerir:
 `base/app/build/outputs/apk/debug/app-debug.apk`.
 Emülatör için `-Pabis=x86_64` kullanın. Android test paketi:
