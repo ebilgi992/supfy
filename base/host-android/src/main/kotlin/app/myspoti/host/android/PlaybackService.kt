@@ -13,6 +13,7 @@ import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.IBinder
 import android.support.v4.media.MediaBrowserCompat
 import android.support.v4.media.MediaMetadataCompat
 import android.support.v4.media.session.MediaSessionCompat
@@ -90,6 +91,7 @@ class PlaybackService : MediaBrowserServiceCompat() {
     private lateinit var session: MediaSessionCompat
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private var foreground = false
+    private val lifetime = PlaybackServiceLifetime()
     private var lastCoverUrl: String? = null
     private var cover: Bitmap? = null
     private var coverJob: Job? = null
@@ -104,7 +106,23 @@ class PlaybackService : MediaBrowserServiceCompat() {
 
     override fun onCreate() {
         super.onCreate()
+        createChannel()
+        // An app start is known before Android creates us. Fulfil its deadline before
+        // publishing the instance or constructing MediaSessionCompat (a Binder/cold-code cost).
+        if (startRequests.pending) promoteForStart()
+        if (startRequests.stopRequested) lifetime.requestStop(startRequests.pending)
         instance = this
+    }
+
+    override fun onBind(intent: Intent): IBinder? {
+        // A cold Android Auto browser binding is not a foreground-service start.
+        ensureSession()
+        return super.onBind(intent)
+    }
+
+    private fun ensureSession() {
+        if (::session.isInitialized) return
+        if (startRequests.pending && !foreground) promoteForStart()
         session = MediaSessionCompat(this, "Myspoti").apply {
             setCallback(callback)
             setSessionActivity(launchIntent())
@@ -118,8 +136,23 @@ class PlaybackService : MediaBrowserServiceCompat() {
             isActive = true
         }
         sessionToken = session.sessionToken
-        createChannel()
-        current?.let { apply(it) }
+        if (lifetime.stopRequested) session.isActive = false
+        else current?.let { apply(it) }
+    }
+
+    /** No session token, artwork, controls or account data are needed to honour the OS deadline. */
+    private fun promoteForStart() {
+        val notification = Notification.Builder(this, CHANNEL_ID)
+            .setSmallIcon(R.drawable.msp_ic_notification)
+            .setContentTitle(getString(R.string.msp_channel_playback))
+            .setCategory(Notification.CATEGORY_TRANSPORT)
+            .setOnlyAlertOnce(true)
+            .build()
+        // Required promotion must not be swallowed: a permission/channel failure must
+        // surface here, rather than becoming a delayed RemoteServiceException.
+        if (Build.VERSION.SDK_INT >= 29) startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK)
+        else startForeground(NOTIFICATION_ID, notification)
+        foreground = true
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -127,8 +160,15 @@ class PlaybackService : MediaBrowserServiceCompat() {
         // notification's dismissal through MediaButtonReceiver, another app): Android kills the
         // app unless startForeground() follows, paused or not. A paused player then leaves the
         // foreground after PAUSE_GRACE_MS, as after any pause.
+        promoteForStart()
+        startRequests.complete()
+        if (startRequests.stopRequested) lifetime.requestStop(pendingStart = false)
+        if (lifetime.onStart()) {
+            finishEnd(startId)
+            return START_NOT_STICKY
+        }
+        ensureSession()
         val info = current
-        startForegroundSafely(build(info), always = true)
         MediaButtonReceiver.handleIntent(session, intent)
         if (info != null) show(info)
         // The paused notification was swiped away: leave the foreground with it.
@@ -146,9 +186,10 @@ class PlaybackService : MediaBrowserServiceCompat() {
                 ?.keyCode == android.view.KeyEvent.KEYCODE_MEDIA_STOP
 
     override fun onDestroy() {
-        instance = null
+        if (instance === this) instance = null
+        handler.removeCallbacksAndMessages(null)
         holdLocks(false)
-        session.release()
+        if (::session.isInitialized) session.release()
         scope.cancel()
         super.onDestroy()
     }
@@ -163,13 +204,11 @@ class PlaybackService : MediaBrowserServiceCompat() {
         if (current?.playing == true && !playingRemote && !keepsPlayingOnClose(this)) {
             controls?.pause()
             handler.postDelayed({
-                ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
-                foreground = false
-                stopSelf()
+                requestEnd()
             }, CLOSE_STOP_MS)
             return
         }
-        if (current?.playing != true) stopSelf()
+        if (current?.playing != true) requestEnd()
     }
 
     /** A Spotify Connect device plays (the session's volume is that device's). */
@@ -185,8 +224,7 @@ class PlaybackService : MediaBrowserServiceCompat() {
      */
     private fun ensureStarted() {
         if (foreground) return
-        runCatching { androidx.core.content.ContextCompat.startForegroundService(this, Intent(this, PlaybackService::class.java)) }
-            .onFailure { Logbook.log("service not started from a car command: ${it.javaClass.simpleName} ${it.message?.take(80)}") }
+        requestStart(this, "car command")
     }
 
     /** Runs a system command on the app's player; a command with nobody to take it is logged, not lost silently. */
@@ -473,6 +511,7 @@ class PlaybackService : MediaBrowserServiceCompat() {
 
     /** Playback on a Connect device: the volume keys drive that device instead of the phone. */
     private fun setRemote(remote: Boolean, volume: Int) {
+        ensureSession()
         playingRemote = remote
         if (!remote) {
             session.setPlaybackToLocal(android.media.AudioManager.STREAM_MUSIC)
@@ -557,6 +596,36 @@ class PlaybackService : MediaBrowserServiceCompat() {
         return caller.packageName in packages && mayBrowse(caller.packageName)
     }
 
+    private fun sessionReady(): Boolean = ::session.isInitialized
+
+    private fun requestEnd() {
+        clearSessionForEnd()
+        val pendingStart = startRequests.pending
+        // A deferred stop must replace the old track notification too. This promotion is
+        // allowed only for an actual app start, never for a bound-only browser service.
+        if (pendingStart) promoteForStart()
+        if (lifetime.requestStop(pendingStart)) finishEnd()
+    }
+
+    private fun clearSessionForEnd() {
+        handler.removeCallbacksAndMessages(null)
+        holdLocks(false)
+        coverJob?.cancel();coverJob = null
+        cover = null;lastCoverUrl = null;covers.evictAll()
+        if (::session.isInitialized) {
+            session.isActive = false
+            session.setMetadata(null)
+            session.setPlaybackState(null)
+        }
+    }
+
+    private fun finishEnd(startId: Int? = null) {
+        clearSessionForEnd()
+        ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
+        foreground = false
+        if (startId == null) stopSelf() else stopSelfResult(startId)
+    }
+
     companion object {
         /** Time left to the pause's fade-out before the notification goes. */
         private const val CLOSE_STOP_MS = 800L
@@ -602,6 +671,17 @@ class PlaybackService : MediaBrowserServiceCompat() {
         /** Pause before each new try of a failed cover; after the last one the cover waits for the next state change. */
         private val COVER_RETRY_MS = longArrayOf(2_000L, 6_000L, 15_000L)
 
+        private val startRequests = PlaybackStartRequests()
+
+        private fun requestStart(context: Context, reason: String) {
+            if (!startRequests.begin()) return
+            runCatching { androidx.core.content.ContextCompat.startForegroundService(context, Intent(context, PlaybackService::class.java)) }
+                .onFailure {
+                    startRequests.complete()
+                    Logbook.logEvery("service-start", 10_000, "service not started for $reason: ${it.javaClass.simpleName} ${it.message?.take(80)}")
+                }
+        }
+
         @Volatile private var instance: PlaybackService? = null
         @Volatile private var current: NowPlayingInfo? = null
 
@@ -642,17 +722,26 @@ class PlaybackService : MediaBrowserServiceCompat() {
 
         /** Pushes the now-playing state; starts the service when playback starts. */
         fun update(context: Context, info: NowPlayingInfo) {
+            val svc = instance
+            // An auth stop must not republish a queued paused state from the old session.
+            if ((startRequests.stopRequested || svc?.lifetime?.stopRequested == true) && !info.playing && !info.buffering) return
+            if (info.playing || info.buffering) {
+                startRequests.resumePlayback()
+                svc?.lifetime?.resumePlayback()
+            }
             val before = current
             current = info
-            val svc = instance
             if (svc == null) {
                 // Loading counts: Android gives the audio only to a player in the foreground, and a
                 // song an extension is still resolving starts right after.
-                if (info.playing || info.buffering) runCatching {
-                    androidx.core.content.ContextCompat.startForegroundService(context, Intent(context, PlaybackService::class.java))
-                }.onFailure { Logbook.logEvery("service-start", 10_000, "service not started for playback: ${it.javaClass.simpleName} ${it.message?.take(80)}") }
+                if (info.playing || info.buffering) requestStart(context, "playback")
                 return
             }
+            if (!svc.sessionReady()) {
+                if (info.playing || info.buffering) requestStart(context, "playback")
+                return
+            }
+            if (info.playing || info.buffering) svc.session.isActive = true
             // The player reports several times per second (position, buffering): only a real
             // change reaches the session and the notification, the system extrapolates the
             // position in between (the known state is republished every POSITION_REPUSH_MS).
@@ -668,16 +757,46 @@ class PlaybackService : MediaBrowserServiceCompat() {
         /** Signed out: the notification and the media session go, nothing of the account stays. */
         fun end() {
             current = null
+            startRequests.requestStop()
             instance?.let { svc ->
-                svc.handler.removeCallbacksAndMessages(null)
-                ServiceCompat.stopForeground(svc, ServiceCompat.STOP_FOREGROUND_REMOVE)
-                svc.foreground = false
-                svc.session.isActive = false
-                svc.stopSelf()
+                // stopSelf before Android delivers a pending foreground start produces
+                // "Bringing down service while still waiting for start foreground".
+                // The generic bootstrap contains no account data while delivery is pending.
+                svc.requestEnd()
             }
         }
 
         /** [remote] when a Connect device plays; [volume] 0..100. */
         fun setPlaybackDevice(remote: Boolean, volume: Int) { instance?.setRemote(remote, volume) }
     }
+}
+
+
+/** A start request is registered before ContextCompat can enqueue Android's callbacks. */
+internal class PlaybackStartRequests {
+    private var inFlight = false
+    @Volatile var stopRequested = false
+        private set
+    val pending: Boolean @Synchronized get() = inFlight
+    @Synchronized fun requestStop() { stopRequested = true }
+    @Synchronized fun resumePlayback() { stopRequested = false }
+    @Synchronized fun begin(): Boolean {
+        if (inFlight) return false
+        inFlight = true
+        return true
+    }
+    @Synchronized fun complete() { inFlight = false }
+}
+
+/** Keeps a sign-out from destroying a service whose required first promotion is pending. */
+internal class PlaybackServiceLifetime {
+    private var startDelivered = false
+    @Volatile var stopRequested = false
+        private set
+    @Synchronized fun onStart(): Boolean { startDelivered = true;return stopRequested }
+    @Synchronized fun requestStop(pendingStart: Boolean): Boolean {
+        stopRequested = true
+        return startDelivered && !pendingStart
+    }
+    @Synchronized fun resumePlayback() { stopRequested = false }
 }
