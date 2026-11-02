@@ -1,133 +1,64 @@
-name: Android CI
+name: Supfy V5 Android CI
 
 on:
   push:
-    branches: [main, 'gelistirme/**']
+    branches: [main, 'supfy/**', 'gelistirme/**']
   pull_request:
   workflow_dispatch:
 
 permissions:
-  contents: write # yalnızca main'e gönderimde Release oluşturmak için
+  contents: read
 
 jobs:
   build:
-    name: Test, Lint ve APK
+    name: V5 source checks, tests, lint and APK
     runs-on: ubuntu-latest
-    timeout-minutes: 40
-    env:
-      HAS_SIGNING_KEY: ${{ secrets.SUPFY_KEYSTORE_B64 != '' }}
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
-
-      # Her derleme bir öncekinden büyük sürüm kodu alır (güncelleme olarak kurulabilsin diye).
-      - name: Sürüm kodunu hesapla
-        run: echo "SUPFY_VERSION_CODE=$((2000 + GITHUB_RUN_NUMBER))" >> "$GITHUB_ENV"
-
-      - name: Gradle wrapper doğrulama
-        uses: gradle/actions/wrapper-validation@v4
-
-      - name: JDK 17
-        uses: actions/setup-java@v4
+      - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: "17"
-
-      - name: Gradle kurulumu
-        uses: gradle/actions/setup-gradle@v4
-
-      - name: İmza anahtarını hazırla
-        if: env.HAS_SIGNING_KEY == 'true'
-        env:
-          SUPFY_KEYSTORE_B64: ${{ secrets.SUPFY_KEYSTORE_B64 }}
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - name: Android SDK
+        run: sdkmanager 'platforms;android-37.0' 'build-tools;36.0.0'
+      - uses: gradle/actions/wrapper-validation@v4
+      - uses: gradle/actions/setup-gradle@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Turkish completeness and security regression guards
         run: |
-          echo "$SUPFY_KEYSTORE_B64" | base64 --decode > "$RUNNER_TEMP/supfy.jks"
-          echo "SUPFY_KEYSTORE_PATH=$RUNNER_TEMP/supfy.jks" >> "$GITHUB_ENV"
-
-      - name: İmza anahtarı yok uyarısı
-        if: env.HAS_SIGNING_KEY != 'true'
-        run: echo "::warning::SUPFY_KEYSTORE_B64 tanımlı değil. APK debug anahtarıyla imzalanacak ve mevcut kurulumun üzerine yüklenemeyebilir."
-
-      - name: Birim testleri
-        run: ./gradlew --no-daemon -PsupfyVersionCode=$SUPFY_VERSION_CODE testDebugUnitTest
-
-      - name: Android Lint
-        run: ./gradlew --no-daemon -PsupfyVersionCode=$SUPFY_VERSION_CODE lintDebug
-
-      - uses: actions/setup-node@v4
+          python3 tools/v5_localization_audit.py
+          python3 tools/v5_localization_audit_test.py
+          python3 tools/v5_security_audit.py --self-test
+      - name: Core and application unit tests
+        run: ./gradlew --no-daemon :api:test :api-spotify:test :extensions:test :host-android:testDebugUnitTest :app:testDebugUnitTest
+      - name: Android lint
+        run: ./gradlew --no-daemon :app:lintDebug
+      - name: ARM debug APK and instrumentation package
+        run: ./gradlew --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest
+      - uses: actions/upload-artifact@v4
         with:
-          node-version: '22'
-
-      - name: DOM simülasyonları (gerçek Spotify testi değildir)
-        working-directory: tools
-        run: npm ci --ignore-scripts --no-audit --no-fund && npm test
-
-      - name: APK derle
-        env:
-          SUPFY_KEYSTORE_PASSWORD: ${{ secrets.SUPFY_KEYSTORE_PASSWORD }}
-          SUPFY_KEY_ALIAS: ${{ secrets.SUPFY_KEY_ALIAS }}
-          SUPFY_KEY_PASSWORD: ${{ secrets.SUPFY_KEY_PASSWORD }}
-        run: |
-          TASKS="assembleDebug"
-          if [ "$HAS_SIGNING_KEY" = "true" ]; then TASKS="assembleDebug assembleRelease"; fi
-          ./gradlew --no-daemon -PsupfyVersionCode=$SUPFY_VERSION_CODE $TASKS
-
-      - name: Yayımlanacak APK'yı seç
-        run: |
-          VERSION=$(grep -oP 'versionName = "\K[^"]+' app/build.gradle.kts)
-          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
-          if [ -f app/build/outputs/apk/release/app-release.apk ]; then
-            cp app/build/outputs/apk/release/app-release.apk "Supfy-$VERSION-$SUPFY_VERSION_CODE.apk"
-            echo "APK_KIND=imzalı sürüm" >> "$GITHUB_ENV"
-          else
-            cp app/build/outputs/apk/debug/app-debug.apk "Supfy-$VERSION-$SUPFY_VERSION_CODE-debug.apk"
-            echo "APK_KIND=debug (geçici anahtar)" >> "$GITHUB_ENV"
-          fi
-          rm -f "$RUNNER_TEMP/supfy.jks"
-
-      - name: APK'yı yükle
-        uses: actions/upload-artifact@v4
-        with:
-          name: supfy-apk
-          path: Supfy-*.apk
-          if-no-files-found: error
-
-      # Yalnızca kalıcı anahtarla imzalı derlemeler yayımlanır; aksi hâlde uygulama içi denetim
-      # mevcut kurulumun üzerine yüklenemeyecek bir APK önerirdi.
-      - name: Release olarak yayımla
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && env.HAS_SIGNING_KEY == 'true'
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: build-${{ env.SUPFY_VERSION_CODE }}
-          name: Supfy ${{ env.VERSION }} (${{ env.SUPFY_VERSION_CODE }})
-          prerelease: true
-          files: Supfy-*.apk
-          body: |
-            Supfy ${{ env.VERSION }} · sürüm kodu ${{ env.SUPFY_VERSION_CODE }} · ${{ env.APK_KIND }}
-            Commit: ${{ github.sha }}
-            Kurulum: APK'ya dokunun, istenirse "bilinmeyen uygulama yükleme" iznini verin.
-
-      # Geliştirme dalı derlemeleri telefondan indirilebilsin diye "test-" etiketiyle eklenir.
-      # Uygulama içi güncelleme denetimi yalnızca "build-" etiketlerine baktığı için bunlar önerilmez.
-      - name: Test sürümü olarak yayımla (geliştirme dalı)
-        if: github.event_name == 'push' && startsWith(github.ref, 'refs/heads/gelistirme/')
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: test-${{ env.SUPFY_VERSION_CODE }}
-          target_commitish: ${{ github.sha }}
-          name: Supfy ${{ env.VERSION }} test (${{ env.SUPFY_VERSION_CODE }})
-          prerelease: true
-          files: Supfy-*.apk
-          body: |
-            Geliştirme dalı test derlemesi · ${{ env.APK_KIND }} · ${{ github.ref_name }}
-            Commit: ${{ github.sha }}
-            Bu sürüm uygulama içinde güncelleme olarak önerilmez.
-
-      - name: Raporları yükle
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: supfy-raporlar
+          name: supfy-v5-debug-apk
           path: |
-            app/build/reports/lint-results-debug.html
-            app/build/reports/tests/
-          if-no-files-found: ignore
+            base/app/build/outputs/apk/debug/*.apk
+            base/app/build/outputs/apk/androidTest/debug/*.apk
+          if-no-files-found: error
+      - name: Complete GPL corresponding source
+        run: git archive --format=tar.gz --output=supfy-v5-source.tar.gz HEAD
+      - uses: actions/upload-artifact@v4
+        with:
+          name: supfy-v5-gpl-source
+          path: supfy-v5-source.tar.gz
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: supfy-v5-test-reports
+          path: |
+            base/**/build/reports/tests/
+            base/app/build/reports/lint-results-debug.*
+            docs/v5/
+# CI debug builds use an ephemeral signing key. They are not an upgrade promise for
+# an existing installation. Publishing a signed production release is a separate job.
