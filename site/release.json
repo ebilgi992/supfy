@@ -3,25 +3,29 @@
   "versionCode": 1029,
   "channel": "TEST BUILD",
   "minimumAndroid": "Android 10+",
-  "architectures": ["ARM64", "ARMv7", "x86_64"],
+  "architectures": [
+    "ARM64",
+    "ARMv7",
+    "x86_64"
+  ],
   "sizeLabel": "Yaklaşık 19 MB",
   "signing": "Debug sertifikası · üretim anahtarı değil",
-  "sha256": "9a9b081ff224a8fa8af480c75dc20fe5b2660d367cb965494a68c36f77ee1cfe",
+  "sha256": "3eacb22f46667c700dc42fa5c2cdb3f055aa1fde41cd0ed721c03eff7c787b40",
   "download": {
     "url": "https://raw.githubusercontent.com/ebilgi992/supfy/apk-download-v5-1029/downloads/Supfy-V5-1029.apk",
-    "verified": false
+    "verified": true
   },
   "sourceUrl": "https://github.com/ebilgi992/supfy/tree/supfy/quantum-privacy-shield",
   "reportUrl": "https://github.com/ebilgi992/supfy/blob/supfy/quantum-privacy-shield/docs/v5/TEST_RESULTS.md",
   "verification": {
-    "jvmPassed": 950,
+    "jvmPassed": 958,
     "auditFindings": 0,
     "negativeFixtures": 12,
     "deviceTotal": 19,
-    "devicePassed": 17,
-    "deviceFailed": 2,
-    "deviceNote": "Medya ekranının odağa hazır olması ve izin penceresinin görünürlüğü testleri başarısız. Sistem katmanı etkileşimi araştırılıyor.",
-    "latestDeviceRun": "Son tekrar, ilk 14 test geçtikten sonra medya hizmetinin başlatılması sırasında oluşan hatayla kesildi. Medya testi başarılı sayılmadı; hata araştırılıyor.",
+    "devicePassed": 18,
+    "deviceFailed": 1,
+    "deviceNote": "Medya bildirimi, sistem kontrolleri ve arka plan tercihi testi geçti. İzin penceresi testi, Activity yerine farklı dilde uygulama kaynaklarını arıyordu; testin dil bağlamı düzeltildi.",
+    "latestDeviceRun": "Son debug paketi ile izin penceresi ve tam cihaz testleri yeniden doğrulanıyor. Canlı Spotify oturumu, DRM, Bluetooth ve Android Auto test edilmedi.",
     "lintFindings": 1236,
     "lintTranslationGaps": 1095
   }

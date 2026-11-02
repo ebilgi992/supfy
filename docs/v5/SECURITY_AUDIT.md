@@ -1,6 +1,6 @@
 # Supfy V5 security review
 
-Review date: 2026-11-01. Target: the native Myspoti-derived engine under `base/`, not the retired root WebView wrapper. Myspoti origin and GPL-3.0 notices remain applicable. This is a source review plus bounded regression testing, not a certification or a claim about the original developer's intent.
+Review date: 2026-11-02. Target: the native Myspoti-derived engine under `base/`, not the retired root WebView wrapper. Myspoti origin and GPL-3.0 notices remain applicable. This is a source review plus bounded regression testing, not a certification or a claim about the original developer's intent.
 
 ## Evidence and limits
 
@@ -15,12 +15,12 @@ Final source/APK/runtime results are recorded in [TEST_RESULTS.md](TEST_RESULTS.
 | Boundary | Actual source behavior and risk to check |
 |---|---|
 | Spotify identity | The official page in Android WebView owns sign-in cookies and DOM storage. `Gql.kt` requests `token.get` through the bridge, caches web/client tokens in memory and sends credentials to Spotify APIs. This app is therefore a privileged client once signed in; hiding the WebView does not remove that trust. |
-| Native bridge | `PlayerChannel.kt` is the principal page-to-native boundary. Exact HTTPS player origin, source origin, current page and main frame must all be enforced. A generic JavascriptInterface is injected into every frame; V5 removes that fallback and exposes an explicit unsupported-WebView capability failure instead. |
+| Native bridge | `PlayerChannel.kt` is the principal page-to-native boundary. Exact HTTPS player origin, source origin, current page and main frame must all be enforced. Upstream used a generic JavascriptInterface fallback; shipped V5 removes it and exposes an explicit unsupported-WebView capability failure instead. |
 | Navigation and media permissions | `WebPlayerSecurityPolicy` limits trusted player URLs, user-started provider navigation and protected media permission. HTTPS with user info, nonstandard ports, lookalike hosts, untrusted origins and subframes need negative cases. Third-party frames still exist for Spotify sign-in. |
-| Exported Android components | MainActivity accepts Spotify/short-link intents; ArtworkProvider serves approved HTTPS CDN images and indexed downloaded covers; PlaybackService supports media browsing; MediaButtonReceiver supports system controls. CLI/profiler receivers require DUMP and the release CLI must be disabled. Unknown exports are guard failures. |
+| Exported Android components | MainActivity accepts Spotify/short-link intents; ArtworkProvider serves approved HTTPS CDN images and indexed downloaded covers; PlaybackService supports media browsing; MediaButtonReceiver supports system controls. Production/debug CLI and profiler receiver registrations are removed; no profileable shell surface is shipped. Unknown exports are guard failures. |
 | Artwork and Android Auto | ArtworkProvider accepts only HTTPS on named Spotify image hosts for network images; downloaded cover access is constrained to the current offline index. It is exported without a caller permission to serve Auto; any app can request accepted image resources. No claim of caller privacy isolation is made. PlaybackService checks caller UID/package membership and restricts library browsing; unknown apps intentionally receive an empty root and may still control the public media session. Device interaction remains NOT TESTED. |
 | Extensions | Rhino scripts have permission/consent checks and per-extension storage. New or changed packages remain disabled until explicitly approved for their SHA-256. `spotify.raw` exposes authenticated GraphQL/service requests and approved Spotify HTTPS endpoints; writes require the extension action rules. Public Spotify CDN calls are separated from account requests, caller-controlled credential headers are dropped and known credential response fields are filtered. Installing an extension extends the trusted code/data surface; these controls are not proof that a particular extension is trustworthy. |
-| Extension page | Baseline ExtensionPage uses a JavascriptInterface for its own extension's bounded message hook. It loads packaged HTML with CSP `frame-src 'none'`, no external scripts/forms/base/navigation, private/Spotify network deny and no file/content access. This is a separate trust boundary from the Spotify player; no cross-origin exploit was demonstrated by the API-name scan. The shipped implementation/any reviewed guard exception must be recorded explicitly. |
+| Extension page | Shipped ExtensionPage uses WebMessageListener on a per-extension synthetic origin, checking exact source/current document, main frame, active lifetime and message size; unsupported WebViews show a localized error. Packaged HTML has CSP `frame-src 'none'`, no external scripts/forms/base/navigation, private/Spotify network deny and no file/content access. There is no JavascriptInterface fallback. Runtime hostile-page penetration testing remains unexecuted. |
 | Native HTTP and local network | WebView, OkHttp, Cronet, DRM/media, lyrics/video, package updates, extensions, Connect and Cast have separate paths. Cast may serve media through an HTTP LAN server with a URL token. Blocking only WebView requests does not cover native clients or third-party stacks; see [NETWORK_REPORT.md](NETWORK_REPORT.md). |
 | Update/install | Release lookup is fixed to `ebilgi992/supfy`; automatic checks default off and enabled checks are limited to one attempt per 24 hours. Download redirects are restricted to approved GitHub hosts, digest is required, and package/version/signers are checked before install. Download size/time limits and Android PackageInstaller user confirmation reduce risk. Final APK/signing and negative installation behavior still require execution evidence. |
 
@@ -54,3 +54,14 @@ Reference versions: **MASVS 2.1.0**, **MASTG 2.0.0**. The table uses PASS / FAIL
 | PRIVACY | NOT TESTED | Profile/cache/history/log surfaces enumerated. Source no-op/canary results must be combined with device observation; account/hardware workflows remain blocked. |
 
 No category is marked NOT APPLICABLE merely because a test was unavailable. No observed fact supports an allegation of intentional malicious collection or exfiltration by an upstream author.
+
+## Final bounded audit evidence
+
+The corrected-service APK has SHA-256
+`3eacb22f46667c700dc42fa5c2cdb3f055aa1fde41cd0ed721c03eff7c787b40`.
+The final source audit inspected 948 production inputs, digest
+`a71296832fe4867c3c9636d21ffdd4fc746f61aec1ef8797dcc4b8f9e4aafed9`: source PASS,
+packaged APK PASS, zero specified-rule findings, 12 negative fixtures PASS. Android
+SDK apksigner independently verified the APK v2 signature. This bounded result does
+not establish end-to-end runtime security, absence of vulnerabilities, provider-side
+privacy or foreground-service reliability; device evidence is in TEST_RESULTS.md.

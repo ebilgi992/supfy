@@ -8,8 +8,8 @@ results. This is a debug-certificate-signed **test build**, not a production rel
 
 | Check | Result | Scope |
 |---|---|---|
-| Gradle compilation, debug APK, Android test APK, optimized test APK | PASS | `v5-build-bridge-fix.log`: BUILD SUCCESSFUL in 7m39s; three ABIs ARM64, ARMv7 and x86_64 |
-| JVM tests | PASS | 950 tests, zero failures/skips: api-spotify 181, extensions 206, host-android 56, app 507 |
+| Gradle compilation, debug APK, Android test APK, optimized test APK | PASS | `v5-build-service-fix.log`: BUILD SUCCESSFUL in 7m52s; three ABIs ARM64, ARMv7 and x86_64 |
+| JVM tests | PASS | 958 tests, zero failures/skips: api-spotify 181, extensions 206, host-android 64, app 507. Eight new foreground-service lifecycle cases executed in the corrected build |
 | Source + packaged APK regression audit | PASS | Zero specified-rule findings; 12 negative fixtures. This is not a general security certification |
 | Turkish resource audit | PASS | 1,260 default/Turkish entries; zero missing entries or format mismatches |
 | Release-vital lint | PASS | Scoped Gradle release task only |
@@ -68,3 +68,47 @@ can contain sensitive data. The public report records conclusions and generic er
 Signer SHA-256: `f0e5840358d25473a5aac702d6e93046121555a2bb88bc4cb4cdc79fda705640`.
 This local debug signer matches 1023–1028. Original 1018 used a different signer;
 never uninstall a user's application to work around signature mismatch.
+
+## Foreground-service correction
+
+`5a64963` moves required promotion before cold MediaSession construction, deduplicates
+pending foreground starts and defers logout/task-removal destruction until the required
+start is delivered. Account metadata/artwork/locks are cleared immediately. Bound-only
+Android Auto browsing does not itself promote the service. Eight pure lifecycle tests
+passed; this evidence alone does not verify Android callback timing. Corrected-device
+results will be recorded below.
+
+## Independent GitHub CI
+
+[Run41421673954](https://github.com/ebilgi992/supfy/actions/runs/41421673954)
+ran against pre-service-fix commit4ade24a. SDK setup, source guards, JVM tests,
+debug/instrumentation APK compilation, APK upload and complete GPL source archive
+upload passed. Android lint failed; the overall job is FAIL. The earlier Android
+SDK bootstrap failure was corrected by using the pinned Ubuntu24.04 runner SDK.
+CI uses an ephemeral signing key; its APK is not an upgrade guarantee for local
+same-signed installations. The service-fix build/test evidence is recorded separately.
+
+## Subsequent device run and artifact consistency
+
+`android-service-fixed-all.log` executed all19 cases: **18PASS,1FAIL**, no skips.
+Owned PCM, media notification/session token, pause/play, next/previous, continuing
+position while background playback is enabled, and pausing when disabled all passed.
+The remaining consent UI test queried application-context English resources while
+AppCompat localized the Activity to Turkish on API30. The test now queries Activity
+resources and asserts the actual Activity language is Turkish; this is not yet a UI
+pass until the corrected test executes.
+
+A bytecode check also found the debug compilation had raced the last small pending-
+shutdown notification-scrub source edit. The optimized APK was built after that edit;
+its mapping includes the final branch. A frozen-source debug/test rebuild then passed
+in42s; apkanalyzer verified the debug `requestEnd()V` now calls `promoteForStart()`
+when a start is pending. The current debug APK/test package hashes below replace
+that intermediate debug candidate. Final device repetition is pending.
+
+- Optimized test APK: `3eacb22f46667c700dc42fa5c2cdb3f055aa1fde41cd0ed721c03eff7c787b40`.
+- Final debug APK: `0f3316bff01b5b7738c1f63267689ea11e4b2866f24cd1e1684c77afdcc1fbd3`.
+- Final test package: `dbccab70add6ea5a12ee05c1a3674be43d6f2f9bc11330ac310ba3c38cd13768`.
+
+The public optimized APK was fetched without authentication from the published raw
+GitHub download URL and compared byte-for-byte with the local artifact; SHA-256
+matches. This verifies delivery integrity, not the unexecuted runtime cases.
