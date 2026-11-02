@@ -1,6 +1,6 @@
 <p align="center"><img src="branding/supfy-logo-dark.png" alt="Supfy" width="320"></p>
 
-# Supfy Quantum V5 — Privacy Shield
+# Supfy
 
 Supfy, Türkçe ve Immersive görünümü varsayılan kullanan bağımsız Android uygulamasıdır.
 Classic görünümü ayarlardan seçilebilir. Spotify ile resmî bir ortaklığı yoktur.
@@ -15,16 +15,12 @@ koduyla **GPL-3.0** altında sunulur; [LICENSE](LICENSE),
 V5 kaynakları `base/` altındadır. Kökteki eski `app/`, önceki Supfy sürümünün
 kurtarma kaynağıdır; V5 APK'sını üretmez. Kökteki Gradle wrapper V5'e yönlendirir.
 
-## Web sitesi ve test APK’sı
+## Web sitesi ve Android uygulaması
 
 [Supfy web sitesi](https://ebilgi992.github.io/supfy/) ·
-[V5 /1029 test APK’sını indir](https://raw.githubusercontent.com/ebilgi992/supfy/apk-download-v5-1029/downloads/Supfy-V5-1029.apk).
-Bu yapı debug sertifikasıyla imzalanmıştır; üretim sürümü veya tüm cihazlarda
-sorunsuz çalışma garantisi değildir. İndirme dosyası kamuya açık URL’den alınarak
-birebir doğrulandı. SHA-256:
-`3eacb22f46667c700dc42fa5c2cdb3f055aa1fde41cd0ed721c03eff7c787b40`.
-İzin penceresi testinde ANR sürüyor; sağlayıcı giriş sayfası bu emülatörde yüklenmedi.
-Tam lint başarısız. Güncel test kapsamı ve kalan sınırlamalar aşağıdaki raporlardadır.
+[Android APK’sını indir](https://raw.githubusercontent.com/ebilgi992/supfy/apk-download-v5-1030/downloads/Supfy-1030.apk).
+Yedi tanıtım görselini [buradan indirebilirsin](https://raw.githubusercontent.com/ebilgi992/supfy/apk-download-v5-1030/downloads/Supfy-WhatsApp-7-Poster.zip).
+Geliştirici Instagram: [@smt.ozdemr](https://www.instagram.com/smt.ozdemr/).
 
 ## Derleme
 
@@ -50,7 +46,7 @@ Telefon APK'sı varsayılan olarak ARM64/ARMv7 içerir:
 Emülatör için `-Pabis=x86_64` kullanın. Android test paketi:
 `base/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk`.
 
-Paket: `com.supfy.app`; varsayılan sürüm: `1.0.0-v5` / `1029`.
+Paket: `com.supfy.app`; varsayılan sürüm: `1.0.1` / `1030`.
 Sürüm değişkenleri: `-PappVersionName=... -PappVersionCode=...`.
 Üretim release derlemesi yetkili imza anahtarı gerektirir: `SUPFY_KEYSTORE`,
 `SUPFY_KEYSTORE_PASSWORD`, `SUPFY_KEY_ALIAS`, `SUPFY_KEY_PASSWORD`.

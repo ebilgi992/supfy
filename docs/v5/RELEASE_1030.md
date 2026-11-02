@@ -25,3 +25,18 @@ the earlier core/runtime limitations in TEST_RESULTS.md have not been declared f
 The donation/website edits did not alter the media/authentication core.
 
 Website checks and public artifact byte verification are recorded at publication.
+
+## Publication evidence
+
+- App source f31ba94, website source fa33a54; marketing site removes QA metadata
+  without deleting technical failure records or claiming those issues resolved.
+- Browser suite19/19PASS (1030-site-publish-checks/report.json), including320–1440px,
+  exact app-logo bytes, no visible QA/hash/version details, correct download URL,
+  defensive URL handling, FAQ/menu, anchors and reduced motion.
+- Public APK and seven-poster ZIP fetched without authentication and SHA-256 compared
+  with local files; both match. Individual numbered PNGs are also publicly available.
+- Website https://ebilgi992.github.io/supfy/ ; download branch apk-download-v5-1030.
+- Posters ZIP: https://raw.githubusercontent.com/ebilgi992/supfy/apk-download-v5-1030/downloads/Supfy-WhatsApp-7-Poster.zip
+- Poster master PNGs941x1672 (nominal9:16 HD); originals retained. Instagram photo
+  came from the public smt.ozdemr page with explicit user authorization; no social
+  post/message was sent. Final artwork uses imagegen; no fabricated working QR code.
