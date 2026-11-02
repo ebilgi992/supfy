@@ -3,6 +3,11 @@ name: Supfy V5 Android CI
 on:
   push:
     branches: [main, 'supfy/**', 'gelistirme/**']
+    paths-ignore:
+      - 'docs/**'
+      - 'site/**'
+      - '**/*.md'
+      - 'tools/v5_site_test.cjs'
   pull_request:
   workflow_dispatch:
 
