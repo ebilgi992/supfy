@@ -23,14 +23,15 @@
   document.addEventListener("click", (event) => { if (!header.contains(event.target)) closeMenu(); });
   window.matchMedia("(min-width: 851px)").addEventListener("change", (event) => { if (event.matches) closeMenu(); });
 
-  const downloadLink = document.querySelector("[data-download-link]");
-  const downloadStatus = document.querySelector("#download-status");
-  downloadLink.addEventListener("click", (event) => {
+  const downloadLinks = document.querySelectorAll("[data-download-link]");
+  const downloadStatuses = document.querySelectorAll("[data-download-status]");
+  const setDownloadStatus = (message) => downloadStatuses.forEach((node) => { node.textContent = message; });
+  downloadLinks.forEach((downloadLink) => downloadLink.addEventListener("click", (event) => {
     if (downloadLink.getAttribute("aria-disabled") === "true") {
       event.preventDefault();
-      downloadStatus.textContent = "İndirme bağlantısı şu anda açılamıyor. Sayfayı yenileyip tekrar dene.";
+      setDownloadStatus("İndirme bağlantısı şu anda açılamıyor. Sayfayı yenileyip tekrar dene.");
     }
-  });
+  }));
 
   const trustedDownload = (value) => {
     const url = new URL(value);
@@ -50,17 +51,19 @@
       if (!data || typeof data.downloadUrl !== "string" || typeof data.sourceUrl !== "string" ||
         !trustedDownload(data.downloadUrl) || !projectLink(data.sourceUrl)) throw new Error("Invalid links");
       document.querySelectorAll("[data-source-link]").forEach((node) => { node.href = data.sourceUrl; });
-      downloadLink.href = data.downloadUrl;
-      downloadLink.removeAttribute("aria-disabled");
-      downloadLink.replaceChildren(document.createTextNode("Android için indir "));
-      const arrow = document.createElement("span");
-      arrow.setAttribute("aria-hidden", "true");
-      arrow.textContent = "↓";
-      downloadLink.append(arrow);
-      downloadStatus.textContent = "APK dosyası GitHub üzerinden indirilir.";
+      downloadLinks.forEach((downloadLink) => {
+        downloadLink.href = data.downloadUrl;
+        downloadLink.removeAttribute("aria-disabled");
+        downloadLink.replaceChildren(document.createTextNode("Uygulamayı indir "));
+        const arrow = document.createElement("span");
+        arrow.setAttribute("aria-hidden", "true");
+        arrow.textContent = "↓";
+        downloadLink.append(arrow);
+      });
+      setDownloadStatus("APK dosyası GitHub üzerinden indirilir.");
     })
     .catch(() => {
-      downloadStatus.textContent = "İndirme bağlantısı yüklenemedi. Sayfayı yenileyip tekrar dene.";
-      downloadLink.textContent = "Şu anda indirilemiyor";
+      setDownloadStatus("İndirme bağlantısı yüklenemedi. Sayfayı yenileyip tekrar dene.");
+      downloadLinks.forEach((downloadLink) => { downloadLink.textContent = "Şu anda indirilemiyor"; });
     });
 })();

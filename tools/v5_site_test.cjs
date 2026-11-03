@@ -81,8 +81,22 @@ async function check(name, action) {
     assert.match(text, /GPL-3\.0/);
   });
   await check("Published configuration activates the configured APK link", async () => {
-    assert.equal(await page.locator("[data-download-link]").getAttribute("href"), release.downloadUrl);
-    assert.equal(await page.locator("[data-download-link]").getAttribute("aria-disabled"), null);
+    assert.deepEqual(await page.locator("[data-download-link]").evaluateAll((links) => links.map((link) => ({ href: link.href, disabled: link.getAttribute("aria-disabled") }))), Array.from({ length: 3 }, () => ({ href: release.downloadUrl, disabled: null })));
+  });
+  await check("No Instagram identity, profile photo or poster links on the site", async () => {
+    assert.doesNotMatch(await page.content(), /instagram|smt\.ozdemr|poster|whatsapp/i);
+    assert.deepEqual([...new Set(await page.locator("img").evaluateAll((images) => images.map((image) => image.getAttribute("src"))))].sort(), ["assets/afterglow.svg", "assets/supfy-icon.png"]);
+  });
+  await check("Direct APK download is visible without scrolling on desktop and mobile", async () => {
+    for (const [width, height] of [[1440, 900], [390, 844], [320, 640]]) {
+      await page.setViewportSize({ width, height });
+      await navigate();
+      const link = page.locator(".hero [data-download-link]");
+      const box = await link.boundingBox();
+      assert.ok(box && box.y >= 0 && box.y + box.height <= height, `Download button must fit initial ${width}x${height} viewport`);
+      assert.equal(await link.getAttribute("href"), release.downloadUrl);
+      assert.match(await link.innerText(), /Uygulamayı indir/);
+    }
   });
   await check("Mobile menu opens; Escape closes it and restores toggle focus", async () => {
     await page.locator(".menu-toggle").click();
@@ -113,9 +127,9 @@ async function check(name, action) {
     await check(`Rejects ${name} and disables download`, async () => {
       await page.route(route, (request) => request.fulfill({ json: data }));
       await navigate();
-      assert.equal(await page.locator("[data-download-link]").getAttribute("aria-disabled"), "true");
+      assert.deepEqual(await page.locator("[data-download-link]").evaluateAll((links) => links.map((link) => link.getAttribute("aria-disabled"))), ["true", "true", "true"]);
       assert.match(await page.locator("#download-status").innerText(), /yüklenemedi/);
-      await page.locator("[data-download-link]").click({ force: true });
+      await page.locator(".hero [data-download-link]").click({ force: true });
       assert.equal(page.url(), base);
       await page.unroute(route);
     });
@@ -123,13 +137,13 @@ async function check(name, action) {
   await check("Malformed release JSON disables download", async () => {
     await page.route(route, (request) => request.fulfill({ contentType: "application/json", body: "{" }));
     await navigate();
-    assert.equal(await page.locator("[data-download-link]").getAttribute("aria-disabled"), "true");
+    assert.deepEqual(await page.locator("[data-download-link]").evaluateAll((links) => links.map((link) => link.getAttribute("aria-disabled"))), ["true", "true", "true"]);
     await page.unroute(route);
   });
   await check("Release fetch failure disables download", async () => {
     await page.route(route, (request) => request.abort());
     await navigate();
-    assert.equal(await page.locator("[data-download-link]").getAttribute("aria-disabled"), "true");
+    assert.deepEqual(await page.locator("[data-download-link]").evaluateAll((links) => links.map((link) => link.getAttribute("aria-disabled"))), ["true", "true", "true"]);
     await page.unroute(route);
   });
   await navigate();

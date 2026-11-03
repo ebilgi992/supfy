@@ -181,7 +181,7 @@ h1>span{color:var(--green)}
 .release-tags{display:flex;flex-wrap:wrap;gap:8px;margin-top:20px}
 .release-tags>span{font-size:9px;padding:5px 8px;background:#303c28;border:1px solid #46583a;border-radius:5px;color:#d2dfc9}
 .download-button{width:100%;justify-content:space-between;margin-top:26px}
-.download-button[aria-disabled=true]{background:#35492b;color:#e0ebd7;cursor:not-allowed;transform:none}
+[data-download-link][aria-disabled=true]{background:#35492b;color:#e0ebd7;cursor:not-allowed;transform:none}
 .download-status{font-size:9px;line-height:1.8;margin-top:11px;min-height:2em}
 .download-status a{text-decoration:underline;text-underline-offset:3px}
 .installation{padding-top:8px}
@@ -411,6 +411,6 @@ details>p{font-size:12px;padding-right:10px}
 .release-card{padding:22px}}
 @media(prefers-reduced-motion:reduce){:root{scroll-behavior:auto}
 *,*::before,*::after{transition:none!important;animation:none!important;scroll-behavior:auto!important}}
-.brand img{border-radius:11px}.device-disc{object-fit:contain;border-radius:18px}.download-intro{font-size:13px;line-height:1.85;margin-top:16px;max-width:350px}.preferences-section{background:#171e15;border-block:1px solid #2e3b28}.preferences-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:44px}.preferences-grid h3{font-size:23px;line-height:1.2;letter-spacing:-.6px;margin-top:24px}.preferences-grid p{font-size:13px;line-height:1.9;margin-top:15px}.footer-bottom a{text-decoration:underline;text-underline-offset:3px}.social-label{font-size:9px;color:var(--muted)}
+.brand img{border-radius:11px}.device-disc{object-fit:contain;border-radius:18px}.download-intro{font-size:13px;line-height:1.85;margin-top:16px;max-width:350px}.preferences-section{background:#171e15;border-block:1px solid #2e3b28}.preferences-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:44px}.preferences-grid h3{font-size:23px;line-height:1.2;letter-spacing:-.6px;margin-top:24px}.preferences-grid p{font-size:13px;line-height:1.9;margin-top:15px}.footer-bottom a{text-decoration:underline;text-underline-offset:3px}
 @media(max-width:850px){.preferences-grid{gap:26px}.preferences-grid h3{font-size:20px}.preferences-grid p{font-size:12px}.footer-top>div{flex-wrap:wrap;gap:16px 25px}}
 @media(max-width:640px){.preferences-grid{grid-template-columns:1fr;gap:31px}.preferences-grid h3{margin-top:15px;font-size:23px}.preferences-grid p{font-size:13px;max-width:440px}.section-footnote{font-size:11px;line-height:1.9}.footer-top>div{font-size:11px}}
