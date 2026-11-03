@@ -21,7 +21,7 @@
       <button class="menu-toggle" type="button" aria-controls="ana-menu" aria-expanded="false"><span>Menü</span><span class="menu-lines" aria-hidden="true"></span></button>
       <nav id="ana-menu" aria-label="Ana menü">
         <a href="#deneyim">Deneyim</a><a href="#tercihler">Tercihler</a><a href="#sorular">Sorular</a>
-        <a class="nav-download" href="#indir">Android için keşfet <span class="arrow-up" aria-hidden="true"></span></a>
+        <a class="nav-download" data-download-link href="#indirme" aria-disabled="true">Uygulamayı indir <span class="arrow-up" aria-hidden="true"></span></a>
       </nav>
     </div>
   </header>
@@ -31,7 +31,8 @@
         <div class="eyebrow"><span class="status-dot" aria-hidden="true"></span> ANDROID İÇİN SUPFY</div>
         <h1 id="hero-title">Müziğin ritmi.<br><span>Kontrol sende.</span></h1>
         <p class="hero-description">Daha kişisel bir müzik alanı. Türkçe başlayan, görünümünü senin seçtiğin ve ek servisleri yalnızca izninle açan bağımsız Android deneyimi.</p>
-        <div class="hero-actions"><a class="button button-primary" href="#indir">Supfy’yi keşfet <span aria-hidden="true">↓</span></a><a class="text-link" href="#deneyim">İçeride neler var? <span class="arrow-up" aria-hidden="true"></span></a></div>
+        <div class="hero-actions"><a class="button button-primary" data-download-link href="#indirme" aria-disabled="true">Uygulamayı indir <span aria-hidden="true">↓</span></a><a class="text-link" href="#deneyim">İçeride neler var? <span class="arrow-up" aria-hidden="true"></span></a></div>
+        <p id="hero-download-status" class="download-status" data-download-status role="status">İndirme bağlantısı yükleniyor.</p>
         <div class="hero-meta"><span>Android 10 ve üzeri</span><span>GPL-3.0 açık kaynak</span><span>Türkçe varsayılan</span></div>
 
         <p class="independence">Supfy bağımsız bir projedir. Spotify AB ile bağlantısı, ortaklığı veya Spotify’ın onayı yoktur.</p>
@@ -87,7 +88,7 @@
 
     <section id="indir" class="section container download-section" aria-labelledby="download-title">
       <div class="download-heading"><div><p class="eyebrow">DİNLEMEYE HAZIRSAN.</p><h2 id="download-title">Bir sonraki ritim,<br><span>Supfy.</span></h2><p>Müzik alanını telefonuna taşı. Android için Supfy’yi indir ve kendine göre düzenle.</p></div><img class="download-mark" src="assets/supfy-icon.png" width="132" height="132" alt="Supfy uygulama simgesi"></div>
-      <div class="download-grid"><div class="release-card" id="indirme"><div class="release-top"><span class="eyebrow">TELEFONUNDA SUPFY</span><span>ANDROID</span></div><h3>Müziğine yer aç.</h3><p class="download-intro">Türkçe başlayan, tarzına uyum sağlayan bir dinleme alanı.</p><div class="release-tags"><span>Android 10 ve üzeri</span><span>APK indir</span></div><a class="button button-primary download-button" data-download-link href="#indirme" aria-disabled="true">İndirme hazırlanıyor <span aria-hidden="true">↓</span></a><p id="download-status" class="download-status" role="status">İndirme bağlantısı yükleniyor.</p><noscript><p class="download-status">İndirme bağlantısını açmak için JavaScript’i etkinleştir.</p></noscript></div>
+      <div class="download-grid"><div class="release-card" id="indirme"><div class="release-top"><span class="eyebrow">TELEFONUNDA SUPFY</span><span>ANDROID</span></div><h3>Müziğine yer aç.</h3><p class="download-intro">Türkçe başlayan, tarzına uyum sağlayan bir dinleme alanı.</p><div class="release-tags"><span>Android 10 ve üzeri</span><span>APK indir</span></div><a class="button button-primary download-button" data-download-link href="#indirme" aria-disabled="true">İndirme hazırlanıyor <span aria-hidden="true">↓</span></a><p id="download-status" class="download-status" data-download-status role="status">İndirme bağlantısı yükleniyor.</p><noscript><p class="download-status">İndirme bağlantısını açmak için JavaScript’i etkinleştir.</p></noscript></div>
       <div class="installation"><h3>Üç adımda başla.</h3><ol><li><span>01</span><div><h4>Supfy’yi indir.</h4><p>Android telefonunda APK dosyasını aç.</p></div></li><li><span>02</span><div><h4>Kurulumu tamamla.</h4><p>Android’in kurulum adımlarını izle. Gerekirse dosyayı açtığın uygulamaya yükleme izni ver; kurulumdan sonra bu izni kapatabilirsin.</p></div></li><li><span>03</span><div><h4>Kendi ritmini seç.</h4><p>Görünümünü ve dilini belirle. Spotify içeriği için hesabında oturum aç; kullanmak istediğin ek servisleri ayarlardan seç.</p></div></li></ol></div></div>
     </section>
 
@@ -98,6 +99,6 @@
       <details><summary>Sözler ve videolar nasıl açılır?<span aria-hidden="true">+</span></summary><p>Bu isteğe bağlı özellikler için uygulamada sağlayıcı açıklamasını okuyup izin verebilirsin. Parça bilgileri veya aramalar ilgili sağlayıcıyla paylaşılabilir. İzinlerini ayarlardan geri çekebilirsin; içerik bulunabilirliği sağlayıcıya göre değişir.</p></details>
     </div></section>
   </main>
-  <footer class="site-footer container"><div class="footer-top"><a class="brand" href="#baslangic" aria-label="Supfy, başlangıca dön"><img src="assets/supfy-icon.png" width="36" height="36" alt=""><span>supfy<span class="brand-dot">.</span></span></a><p>Müziğin ritmi. Kontrol sende.</p><div><a href="https://www.instagram.com/smt.ozdemr/">@smt.ozdemr <span class="social-label">/ Instagram</span></a><a data-source-link href="https://github.com/ebilgi992/supfy/tree/supfy/quantum-privacy-shield">Kaynak kodu</a></div></div><div class="footer-bottom"><p><a href="https://github.com/kota-zo/myspoti">Myspoti / kota-zo</a> temelinde geliştirildi. <a href="https://github.com/ebilgi992/supfy/blob/supfy/quantum-privacy-shield/LICENSE">GPL-3.0</a> · Açık kaynak.</p><span>KENDİ RİTMİNİ BUL.</span></div></footer>
+  <footer class="site-footer container"><div class="footer-top"><a class="brand" href="#baslangic" aria-label="Supfy, başlangıca dön"><img src="assets/supfy-icon.png" width="36" height="36" alt=""><span>supfy<span class="brand-dot">.</span></span></a><p>Müziğin ritmi. Kontrol sende.</p><div><a data-source-link href="https://github.com/ebilgi992/supfy/tree/supfy/quantum-privacy-shield">Kaynak kodu</a></div></div><div class="footer-bottom"><p><a href="https://github.com/kota-zo/myspoti">Myspoti / kota-zo</a> temelinde geliştirildi. <a href="https://github.com/ebilgi992/supfy/blob/supfy/quantum-privacy-shield/LICENSE">GPL-3.0</a> · Açık kaynak.</p><span>KENDİ RİTMİNİ BUL.</span></div></footer>
 </body>
 </html>
